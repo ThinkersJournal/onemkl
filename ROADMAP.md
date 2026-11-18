@@ -48,8 +48,10 @@ function(s).
 | PDE Support | MVP+ | DCT / DST trigonometric transforms (sine, cosine, four staggered variants) for spectral PDE solvers |
 | Service | Common | Version, threading, memory, verbose, finalize |
 
-170 tests pass workspace-wide; each test maps directly to a wrapped
-routine or trait method.
+Measured 2026-11-18 on Linux x86_64 with oneMKL 2026.2.1, default features:
+373 tests pass, 0 fail, 5 ignored. Command: `cargo test --workspace
+--no-fail-fast`, then sum the `test result:` lines (passed / failed /
+ignored). The count moves with every test added; re-measure before quoting it.
 
 ## Plans
 

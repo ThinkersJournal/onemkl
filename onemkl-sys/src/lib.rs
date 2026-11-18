@@ -40,6 +40,31 @@
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+// Linux dynamic builds: the layered MKL shared libraries do not record
+// each other in DT_NEEDED, and rustc links with `--as-needed`, so a
+// final artifact that references only `mkl_intel_*` symbols loses
+// `mkl_core` and the threading layer, then dies at load with
+// `undefined symbol: mkl_blas_dgemm` (issue #3). `cargo:rustc-link-arg`
+// cannot fix this for downstream crates (it only reaches the emitting
+// crate's own artifacts) and the `as-needed` link modifier is
+// nightly-only. So reference one symbol from each library here: a
+// real symbol reference survives `--as-needed` and travels with the
+// rlib to every dependent.
+#[cfg(all(target_os = "linux", feature = "link-dynamic"))]
+mod keep_layers_needed {
+    unsafe extern "C" {
+        // Exported only by `libmkl_core` (backs the public `MKL_CBWR_Get`).
+        fn mkl_serv_cbwr_get();
+        // Exported by whichever threading layer is linked
+        // (`mkl_sequential`, `mkl_intel_thread` or `mkl_tbb_thread`).
+        fn mkl_serv_get_max_threads();
+    }
+
+    #[used]
+    static KEEP: [unsafe extern "C" fn(); 2] =
+        [mkl_serv_cbwr_get, mkl_serv_get_max_threads];
+}
+
 // `MKL_INT`, `MKL_UINT`, and `MKL_LONG` are preprocessor `#define`s in
 // `mkl_types.h`, so bindgen inlines their expansions rather than emitting
 // Rust type aliases. We expose them here so downstream crates can refer to

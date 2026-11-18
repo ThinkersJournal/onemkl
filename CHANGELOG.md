@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.3.0 - 2026-11-18
+
+### Breaking (pre-1.0 minor bump)
+
+- `onemkl-sys`: the bindgen 0.72 -> 0.73 bump removed the `Copy` and `Clone` derives from two opaque handle structs, `sparse_matrix` and `DFTI_DESCRIPTOR` (they are zero-sized `_unused: [u8; 0]` types; the `*_t` / `*_HANDLE` pointer aliases are unchanged). Checked by generating `bindings.rs` with bindgen 0.72.1 (origin/main) and 0.73.2 (this branch) against oneMKL 2026.2.1 and diffing: 78 differing lines, which are the generator banner, those two derive lines, and `#[allow(unused_imports)] use super::*;` added inside 36 constant modules. No function, type name or signature changed. `onemkl` was not diffed with a tool; a search of `onemkl/src` finds no use of `sparse_matrix` or `DFTI_DESCRIPTOR` other than via the `sparse_matrix_t` / `DFTI_DESCRIPTOR_HANDLE` aliases.
+
+### Fixed
+
+- Linux dynamic builds: a crate that depends on `onemkl-sys` and runs its own test binary no longer dies at load with `undefined symbol: mkl_blas_dgemm` (issue #3). `onemkl-sys` now references one symbol from `libmkl_core` and one from the threading layer, so `--as-needed` keeps both in `DT_NEEDED` for every dependent; no `RUSTFLAGS` workaround is needed. Verified with a downstream crate against oneMKL 2026.2.1 (sequential, LP64, dynamic); the OpenMP and TBB layers, ILP64 and Windows were not exercised.
+
+### Changed
+
+- `bindgen` 0.72 -> 0.73 (resolves 0.73.2); nothing blocked it.
+- CI gains a `cargo deny` job (`deny.toml`, `all-features = true`).
+- README gains a claim-to-command table; the ROADMAP test count is re-measured (373 passed, 5 ignored; it said 170).
+
 ## 0.2.2 - 2026-10-31
 
 ### Changed

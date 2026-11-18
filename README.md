@@ -37,6 +37,16 @@ $env:MKLROOT = "C:\Program Files (x86)\Intel\oneAPI\mkl\latest"
 export MKLROOT=/opt/intel/oneapi/mkl/latest
 ```
 
+## Verifying the claims
+
+| Claim | Command |
+| --- | --- |
+| Builds and tests pass with default features | `cargo test --workspace --no-fail-fast` |
+| Docs build without warnings | `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps` |
+| Dependencies clear advisories, licences, bans and sources | `cargo deny check` (config: `deny.toml`) |
+| A downstream crate that depends on `onemkl-sys` links and runs on Linux | add `onemkl-sys` to a fresh crate, call any routine (e.g. `cblas_dgemm`) from a `#[test]`, `cargo test`; needs no extra `RUSTFLAGS` |
+| Test count in `ROADMAP.md` | the first row's command, summing `test result:` lines |
+
 ## Feature flags
 
 ### Build configuration (`onemkl-sys` and `onemkl`)

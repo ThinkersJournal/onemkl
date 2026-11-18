@@ -227,9 +227,9 @@ impl Config {
         // `cos`). Wrap the layered libs plus libm/pthread/dl in a
         // `--no-as-needed` block so they all end up in DT_NEEDED.
         // Cargo's `rustc-link-arg` only reaches artifacts of this crate
-        // (notably the `smoke` integration test in `onemkl-sys/tests/`);
-        // downstream crates need their own copy of the wrap. See
-        // `onemkl/build.rs` for the matching emission.
+        // (notably the `smoke` integration test in `onemkl-sys/tests/`).
+        // Dependents get the same effect from the symbol references in
+        // `src/lib.rs` (`keep_layers_needed`), which travel with the rlib.
         if self.target_os == "linux" && self.linkage == Linkage::Dynamic {
             emit_linux_as_needed_wrap(mkl, interface_lib, threading_lib);
         }

@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.3.1 - 2026-11-19
+
+### Changed
+
+- Removed the unused `thiserror` dependency from `onemkl` (nothing in `onemkl/src` referenced it; the crate builds without it).
+- New test `onemkl/tests/vml_accuracy_mode.rs` pins the VML accuracy mode: `onemkl` never calls `vmlSetMode`, so `vm` functions run in the thread default, which the test asserts is `VML_HA` (oneMKL 2026.2.1, Linux, LP64; Windows not exercised).
+- ROADMAP: completeness wording and the per-routine-test criterion are marked UNVERIFIED, and each domain is mapped to its test files.
+
 ## 0.3.0 - 2026-11-18
 
 ### Breaking (pre-1.0 minor bump)

@@ -48,6 +48,30 @@ function(s).
 | PDE Support | MVP+ | DCT / DST trigonometric transforms (sine, cosine, four staggered variants) for spectral PDE solvers |
 | Service | Common | Version, threading, memory, verbose, finalize |
 
+**What the Notes column proves.** It lists what the public API exposes
+(check with `cargo doc -p onemkl --no-deps`). Wording such as "All", "full" and
+"All major function families" is **UNVERIFIED**: no per-routine coverage tool
+has been run, so tier criterion (c) above ("every wrapped routine has at least
+one test") is **UNVERIFIED** for every row. The most each row's tests show is
+that the named test files pass (`cargo test -p onemkl --test <name>`):
+
+| Domain | Test files (`--test`) |
+| --- | --- |
+| BLAS, extensions | `blas_level1` `blas_level2_3` `blas_level2_extended` `blas_level3_extended` `blas_packed` `blas_batched` `blas_gemm_batch` `blas_gemv_trsm_batch` `blas_extensions` `blas_compact` `blas_jit` `blas_mixed_precision` |
+| LAPACK | `lapack` `lapack_auxiliary` `lapack_banded` `lapack_generalized` `lapack_iter_refine` `lapack_packed` `lapack_rrr` |
+| Sparse BLAS | `sparse` `sparse_arithmetic` `sparse_convert` `sparse_formats` `sparse_iterative` `sparse_qr` |
+| PARDISO / DSS | `pardiso` / `dss` |
+| ISS / Preconditioners | `iss` `iss_rci` / `preconditioners` |
+| FEAST | `feast` `feast_extras` |
+| VM | `vm` (accuracy mode: `vml_accuracy_mode`) |
+| RNG, convolution, stats | `rng` `rng_convolution` `rng_summary_stats` |
+| FFT | `fft` `fft_scaling` |
+| Data fitting / Optimization / PDE / Service | `data_fitting` `data_fitting_splines` / `optim` / `pde_trig` / `service` |
+
+Platforms: all of the above ran on Linux x86_64, LP64, oneMKL 2026.2.1 only.
+Windows, macOS, ILP64 and the OpenMP / TBB threading layers are
+**UNVERIFIED**.
+
 Measured 2026-11-18 on Linux x86_64 with oneMKL 2026.2.1, default features:
 373 tests pass, 0 fail, 5 ignored. Command: `cargo test --workspace
 --no-fail-fast`, then sum the `test result:` lines (passed / failed /

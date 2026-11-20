@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- `optim`: `numerical_jacobian_central` (`djacobix`, central differences) with a closure residual; a panic in the closure is caught in the callback and re-raised after MKL returns. Unlike the existing `numerical_jacobian` it gives MKL an owned copy of `x`. Test `optim_jacobix` (Linux x86_64, LP64, sequential, oneMKL 2026.2.1): output is column-major `m x n` and matches the analytic Jacobian within 1e-5 at `eps = 1e-8`. Single precision (`sjacobix`) not wrapped; Windows, macOS, OpenMP/TBB, ILP64 not exercised.
+
 ## 0.3.3 - 2026-11-20
 
 ### Added

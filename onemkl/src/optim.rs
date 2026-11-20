@@ -14,8 +14,11 @@
 //!
 //! Currently double-precision only.
 
-use core::ffi::c_int;
+use core::ffi::{c_int, c_void};
 use core::ptr;
+use core::slice;
+use std::any::Any;
+use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 
 use onemkl_sys as sys;
 
@@ -398,3 +401,89 @@ pub unsafe fn djacobi_with_callback(
     }
     Ok(())
 }
+
+struct JacobixState<'a> {
+    n: usize,
+    m: usize,
+    f: &'a mut dyn FnMut(&[f64], &mut [f64]),
+    panic: Option<Box<dyn Any + Send>>,
+}
+
+unsafe extern "C" fn jacobix_trampoline(
+    _m: *mut c_int,
+    _n: *mut c_int,
+    x: *mut f64,
+    f: *mut f64,
+    user: *mut c_void,
+) {
+    // SAFETY: `user` is the `JacobixState` that `numerical_jacobian_central`
+    // passed to `djacobix` and keeps alive for the whole call.
+    let st = unsafe { &mut *(user as *mut JacobixState<'_>) };
+    if st.panic.is_some() {
+        return;
+    }
+    // The dimensions come from our own state, not from MKL's (Fortran-order)
+    // arguments. MKL passes `x` of length `n` and `f` of length `m`.
+    let xs = unsafe { slice::from_raw_parts(x, st.n) };
+    let fs = unsafe { slice::from_raw_parts_mut(f, st.m) };
+    if let Err(p) = catch_unwind(AssertUnwindSafe(|| (st.f)(xs, fs))) {
+        st.panic = Some(p);
+    }
+}
+
+/// Numerical Jacobian of `residual: ℝⁿ → ℝᵐ` by central differences
+/// (`djacobix`). `residual(x, f)` writes `F(x)` into `f` (length `m`) and
+/// is called with perturbed copies of `x` (length `n`). The `m × n`
+/// Jacobian is written into `jac` column-major (column `j` = ∂F/∂xⱼ);
+/// measured in `tests/optim_jacobix.rs`.
+///
+/// `eps` is the requested precision of the Jacobian (`1e-6` is typical).
+/// A panic in `residual` is caught inside the callback and re-raised here
+/// once MKL has returned, never unwound through MKL.
+pub fn numerical_jacobian_central<R>(
+    n: usize,
+    m: usize,
+    x: &[f64],
+    eps: f64,
+    jac: &mut [f64],
+    mut residual: R,
+) -> Result<()>
+where
+    R: FnMut(&[f64], &mut [f64]),
+{
+    if x.len() != n {
+        return Err(Error::InvalidArgument("x must have length n"));
+    }
+    if jac.len() < m * n {
+        return Err(Error::InvalidArgument("jac buffer is smaller than m * n"));
+    }
+    if !(eps.is_finite() && eps > 0.0) {
+        return Err(Error::InvalidArgument("eps must be finite and positive"));
+    }
+    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
+
+    // MKL perturbs and restores `x` in place, so give it an owned copy.
+    let mut xv = x.to_vec();
+    let mut eps_mut = eps;
+    let mut state = JacobixState { n, m, f: &mut residual, panic: None };
+    let status = unsafe {
+        sys::djacobix(
+            Some(jacobix_trampoline),
+            &n_i,
+            &m_i,
+            jac.as_mut_ptr(),
+            xv.as_mut_ptr(),
+            &mut eps_mut,
+            &mut state as *mut JacobixState<'_> as *mut c_void,
+        )
+    };
+    if let Some(p) = state.panic.take() {
+        resume_unwind(p);
+    }
+    if status != sys::TR_SUCCESS as c_int {
+        return Err(Error::LapackComputationFailure { info: status });
+    }
+    Ok(())
+}
+

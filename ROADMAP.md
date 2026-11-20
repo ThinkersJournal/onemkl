@@ -66,7 +66,7 @@ that the named test files pass (`cargo test -p onemkl --test <name>`):
 | VM | `vm` (accuracy mode: `vml_accuracy_mode`) |
 | RNG, convolution, stats | `rng` `rng_convolution` `rng_summary_stats` |
 | FFT | `fft` `fft_scaling` |
-| Data fitting / Optimization / PDE / Service | `data_fitting` `data_fitting_splines` / `optim` / `pde_trig` / `service` `service_cbwr` `service_xerbla` `service_progress` |
+| Data fitting / Optimization / PDE / Service | `data_fitting` `data_fitting_splines` / `optim` `optim_jacobix` / `pde_trig` / `service` `service_cbwr` `service_xerbla` `service_progress` |
 
 Platforms: all of the above ran on Linux x86_64, LP64, oneMKL 2026.2.1 only.
 Windows, macOS, ILP64 and the OpenMP / TBB threading layers are
@@ -174,8 +174,8 @@ specialized ones:
 - **Optimization**: ~~`?trnlsp_get` with full return shape (initial /
   final residual norms), `?jacobi` direct caller~~ (done — residual
   norms in `TrnlsResult`, `djacobi_with_callback`); `?trnlsp_check`
-  validation (currently subsumed by `_init`), `?jacobix` (Jacobian
-  with central differences), session API for step-by-step driving.
+  validation (currently subsumed by `_init`), ~~`?jacobix` (Jacobian
+  with central differences)~~ (done — `numerical_jacobian_central`, double only), session API for step-by-step driving.
 - **Service**: ~~CBWR (`mkl_cbwr_*`)~~ (done — `cbwr_set` / `cbwr_set_strict` / `cbwr_branch` / `cbwr_strict` / `cbwr_auto_branch`), ~~`mkl_set_progress`,
   `mkl_set_xerbla`~~ (done — `set_progress_handler` / `set_xerbla_handler`), `mkl_set_pardiso_pivot`,
   `mkl_enable_instructions`, single-dynamic-library control.

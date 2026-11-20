@@ -176,7 +176,7 @@ specialized ones:
   norms in `TrnlsResult`, `djacobi_with_callback`); `?trnlsp_check`
   validation (currently subsumed by `_init`), `?jacobix` (Jacobian
   with central differences), session API for step-by-step driving.
-- **Service**: ~~CBWR (`mkl_cbwr_*`)~~ (done — `cbwr_set` / `cbwr_branch` / `cbwr_strict` / `cbwr_auto_branch`), `mkl_set_progress`,
+- **Service**: ~~CBWR (`mkl_cbwr_*`)~~ (done — `cbwr_set` / `cbwr_set_strict` / `cbwr_branch` / `cbwr_strict` / `cbwr_auto_branch`), `mkl_set_progress`,
   `mkl_set_xerbla`, `mkl_set_pardiso_pivot`,
   `mkl_enable_instructions`, single-dynamic-library control.
 - **PDE Support**: ~~trigonometric transforms (sine / cosine /

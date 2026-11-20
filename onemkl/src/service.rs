@@ -450,8 +450,8 @@ pub fn max_cpu_frequency_ghz() -> f64 {
 /// (SSE3, SSSE3, SSE4.1, AVX, Xeon Phi) are not exposed.
 ///
 /// Pinning a branch makes oneMKL produce bit-identical results across
-/// CPUs that support it (and across thread counts, with
-/// `strict = true`), at some cost in speed. See [`cbwr_set`].
+/// CPUs that support it (and across thread counts, when set with
+/// [`cbwr_set_strict`]), at some cost in speed. See [`cbwr_set`] and [`cbwr_set_strict`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CbwrBranch {
     /// CBWR off (the default): MKL picks the fastest branch.
@@ -491,7 +491,9 @@ impl CbwrBranch {
 
     fn from_int(v: c_int) -> Option<Self> {
         Some(match v as u32 {
-            sys::MKL_CBWR_OFF => Self::Off,
+            // `MKL_CBWR_Get(MKL_CBWR_BRANCH)` reports "CBWR off" (the default
+            // state) as `MKL_CBWR_BRANCH_OFF`, not `MKL_CBWR_OFF`.
+            sys::MKL_CBWR_OFF | sys::MKL_CBWR_BRANCH_OFF => Self::Off,
             sys::MKL_CBWR_AUTO => Self::Auto,
             sys::MKL_CBWR_COMPATIBLE => Self::Compatible,
             sys::MKL_CBWR_SSE2 => Self::Sse2,
@@ -505,31 +507,67 @@ impl CbwrBranch {
     }
 }
 
-/// Select the CBWR branch (`MKL_CBWR_Set`). With `strict = true`, results
-/// are also reproducible across different thread counts
-/// (`MKL_CBWR_STRICT`).
-///
-/// Call **before** any other MKL routine: once MKL has dispatched, the
-/// mode can no longer change and this returns an error.
-pub fn cbwr_set(branch: CbwrBranch, strict: bool) -> Result<()> {
-    let mut mode = branch.as_int();
+/// Why [`cbwr_set`] / [`cbwr_set_strict`] failed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CbwrError {
+    /// MKL rejected the settings as invalid input
+    /// (`MKL_CBWR_ERR_INVALID_INPUT`).
+    InvalidInput,
+    /// The branch is not supported by this CPU
+    /// (`MKL_CBWR_ERR_UNSUPPORTED_BRANCH`).
+    UnsupportedBranch,
+    /// MKL has already dispatched, so the mode can no longer change
+    /// (`MKL_CBWR_ERR_MODE_CHANGE_FAILURE`). A lifecycle error, not bad
+    /// input: call before any other MKL routine.
+    ModeLocked,
+    /// Any other negative status from `MKL_CBWR_Set`.
+    Other(i32),
+}
+
+impl core::fmt::Display for CbwrError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::InvalidInput => f.write_str("MKL_CBWR_Set: invalid input"),
+            Self::UnsupportedBranch => {
+                f.write_str("MKL_CBWR_Set: branch not supported by this CPU")
+            }
+            Self::ModeLocked => f.write_str(
+                "MKL_CBWR_Set: mode can no longer change (MKL already dispatched)",
+            ),
+            Self::Other(c) => write!(f, "MKL_CBWR_Set: status {c}"),
+        }
+    }
+}
+
+impl std::error::Error for CbwrError {}
+
+fn cbwr_set_mode(mut mode: c_int, strict: bool) -> core::result::Result<(), CbwrError> {
     if strict {
         mode |= sys::MKL_CBWR_STRICT as c_int;
     }
-    let r = unsafe { sys::MKL_CBWR_Set(mode) };
-    match r {
+    match unsafe { sys::MKL_CBWR_Set(mode) } {
         0 => Ok(()),
-        sys::MKL_CBWR_ERR_INVALID_INPUT => {
-            Err(Error::InvalidArgument("MKL_CBWR_Set: invalid input"))
-        }
-        sys::MKL_CBWR_ERR_UNSUPPORTED_BRANCH => Err(Error::InvalidArgument(
-            "MKL_CBWR_Set: branch not supported by this CPU",
-        )),
-        sys::MKL_CBWR_ERR_MODE_CHANGE_FAILURE => Err(Error::InvalidArgument(
-            "MKL_CBWR_Set: mode can no longer change (MKL already dispatched)",
-        )),
-        _ => Err(Error::InvalidArgument("MKL_CBWR_Set: unrecognised status")),
+        sys::MKL_CBWR_ERR_INVALID_INPUT => Err(CbwrError::InvalidInput),
+        sys::MKL_CBWR_ERR_UNSUPPORTED_BRANCH => Err(CbwrError::UnsupportedBranch),
+        sys::MKL_CBWR_ERR_MODE_CHANGE_FAILURE => Err(CbwrError::ModeLocked),
+        r => Err(CbwrError::Other(r)),
     }
+}
+
+/// Select the CBWR branch (`MKL_CBWR_Set`). Results are reproducible
+/// across CPUs that support the branch, for a fixed thread count; use
+/// [`cbwr_set_strict`] to also fix them across thread counts.
+///
+/// Call **before** any other MKL routine: once MKL has dispatched, the
+/// mode can no longer change and this returns [`CbwrError::ModeLocked`].
+pub fn cbwr_set(branch: CbwrBranch) -> core::result::Result<(), CbwrError> {
+    cbwr_set_mode(branch.as_int(), false)
+}
+
+/// Like [`cbwr_set`], but also strict: results are reproducible across
+/// different thread counts (`MKL_CBWR_STRICT`).
+pub fn cbwr_set_strict(branch: CbwrBranch) -> core::result::Result<(), CbwrError> {
+    cbwr_set_mode(branch.as_int(), true)
 }
 
 /// The CBWR branch currently in effect (`MKL_CBWR_Get(MKL_CBWR_BRANCH)`).

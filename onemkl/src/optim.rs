@@ -289,11 +289,15 @@ where
     let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
 
+    // MKL's RCI loop perturbs `x` in place and the closure reads it between
+    // calls, so MKL must get an owned, mutable buffer (writing through a
+    // pointer derived from the shared `&[f64]` would be undefined behaviour).
+    let mut xv = x.to_vec();
     let mut handle: sys::_JACOBIMATRIX_HANDLE_t = ptr::null_mut();
     let status = unsafe {
         sys::djacobi_init(
             &mut handle, &n_i, &m_i,
-            x.as_ptr(), jac.as_mut_ptr(), &step,
+            xv.as_mut_ptr(), jac.as_mut_ptr(), &step,
         )
     };
     if status != sys::TR_SUCCESS as c_int {
@@ -320,10 +324,10 @@ where
                     // Need F(x) at the current sample — MKL has
                     // already adjusted x internally; we call the
                     // user's residual on whatever they passed.
-                    residual(x, &mut f1);
+                    residual(&xv, &mut f1);
                 }
                 2 => {
-                    residual(x, &mut f2);
+                    residual(&xv, &mut f2);
                 }
                 other if other < 0 => {
                     return Err(Error::LapackComputationFailure { info: other });

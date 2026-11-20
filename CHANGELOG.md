@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - `optim`: `numerical_jacobian_central` (`djacobix`, central differences) with a closure residual; a panic in the closure is caught in the callback and re-raised after MKL returns. Unlike the existing `numerical_jacobian` it gives MKL an owned copy of `x`. Test `optim_jacobix` (Linux x86_64, LP64, sequential, oneMKL 2026.2.1): output is column-major `m x n` and matches the analytic Jacobian within 1e-5 at `eps = 1e-8`. Single precision (`sjacobix`) not wrapped; Windows, macOS, OpenMP/TBB, ILP64 not exercised.
 
+### Changed
+
+- `optim::numerical_jacobian` now gives MKL an owned copy of `x`. Before, `x.as_ptr()` from a shared `&[f64]` was passed to `djacobi_init` and MKL perturbed it in place (undefined behaviour in Rust's model). No wrong result was observed before or after (oneMKL 2026.2.1, Linux x86_64, debug and release: closure sees the perturbed `x`, Jacobian matches analytic within 1e-6); this is a soundness fix, not a behaviour fix. New test `optim_numerical_jacobian`.
+
 ## 0.3.3 - 2026-11-20
 
 ### Added

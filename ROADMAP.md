@@ -66,7 +66,7 @@ that the named test files pass (`cargo test -p onemkl --test <name>`):
 | VM | `vm` (accuracy mode: `vml_accuracy_mode`) |
 | RNG, convolution, stats | `rng` `rng_convolution` `rng_summary_stats` |
 | FFT | `fft` `fft_scaling` |
-| Data fitting / Optimization / PDE / Service | `data_fitting` `data_fitting_splines` / `optim` `optim_jacobix` / `pde_trig` / `service` `service_cbwr` `service_xerbla` `service_progress` |
+| Data fitting / Optimization / PDE / Service | `data_fitting` `data_fitting_splines` / `optim` `optim_jacobix` `optim_numerical_jacobian` / `pde_trig` / `service` `service_cbwr` `service_xerbla` `service_progress` |
 
 Platforms: all of the above ran on Linux x86_64, LP64, oneMKL 2026.2.1 only.
 Windows, macOS, ILP64 and the OpenMP / TBB threading layers are

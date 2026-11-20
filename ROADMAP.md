@@ -46,7 +46,7 @@ function(s).
 | Data fitting | Common | Natural / Bessel / Akima / Hermite cubic splines, with interpolate / integrate |
 | Optimization | Common | TRNLS, TRNLSPBC with initial / final residual norms; RCI numerical Jacobian; low-level `djacobi_with_callback` direct-FFI Jacobian |
 | PDE Support | MVP+ | DCT / DST trigonometric transforms (sine, cosine, four staggered variants) for spectral PDE solvers |
-| Service | Common | Version, threading, memory, verbose, finalize |
+| Service | Common | Version, threading, memory, verbose, finalize, CBWR |
 
 **What the Notes column proves.** It lists what the public API exposes
 (check with `cargo doc -p onemkl --no-deps`). Wording such as "All", "full" and
@@ -66,7 +66,7 @@ that the named test files pass (`cargo test -p onemkl --test <name>`):
 | VM | `vm` (accuracy mode: `vml_accuracy_mode`) |
 | RNG, convolution, stats | `rng` `rng_convolution` `rng_summary_stats` |
 | FFT | `fft` `fft_scaling` |
-| Data fitting / Optimization / PDE / Service | `data_fitting` `data_fitting_splines` / `optim` / `pde_trig` / `service` |
+| Data fitting / Optimization / PDE / Service | `data_fitting` `data_fitting_splines` / `optim` / `pde_trig` / `service` `service_cbwr` |
 
 Platforms: all of the above ran on Linux x86_64, LP64, oneMKL 2026.2.1 only.
 Windows, macOS, ILP64 and the OpenMP / TBB threading layers are
@@ -176,7 +176,7 @@ specialized ones:
   norms in `TrnlsResult`, `djacobi_with_callback`); `?trnlsp_check`
   validation (currently subsumed by `_init`), `?jacobix` (Jacobian
   with central differences), session API for step-by-step driving.
-- **Service**: CBWR (`mkl_cbwr_*`), `mkl_set_progress`,
+- **Service**: ~~CBWR (`mkl_cbwr_*`)~~ (done — `cbwr_set` / `cbwr_set_strict` / `cbwr_branch` / `cbwr_strict` / `cbwr_auto_branch`), `mkl_set_progress`,
   `mkl_set_xerbla`, `mkl_set_pardiso_pivot`,
   `mkl_enable_instructions`, single-dynamic-library control.
 - **PDE Support**: ~~trigonometric transforms (sine / cosine /

@@ -4,7 +4,11 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 0.3.2 - 2026-11-20
+
+### Added
+
+- `service`: conditional numerical reproducibility (CBWR): `CbwrBranch`, `CbwrError`, `cbwr_set(branch)`, `cbwr_set_strict(branch)`, `cbwr_branch`, `cbwr_strict`, `cbwr_auto_branch` over `MKL_CBWR_Set` / `MKL_CBWR_Get` / `MKL_CBWR_Get_Auto_Branch`. Only branches present in the oneMKL 2026.2.1 headers are exposed. New test `onemkl/tests/service_cbwr.rs` (Linux x86_64, LP64, sequential; it checks the default (off) state, set, query and the `ModeLocked` late-set error (needs the `blas` feature to force a dispatch), not bit-reproducibility across CPUs). On that build `cbwr_auto_branch` returns `Auto` itself.
 
 ## 0.3.1 - 2026-11-19
 

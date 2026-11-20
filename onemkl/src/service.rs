@@ -441,6 +441,160 @@ pub fn max_cpu_frequency_ghz() -> f64 {
 }
 
 // =====================================================================
+// Conditional numerical reproducibility (CBWR)
+// =====================================================================
+
+/// A conditional-numerical-reproducibility (CBWR) code branch.
+///
+/// Branches older MKL releases offered but oneMKL 2026 headers dropped
+/// (SSE3, SSSE3, SSE4.1, AVX, Xeon Phi) are not exposed.
+///
+/// Pinning a branch makes oneMKL produce bit-identical results across
+/// CPUs that support it (and across thread counts, when set with
+/// [`cbwr_set_strict`]), at some cost in speed. See [`cbwr_set`] and [`cbwr_set_strict`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CbwrBranch {
+    /// CBWR off (the default): MKL picks the fastest branch.
+    Off,
+    /// The best branch for this CPU, chosen automatically.
+    Auto,
+    /// Compatible branch.
+    Compatible,
+    /// SSE2.
+    Sse2,
+    /// SSE4.2.
+    Sse42,
+    /// AVX2.
+    Avx2,
+    /// AVX-512.
+    Avx512,
+    /// AVX-512 enabled-1.
+    Avx512E1,
+    /// AVX10.
+    Avx10,
+}
+
+impl CbwrBranch {
+    fn as_int(self) -> c_int {
+        (match self {
+            Self::Off => sys::MKL_CBWR_OFF,
+            Self::Auto => sys::MKL_CBWR_AUTO,
+            Self::Compatible => sys::MKL_CBWR_COMPATIBLE,
+            Self::Sse2 => sys::MKL_CBWR_SSE2,
+            Self::Sse42 => sys::MKL_CBWR_SSE4_2,
+            Self::Avx2 => sys::MKL_CBWR_AVX2,
+            Self::Avx512 => sys::MKL_CBWR_AVX512,
+            Self::Avx512E1 => sys::MKL_CBWR_AVX512_E1,
+            Self::Avx10 => sys::MKL_CBWR_AVX10,
+        }) as c_int
+    }
+
+    fn from_int(v: c_int) -> Option<Self> {
+        Some(match v as u32 {
+            // `MKL_CBWR_Get(MKL_CBWR_BRANCH)` reports "CBWR off" (the default
+            // state) as `MKL_CBWR_BRANCH_OFF`, not `MKL_CBWR_OFF`.
+            sys::MKL_CBWR_OFF | sys::MKL_CBWR_BRANCH_OFF => Self::Off,
+            sys::MKL_CBWR_AUTO => Self::Auto,
+            sys::MKL_CBWR_COMPATIBLE => Self::Compatible,
+            sys::MKL_CBWR_SSE2 => Self::Sse2,
+            sys::MKL_CBWR_SSE4_2 => Self::Sse42,
+            sys::MKL_CBWR_AVX2 => Self::Avx2,
+            sys::MKL_CBWR_AVX512 => Self::Avx512,
+            sys::MKL_CBWR_AVX512_E1 => Self::Avx512E1,
+            sys::MKL_CBWR_AVX10 => Self::Avx10,
+            _ => return None,
+        })
+    }
+}
+
+/// Why [`cbwr_set`] / [`cbwr_set_strict`] failed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CbwrError {
+    /// MKL rejected the settings as invalid input
+    /// (`MKL_CBWR_ERR_INVALID_INPUT`).
+    InvalidInput,
+    /// The branch is not supported by this CPU
+    /// (`MKL_CBWR_ERR_UNSUPPORTED_BRANCH`).
+    UnsupportedBranch,
+    /// MKL has already dispatched, so the mode can no longer change
+    /// (`MKL_CBWR_ERR_MODE_CHANGE_FAILURE`). A lifecycle error, not bad
+    /// input: call before any other MKL routine.
+    ModeLocked,
+    /// Any other negative status from `MKL_CBWR_Set`.
+    Other(i32),
+}
+
+impl core::fmt::Display for CbwrError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::InvalidInput => f.write_str("MKL_CBWR_Set: invalid input"),
+            Self::UnsupportedBranch => {
+                f.write_str("MKL_CBWR_Set: branch not supported by this CPU")
+            }
+            Self::ModeLocked => f.write_str(
+                "MKL_CBWR_Set: mode can no longer change (MKL already dispatched)",
+            ),
+            Self::Other(c) => write!(f, "MKL_CBWR_Set: status {c}"),
+        }
+    }
+}
+
+impl std::error::Error for CbwrError {}
+
+fn cbwr_set_mode(mut mode: c_int, strict: bool) -> core::result::Result<(), CbwrError> {
+    if strict {
+        mode |= sys::MKL_CBWR_STRICT as c_int;
+    }
+    match unsafe { sys::MKL_CBWR_Set(mode) } {
+        0 => Ok(()),
+        sys::MKL_CBWR_ERR_INVALID_INPUT => Err(CbwrError::InvalidInput),
+        sys::MKL_CBWR_ERR_UNSUPPORTED_BRANCH => Err(CbwrError::UnsupportedBranch),
+        sys::MKL_CBWR_ERR_MODE_CHANGE_FAILURE => Err(CbwrError::ModeLocked),
+        r => Err(CbwrError::Other(r)),
+    }
+}
+
+/// Select the CBWR branch (`MKL_CBWR_Set`). Results are reproducible
+/// across CPUs that support the branch, for a fixed thread count; use
+/// [`cbwr_set_strict`] to also fix them across thread counts.
+///
+/// Call **before** any other MKL routine: once MKL has dispatched, the
+/// mode can no longer change and this returns [`CbwrError::ModeLocked`].
+pub fn cbwr_set(branch: CbwrBranch) -> core::result::Result<(), CbwrError> {
+    cbwr_set_mode(branch.as_int(), false)
+}
+
+/// Like [`cbwr_set`], but also strict: results are reproducible across
+/// different thread counts (`MKL_CBWR_STRICT`).
+pub fn cbwr_set_strict(branch: CbwrBranch) -> core::result::Result<(), CbwrError> {
+    cbwr_set_mode(branch.as_int(), true)
+}
+
+/// The CBWR branch currently in effect (`MKL_CBWR_Get(MKL_CBWR_BRANCH)`).
+pub fn cbwr_branch() -> Result<CbwrBranch> {
+    let v = unsafe { sys::MKL_CBWR_Get(sys::MKL_CBWR_BRANCH as c_int) };
+    CbwrBranch::from_int(v).ok_or(Error::InvalidArgument(
+        "MKL_CBWR_Get: unrecognised branch code",
+    ))
+}
+
+/// Whether strict CBWR (thread-count independence) is in effect.
+pub fn cbwr_strict() -> bool {
+    let v = unsafe { sys::MKL_CBWR_Get(sys::MKL_CBWR_ALL) };
+    v > 0 && (v as u32 & sys::MKL_CBWR_STRICT) != 0
+}
+
+/// The branch `Auto` would pick on this CPU (`MKL_CBWR_Get_Auto_Branch`).
+/// Measured on oneMKL 2026.2.1 (Linux x86_64) this returns
+/// [`CbwrBranch::Auto`] itself, not a concrete branch.
+pub fn cbwr_auto_branch() -> Result<CbwrBranch> {
+    let v = unsafe { sys::MKL_CBWR_Get_Auto_Branch() };
+    CbwrBranch::from_int(v).ok_or(Error::InvalidArgument(
+        "MKL_CBWR_Get_Auto_Branch: unrecognised branch code",
+    ))
+}
+
+// =====================================================================
 // Library lifecycle
 // =====================================================================
 

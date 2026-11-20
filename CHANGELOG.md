@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- `service`: `set_xerbla_handler` (`mkl_set_xerbla`) and `set_progress_handler` (`mkl_set_progress`): safe, process-global handlers (plain `fn` pointers behind `extern "C"` trampolines; a panicking handler is caught, not unwound into MKL). `None` restores the entry MKL had before the first install. Tests `service_xerbla` and `service_progress` (one test each, own process). Measured on oneMKL 2026.2.1, Linux x86_64, LP64, sequential: `xerbla` receives the positive argument position (`2`) while the routine's `info` is `-2`; a 512x512 `dpotrf` makes 16 progress callbacks, and returning `Stop` ends it after one with `info = -1002`. Windows, macOS, OpenMP/TBB and ILP64 not exercised; routines other than `dpotrf` not checked for progress callbacks.
+
 ## 0.3.2 - 2026-11-20
 
 ### Added

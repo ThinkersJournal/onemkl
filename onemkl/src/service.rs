@@ -5,7 +5,9 @@ use core::ffi::{c_char, c_int};
 use core::marker::PhantomData;
 use core::ptr::NonNull;
 use core::slice;
+use core::sync::atomic::{AtomicUsize, Ordering};
 use std::ffi::{CStr, CString};
+use std::sync::Mutex;
 
 use onemkl_sys as sys;
 
@@ -592,6 +594,145 @@ pub fn cbwr_auto_branch() -> Result<CbwrBranch> {
     CbwrBranch::from_int(v).ok_or(Error::InvalidArgument(
         "MKL_CBWR_Get_Auto_Branch: unrecognised branch code",
     ))
+}
+
+// =====================================================================
+// Error and progress handlers
+// =====================================================================
+
+/// A handler for MKL's `xerbla` error routine: called with the routine
+/// name (for example `"DPOTRF"`) and the 1-based position of the illegal
+/// argument (for example `2` for an illegal second argument). Measured
+/// on oneMKL 2026.2.1 (Linux x86_64): `xerbla` gets the positive
+/// position, while the routine's own `info` output is its negation (`-2`).
+///
+/// A handler that panics is caught and the panic is dropped: unwinding
+/// into MKL would be undefined behaviour.
+pub type XerblaHandler = fn(routine: &str, argument: i32);
+
+static XERBLA_HANDLER: AtomicUsize = AtomicUsize::new(0);
+/// What `mkl_set_xerbla` returned the first time we replaced it, so
+/// `set_xerbla_handler(None)` can put MKL's own entry back. `None` =
+/// we have not replaced it.
+static XERBLA_ORIGINAL: Mutex<Option<sys::XerblaEntry>> = Mutex::new(None);
+
+unsafe extern "C" fn xerbla_trampoline(name: *const c_char, num: *const c_int, len: c_int) {
+    let h = XERBLA_HANDLER.load(Ordering::Acquire);
+    if h == 0 {
+        return;
+    }
+    // SAFETY: `h` was stored from an `XerblaHandler` by `set_xerbla_handler`.
+    let handler: XerblaHandler = unsafe { core::mem::transmute::<usize, XerblaHandler>(h) };
+    let routine = if name.is_null() || len <= 0 {
+        String::new()
+    } else {
+        // SAFETY: MKL passes a Fortran-style (not NUL-terminated) name
+        // of exactly `len` bytes.
+        let bytes = unsafe { slice::from_raw_parts(name as *const u8, len as usize) };
+        String::from_utf8_lossy(bytes)
+            .trim_end_matches(|c: char| c == ' ' || c == '\0')
+            .to_owned()
+    };
+    // SAFETY: MKL passes a valid pointer to the argument position.
+    let argument = if num.is_null() { 0 } else { unsafe { *num } };
+    let _ = std::panic::catch_unwind(|| handler(&routine, argument));
+}
+
+/// Install (`Some`) or remove (`None`) a process-global handler for MKL's
+/// `xerbla` error routine (`mkl_set_xerbla`). With `None`, the entry MKL
+/// had before our first install is put back.
+///
+/// The handler replaces MKL's default `xerbla`, which prints a message.
+/// It can run on any thread MKL calls from. Only Fortran-style entry
+/// points (for example `onemkl_sys::dpotrf`) report through `xerbla`; the
+/// safe wrappers in this crate validate arguments first and do not.
+pub fn set_xerbla_handler(handler: Option<XerblaHandler>) {
+    let mut original = XERBLA_ORIGINAL.lock().unwrap_or_else(|e| e.into_inner());
+    match handler {
+        Some(h) => {
+            XERBLA_HANDLER.store(h as usize, Ordering::Release);
+            let previous = unsafe { sys::mkl_set_xerbla(Some(xerbla_trampoline)) };
+            if original.is_none() {
+                *original = Some(previous);
+            }
+        }
+        None => {
+            if let Some(entry) = original.take() {
+                unsafe { sys::mkl_set_xerbla(entry) };
+            }
+            XERBLA_HANDLER.store(0, Ordering::Release);
+        }
+    }
+}
+
+/// What a [`ProgressHandler`] tells MKL to do next.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProgressControl {
+    /// Keep computing (the handler returns `0` to MKL).
+    Continue,
+    /// Ask MKL to stop (the handler returns non-zero to MKL). Measured
+    /// on oneMKL 2026.2.1 (Linux x86_64): `dpotrf` stops after that
+    /// callback and returns `info = -1002`.
+    Stop,
+}
+
+/// A handler for MKL's progress callback: `thread` is the reporting
+/// thread, `step` the progress counter, `stage` a description. A
+/// handler that panics is caught and treated as [`ProgressControl::Continue`].
+pub type ProgressHandler = fn(thread: i32, step: i32, stage: &str) -> ProgressControl;
+
+static PROGRESS_HANDLER: AtomicUsize = AtomicUsize::new(0);
+static PROGRESS_ORIGINAL: Mutex<Option<sys::ProgressEntry>> = Mutex::new(None);
+
+unsafe extern "C" fn progress_trampoline(
+    thread: *mut c_int,
+    step: *mut c_int,
+    stage: *mut c_char,
+    stage_len: c_int,
+) -> c_int {
+    let h = PROGRESS_HANDLER.load(Ordering::Acquire);
+    if h == 0 {
+        return 0;
+    }
+    // SAFETY: `h` was stored from a `ProgressHandler` by `set_progress_handler`.
+    let handler: ProgressHandler = unsafe { core::mem::transmute::<usize, ProgressHandler>(h) };
+    let stage_str = if stage.is_null() || stage_len <= 0 {
+        String::new()
+    } else {
+        // SAFETY: Fortran-style, `stage_len` bytes, not NUL-terminated.
+        let bytes = unsafe { slice::from_raw_parts(stage as *const u8, stage_len as usize) };
+        String::from_utf8_lossy(bytes)
+            .trim_end_matches(|c: char| c == ' ' || c == '\0')
+            .to_owned()
+    };
+    let t = if thread.is_null() { 0 } else { unsafe { *thread } };
+    let st = if step.is_null() { 0 } else { unsafe { *step } };
+    match std::panic::catch_unwind(|| handler(t, st, &stage_str)) {
+        Ok(ProgressControl::Stop) => 1,
+        _ => 0,
+    }
+}
+
+/// Install (`Some`) or remove (`None`) a process-global progress handler
+/// (`mkl_set_progress`). With `None`, the entry MKL had before our first
+/// install is put back. It can run on any thread MKL computes on.
+pub fn set_progress_handler(handler: Option<ProgressHandler>) {
+    let mut original = PROGRESS_ORIGINAL.lock().unwrap_or_else(|e| e.into_inner());
+    match handler {
+        Some(h) => {
+            PROGRESS_HANDLER.store(h as usize, Ordering::Release);
+            let previous = unsafe { sys::mkl_set_progress(Some(progress_trampoline)) };
+            if original.is_none() {
+                *original = Some(previous);
+            }
+        }
+        None => {
+            if let Some(entry) = original.take() {
+                unsafe { sys::mkl_set_progress(entry) };
+            }
+            PROGRESS_HANDLER.store(0, Ordering::Release);
+        }
+    }
 }
 
 // =====================================================================

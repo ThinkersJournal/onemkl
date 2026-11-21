@@ -402,6 +402,8 @@ fn map_diag(d: Diag) -> sys::MKL_DIAG::Type {
 /// Factorisation / solve kernels beyond GEMM (`f32` / `f64`).
 #[allow(missing_docs)]
 pub trait CompactFactorScalar: CompactScalar {
+    fn zero() -> Self;
+    fn to_workspace_len(self) -> usize;
     #[allow(clippy::too_many_arguments)]
     unsafe fn trsm_compact(
         layout: sys::MKL_LAYOUT::Type,
@@ -432,11 +434,23 @@ pub trait CompactFactorScalar: CompactScalar {
         info: *mut c_int,
         format: sys::MKL_COMPACT_PACK::Type, nm: c_int,
     );
+    #[allow(clippy::too_many_arguments)]
+    unsafe fn geqrf_compact(
+        layout: sys::MKL_LAYOUT::Type,
+        m: c_int, n: c_int,
+        ap: *mut Self, ldap: c_int,
+        taup: *mut Self,
+        work: *mut Self, lwork: c_int,
+        info: *mut c_int,
+        format: sys::MKL_COMPACT_PACK::Type, nm: c_int,
+    );
 }
 
 macro_rules! impl_compact_factor {
-    ($t:ty, $trsm:ident, $potrf:ident, $getrfnp:ident) => {
+    ($t:ty, $trsm:ident, $potrf:ident, $getrfnp:ident, $geqrf:ident) => {
         impl CompactFactorScalar for $t {
+            fn zero() -> Self { 0.0 }
+            fn to_workspace_len(self) -> usize { self.ceil() as usize }
             unsafe fn trsm_compact(
                 layout: sys::MKL_LAYOUT::Type,
                 side: sys::MKL_SIDE::Type,
@@ -475,11 +489,24 @@ macro_rules! impl_compact_factor {
             ) {
                 unsafe { sys::$getrfnp(layout, m, n, ap, ldap, info, format, nm) }
             }
+            unsafe fn geqrf_compact(
+                layout: sys::MKL_LAYOUT::Type,
+                m: c_int, n: c_int,
+                ap: *mut Self, ldap: c_int,
+                taup: *mut Self,
+                work: *mut Self, lwork: c_int,
+                info: *mut c_int,
+                format: sys::MKL_COMPACT_PACK::Type, nm: c_int,
+            ) {
+                unsafe {
+                    sys::$geqrf(layout, m, n, ap, ldap, taup, work, lwork, info, format, nm)
+                }
+            }
         }
     };
 }
-impl_compact_factor!(f32, mkl_strsm_compact, mkl_spotrf_compact, mkl_sgetrfnp_compact);
-impl_compact_factor!(f64, mkl_dtrsm_compact, mkl_dpotrf_compact, mkl_dgetrfnp_compact);
+impl_compact_factor!(f32, mkl_strsm_compact, mkl_spotrf_compact, mkl_sgetrfnp_compact, mkl_sgeqrf_compact);
+impl_compact_factor!(f64, mkl_dtrsm_compact, mkl_dpotrf_compact, mkl_dgetrfnp_compact, mkl_dgeqrf_compact);
 
 /// Packed buffer length needed for a `rows x cols` matrix in `layout`
 /// with packed leading dimension `ldap`, or an error if `ldap` is smaller
@@ -603,6 +630,54 @@ pub fn getrfnp<T: CompactFactorScalar>(
         T::getrfnp_compact(
             map_layout(layout), m_i, n_i,
             ap.as_mut_ptr(), ldap_i, &mut info,
+            format.as_mkl(), nm_i,
+        );
+    }
+    Ok(info)
+}
+
+/// Compact QR: factor `num_matrices` `m x n` matrices in place (`R` in the
+/// upper triangle, Householder vectors below). `taup` receives the
+/// Householder scalars as a compact buffer of `min(m, n) x 1` vectors with
+/// leading dimension `min(m, n)`; its length is checked against
+/// [`get_size`]. The workspace is allocated internally from MKL's
+/// workspace query. Returns MKL's `info`. Wraps `mkl_*geqrf_compact`.
+pub fn geqrf<T: CompactFactorScalar>(
+    layout: Layout,
+    m: usize,
+    n: usize,
+    ap: &mut [T],
+    ldap: usize,
+    taup: &mut [T],
+    format: CompactFormat,
+    num_matrices: usize,
+) -> Result<i32> {
+    if ap.len() < packed_len::<T>(layout, m, n, ldap, format, num_matrices)? {
+        return Err(Error::InvalidArgument("ap is smaller than the compact size of A"));
+    }
+    let k = m.min(n);
+    if k > 0 && taup.len() < get_size::<T>(k, 1, format, num_matrices)? {
+        return Err(Error::InvalidArgument("taup is smaller than the compact size of tau"));
+    }
+    let (m_i, n_i, ldap_i, nm_i) = (to_c(m)?, to_c(n)?, to_c(ldap)?, to_c(num_matrices)?);
+    let mut info: c_int = 0;
+    // Workspace query (lwork = -1): MKL writes the required size to work[0].
+    let mut query = [T::zero()];
+    unsafe {
+        T::geqrf_compact(
+            map_layout(layout), m_i, n_i,
+            ap.as_mut_ptr(), ldap_i, taup.as_mut_ptr(),
+            query.as_mut_ptr(), -1, &mut info,
+            format.as_mkl(), nm_i,
+        );
+    }
+    let lwork = query[0].to_workspace_len().max(1);
+    let mut work = vec![T::zero(); lwork];
+    unsafe {
+        T::geqrf_compact(
+            map_layout(layout), m_i, n_i,
+            ap.as_mut_ptr(), ldap_i, taup.as_mut_ptr(),
+            work.as_mut_ptr(), to_c(lwork)?, &mut info,
             format.as_mkl(), nm_i,
         );
     }

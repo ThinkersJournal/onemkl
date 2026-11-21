@@ -152,7 +152,7 @@ account for the vast majority of downstream use:
   `gemm_compute_packed_{a,b}` in `blas::packed`); ~~compact BLAS
   GEMM + pack / unpack lifecycle~~ (done — `blas::compact`); ~~other
   compact kernels (`?trsm_compact`, `?potrf_compact`,
-  `?getrfnp_compact`)~~ (done, f32/f64); `?geqrf_compact`.
+  `?getrfnp_compact`, `?geqrf_compact`)~~ (done, f32/f64).
 - **LAPACK Comprehensive**: ~~core auxiliary routines (`?lacpy`,
   `?lange`, `?gecon`, `?larfg`, `?laswp`)~~ (done in
   `lapack::{lacpy, lange, gecon, laswp, larfg}`); remaining

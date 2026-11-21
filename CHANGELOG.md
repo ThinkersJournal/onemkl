@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- `blas::compact`: `trsm`, `potrf` and `getrfnp` (`mkl_?trsm_compact`, `mkl_?potrf_compact`, `mkl_?getrfnp_compact`) for `f32`/`f64`, with buffer-length checks against `get_size`. Test `blas_compact_factor` (Linux x86_64, LP64, sequential, oneMKL 2026.2.1, AVX pack, column-major, `nm` 1-2, 2x2 matrices): hand-computed lower-triangular solve, Cholesky and no-pivot LU match at 1e-12. `?geqrf_compact` and complex types not wrapped; row-major, larger sizes, SSE/AVX-512 packs, Windows, macOS, OpenMP/TBB, ILP64 not exercised.
+- `blas::compact`: `trsm`, `potrf`, `getrfnp` and `geqrf` (`mkl_?trsm_compact`, `mkl_?potrf_compact`, `mkl_?getrfnp_compact`, `mkl_?geqrf_compact`) for `f32`/`f64`, with buffer-length checks against `get_size`. Test `blas_compact_factor` (Linux x86_64, LP64, sequential, oneMKL 2026.2.1, AVX pack, column-major, `nm` 1-2, 2x2 matrices): hand-computed lower-triangular solve, Cholesky and no-pivot LU match at 1e-12; 2x2 QR matches |R| entries at 1e-12 (tau contents unchecked). Complex types not wrapped; row-major, larger sizes, SSE/AVX-512 packs, Windows, macOS, OpenMP/TBB, ILP64 not exercised.
 
 ## 0.3.4 - 2026-11-21
 

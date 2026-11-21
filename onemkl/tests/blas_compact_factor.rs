@@ -77,3 +77,27 @@ fn undersized_buffers_are_rejected() {
     let r = potrf::<f64>(Layout::ColMajor, UpLo::Lower, 4, &mut ap, 2, FMT, 1);
     assert!(r.is_err(), "ldap < n");
 }
+
+#[test]
+fn geqrf_r_factor_matches_hand_computed() {
+    use onemkl::blas::compact::geqrf;
+    // A = [[3,1],[4,2]] (col-major [3,4,1,2]); |R00| = 5, R01 = +-(3*1+4*2)/5 = 2.2.
+    let a = vec![vec![3.0, 4.0, 1.0, 2.0]];
+    let mut ap = pack(&a, 2, 2);
+    let mut tau = vec![0.0; get_size::<f64>(2, 1, FMT, 1).unwrap()];
+    let info = geqrf::<f64>(Layout::ColMajor, 2, 2, &mut ap, 2, &mut tau, FMT, 1).unwrap();
+    assert_eq!(info, 0);
+    let qr = unpack(&ap, 1, 2, 2);
+    assert_abs_diff_eq!(qr[0][0].abs(), 5.0, epsilon = 1e-12);
+    assert_abs_diff_eq!(qr[0][2].abs(), 2.2, epsilon = 1e-12);
+    // |R11| = |det A| / 5 = 2/5 = 0.4.
+    assert_abs_diff_eq!(qr[0][3].abs(), 0.4, epsilon = 1e-12);
+}
+
+#[test]
+fn geqrf_rejects_small_tau() {
+    use onemkl::blas::compact::geqrf;
+    let mut ap = vec![0.0f64; get_size::<f64>(2, 2, FMT, 4).unwrap()];
+    let mut tau = vec![0.0f64; 1];
+    assert!(geqrf::<f64>(Layout::ColMajor, 2, 2, &mut ap, 2, &mut tau, FMT, 4).is_err());
+}

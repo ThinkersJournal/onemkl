@@ -19,10 +19,17 @@ use core::ptr;
 use core::slice;
 use std::any::Any;
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
+use std::sync::Mutex;
 
 use onemkl_sys as sys;
 
 use crate::error::{Error, Result};
+
+/// `m * n` with overflow reported as an error (a wrapped product would let an
+/// undersized buffer pass the length check on 32-bit targets).
+fn checked_len(m: usize, n: usize) -> Result<usize> {
+    m.checked_mul(n).ok_or(Error::DimensionOverflow)
+}
 
 /// Tunable options for the trust-region NLLS solver.
 #[derive(Debug, Clone, Copy)]
@@ -113,7 +120,7 @@ where
     }
 
     let mut fvec = vec![0.0_f64; m];
-    let mut fjac = vec![0.0_f64; m * n];
+    let mut fjac = vec![0.0_f64; checked_len(m, n)?];
     let mut rci: c_int = 0;
 
     let result = (|| -> Result<TrnlsResult> {
@@ -208,7 +215,7 @@ where
     }
 
     let mut fvec = vec![0.0_f64; m];
-    let mut fjac = vec![0.0_f64; m * n];
+    let mut fjac = vec![0.0_f64; checked_len(m, n)?];
     let mut rci: c_int = 0;
 
     let result = (|| -> Result<TrnlsResult> {
@@ -281,7 +288,7 @@ where
             "x must have length n",
         ));
     }
-    if jac.len() < m * n {
+    if jac.len() < checked_len(m, n)? {
         return Err(Error::InvalidArgument(
             "jac buffer is smaller than m * n",
         ));
@@ -293,10 +300,10 @@ where
     // calls, so MKL must get an owned, mutable buffer (writing through a
     // pointer derived from the shared `&[f64]` would be undefined behaviour).
     let mut xv = x.to_vec();
-    let mut handle: sys::_JACOBIMATRIX_HANDLE_t = ptr::null_mut();
+    let mut handle = JacobiHandle(ptr::null_mut());
     let status = unsafe {
         sys::djacobi_init(
-            &mut handle, &n_i, &m_i,
+            &mut handle.0, &n_i, &m_i,
             xv.as_mut_ptr(), jac.as_mut_ptr(), &step,
         )
     };
@@ -310,10 +317,12 @@ where
     let mut f2 = vec![0.0_f64; m];
     let mut rci: c_int = 0;
 
+    // `handle` is an RAII guard: a panic in `residual` unwinds through here and
+    // still frees the MKL handle.
     let result = (|| -> Result<()> {
         loop {
             let status = unsafe {
-                sys::djacobi_solve(&mut handle, f1.as_mut_ptr(), f2.as_mut_ptr(), &mut rci)
+                sys::djacobi_solve(&mut handle.0, f1.as_mut_ptr(), f2.as_mut_ptr(), &mut rci)
             };
             if status != sys::TR_SUCCESS as c_int {
                 return Err(Error::LapackComputationFailure { info: status });
@@ -338,10 +347,22 @@ where
         Ok(())
     })();
 
-    unsafe {
-        let _ = sys::djacobi_delete(&mut handle);
-    }
+    drop(handle);
     result
+}
+
+/// Owns an initialised `djacobi` RCI handle; `djacobi_delete` runs on drop,
+/// including during unwinding.
+struct JacobiHandle(sys::_JACOBIMATRIX_HANDLE_t);
+
+impl Drop for JacobiHandle {
+    fn drop(&mut self) {
+        if !self.0.is_null() {
+            unsafe {
+                let _ = sys::djacobi_delete(&mut self.0);
+            }
+        }
+    }
 }
 
 /// Function-pointer type for the direct-callback form of `djacobi`.
@@ -379,16 +400,17 @@ pub unsafe fn djacobi_with_callback(
     if x.len() != n {
         return Err(Error::InvalidArgument("x must have length n"));
     }
-    if jac.len() < m * n {
+    if jac.len() < checked_len(m, n)? {
         return Err(Error::InvalidArgument(
             "jac buffer is smaller than m * n",
         ));
     }
     let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
-    // sys::djacobi takes the ptrs to x and jac as *mut even though
-    // it does not modify x's logical contents (just temporarily
-    // perturbs each element and restores it).
+    // MKL temporarily perturbs each element of `x` in place, so it gets an
+    // owned buffer (writing through a pointer derived from the shared `&[f64]`
+    // would be undefined behaviour).
+    let mut xv = x.to_vec();
     let mut step_mut = step;
     let status = unsafe {
         sys::djacobi(
@@ -396,7 +418,7 @@ pub unsafe fn djacobi_with_callback(
             &n_i,
             &m_i,
             jac.as_mut_ptr(),
-            x.as_ptr() as *mut f64,
+            xv.as_mut_ptr(),
             &mut step_mut,
         )
     };
@@ -420,15 +442,22 @@ unsafe extern "C" fn jacobix_trampoline(
     f: *mut f64,
     user: *mut c_void,
 ) {
-    // SAFETY: `user` is the `JacobixState` that `numerical_jacobian_central`
-    // passed to `djacobix` and keeps alive for the whole call.
-    let st = unsafe { &mut *(user as *mut JacobixState<'_>) };
+    // SAFETY: `user` is the `Mutex<JacobixState>` that
+    // `numerical_jacobian_central` passed to `djacobix` and keeps alive for the
+    // whole call. Only a shared reference is formed; the mutex serialises
+    // callbacks, so a threaded MKL layer cannot alias the `FnMut` state.
+    let cell = unsafe { &*(user as *const Mutex<JacobixState<'_>>) };
+    let mut guard = cell.lock().unwrap_or_else(|e| e.into_inner());
+    let st = &mut *guard;
     if st.panic.is_some() {
         return;
     }
     // The dimensions come from our own state, not from MKL's (Fortran-order)
     // arguments. MKL passes `x` of length `n` and `f` of length `m`.
     let xs = unsafe { slice::from_raw_parts(x, st.n) };
+    // `f` is an output buffer MKL may not have initialised: zero it through the
+    // raw pointer before forming a `&mut [f64]` over it.
+    unsafe { ptr::write_bytes(f, 0, st.m) };
     let fs = unsafe { slice::from_raw_parts_mut(f, st.m) };
     if let Err(p) = catch_unwind(AssertUnwindSafe(|| (st.f)(xs, fs))) {
         st.panic = Some(p);
@@ -443,7 +472,9 @@ unsafe extern "C" fn jacobix_trampoline(
 ///
 /// `eps` is the requested precision of the Jacobian (`1e-6` is typical).
 /// A panic in `residual` is caught inside the callback and re-raised here
-/// once MKL has returned, never unwound through MKL.
+/// once MKL has returned, never unwound through MKL. `residual` must be
+/// `Send` and is serialised by a mutex, because a threaded oneMKL layer may
+/// call back from worker threads.
 pub fn numerical_jacobian_central<R>(
     n: usize,
     m: usize,
@@ -453,12 +484,12 @@ pub fn numerical_jacobian_central<R>(
     mut residual: R,
 ) -> Result<()>
 where
-    R: FnMut(&[f64], &mut [f64]),
+    R: FnMut(&[f64], &mut [f64]) + Send,
 {
     if x.len() != n {
         return Err(Error::InvalidArgument("x must have length n"));
     }
-    if jac.len() < m * n {
+    if jac.len() < checked_len(m, n)? {
         return Err(Error::InvalidArgument("jac buffer is smaller than m * n"));
     }
     if !(eps.is_finite() && eps > 0.0) {
@@ -470,7 +501,7 @@ where
     // MKL perturbs and restores `x` in place, so give it an owned copy.
     let mut xv = x.to_vec();
     let mut eps_mut = eps;
-    let mut state = JacobixState { n, m, f: &mut residual, panic: None };
+    let state = Mutex::new(JacobixState { n, m, f: &mut residual, panic: None });
     let status = unsafe {
         sys::djacobix(
             Some(jacobix_trampoline),
@@ -479,10 +510,11 @@ where
             jac.as_mut_ptr(),
             xv.as_mut_ptr(),
             &mut eps_mut,
-            &mut state as *mut JacobixState<'_> as *mut c_void,
+            &state as *const Mutex<JacobixState<'_>> as *mut c_void,
         )
     };
-    if let Some(p) = state.panic.take() {
+    let panic = state.into_inner().unwrap_or_else(|e| e.into_inner()).panic.take();
+    if let Some(p) = panic {
         resume_unwind(p);
     }
     if status != sys::TR_SUCCESS as c_int {

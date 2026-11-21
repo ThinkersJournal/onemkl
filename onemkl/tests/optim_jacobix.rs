@@ -46,3 +46,12 @@ fn a_panic_in_the_residual_is_reraised_after_mkl_returns() {
     let payload = r.expect_err("panic must propagate");
     assert_eq!(payload.downcast_ref::<&str>(), Some(&"boom"));
 }
+
+#[test]
+fn dimension_product_overflow_is_an_error_not_a_wrap() {
+    use onemkl::optim::numerical_jacobian_central;
+    let x = [1.0f64, 2.0];
+    let mut jac = vec![0.0; 4];
+    let r = numerical_jacobian_central(2, usize::MAX, &x, 1e-6, &mut jac, |_, _| {});
+    assert!(matches!(r, Err(onemkl::Error::DimensionOverflow)));
+}

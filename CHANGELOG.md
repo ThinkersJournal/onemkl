@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - `optim::numerical_jacobian` now gives MKL an owned copy of `x`. Before, `x.as_ptr()` from a shared `&[f64]` was passed to `djacobi_init` and MKL perturbed it in place (undefined behaviour in Rust's model). No wrong result was observed before or after (oneMKL 2026.2.1, Linux x86_64, debug and release: closure sees the perturbed `x`, Jacobian matches analytic within 1e-6); this is a soundness fix, not a behaviour fix. New test `optim_numerical_jacobian`.
 
+- `optim::djacobi_with_callback` likewise gives MKL an owned copy of `x` (same soundness reasoning, not measured separately). `numerical_jacobian` frees its RCI handle on a panicking residual (RAII guard). `m * n` is overflow-checked (`DimensionOverflow`) in the optim Jacobian routines instead of wrapping on 32-bit targets (tests use `m = usize::MAX`; 32-bit itself not run). `numerical_jacobian_central`: the residual must be `Send` and is serialised by a mutex, and MKL's output buffer is zeroed before it becomes a `&mut [f64]`; OpenMP/TBB layers not exercised, so the concurrency guard is by construction, not measured.
+
 ## 0.3.3 - 2026-11-20
 
 ### Added

@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- `blas::compact`: `trsm`, `potrf` and `getrfnp` (`mkl_?trsm_compact`, `mkl_?potrf_compact`, `mkl_?getrfnp_compact`) for `f32`/`f64`, with buffer-length checks against `get_size`. Test `blas_compact_factor` (Linux x86_64, LP64, sequential, oneMKL 2026.2.1, AVX pack, column-major, `nm` 1-2, 2x2 matrices): hand-computed lower-triangular solve, Cholesky and no-pivot LU match at 1e-12. `?geqrf_compact` and complex types not wrapped; row-major, larger sizes, SSE/AVX-512 packs, Windows, macOS, OpenMP/TBB, ILP64 not exercised.
+
 ## 0.3.4 - 2026-11-21
 
 ### Added

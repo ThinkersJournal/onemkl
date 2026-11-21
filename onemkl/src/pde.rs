@@ -310,3 +310,301 @@ impl<T: TrigTransformScalar> Drop for TrigTransform<T> {
         }
     }
 }
+
+// ---------------------------------------------------------------
+// Cartesian Helmholtz / Poisson solver (2-D)
+// ---------------------------------------------------------------
+
+/// Boundary condition on one side of the rectangle.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Boundary {
+    /// Dirichlet: `u` is prescribed (the boundary values are supplied
+    /// to [`Helmholtz2D::solve`]).
+    Dirichlet,
+    /// Neumann: the outward-pointing-axis derivative `du/dn` is
+    /// prescribed (values supplied to [`Helmholtz2D::solve`]).
+    Neumann,
+    /// Periodic: the side is identified with the opposite one; both
+    /// sides of the pair must be `Periodic`.
+    Periodic,
+}
+
+impl Boundary {
+    fn as_char(self) -> u8 {
+        match self {
+            Self::Dirichlet => b'D',
+            Self::Neumann => b'N',
+            Self::Periodic => b'P',
+        }
+    }
+}
+
+/// Scalar types supported by the Helmholtz solver.
+#[allow(missing_docs)]
+pub trait HelmholtzScalar: Copy + Default + 'static {
+    fn to_f64(self) -> f64;
+    fn from_f64(v: f64) -> Self;
+    unsafe fn init_2d(
+        ax: *const Self, bx: *const Self, ay: *const Self, by: *const Self,
+        nx: *const c_int, ny: *const c_int, bc: *const core::ffi::c_char,
+        q: *const Self, ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+    );
+    unsafe fn commit_2d(
+        f: *mut Self, bd_ax: *const Self, bd_bx: *const Self,
+        bd_ay: *const Self, bd_by: *const Self,
+        handle: *mut DFTI_DESCRIPTOR_HANDLE, ipar: *mut c_int,
+        dpar: *mut Self, stat: *mut c_int,
+    );
+    unsafe fn solve_2d(
+        f: *mut Self, bd_ax: *const Self, bd_bx: *const Self,
+        bd_ay: *const Self, bd_by: *const Self,
+        handle: *mut DFTI_DESCRIPTOR_HANDLE, ipar: *mut c_int,
+        dpar: *const Self, stat: *mut c_int,
+    );
+}
+
+macro_rules! impl_helmholtz_scalar {
+    ($t:ty, $init:ident, $commit:ident, $solve:ident) => {
+        impl HelmholtzScalar for $t {
+            fn to_f64(self) -> f64 { self as f64 }
+            fn from_f64(v: f64) -> Self { v as $t }
+            unsafe fn init_2d(
+                ax: *const Self, bx: *const Self, ay: *const Self, by: *const Self,
+                nx: *const c_int, ny: *const c_int, bc: *const core::ffi::c_char,
+                q: *const Self, ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+            ) {
+                unsafe { sys::$init(ax, bx, ay, by, nx, ny, bc, q, ipar, dpar, stat) }
+            }
+            unsafe fn commit_2d(
+                f: *mut Self, bd_ax: *const Self, bd_bx: *const Self,
+                bd_ay: *const Self, bd_by: *const Self,
+                handle: *mut DFTI_DESCRIPTOR_HANDLE, ipar: *mut c_int,
+                dpar: *mut Self, stat: *mut c_int,
+            ) {
+                unsafe { sys::$commit(f, bd_ax, bd_bx, bd_ay, bd_by, handle, ipar, dpar, stat) }
+            }
+            unsafe fn solve_2d(
+                f: *mut Self, bd_ax: *const Self, bd_bx: *const Self,
+                bd_ay: *const Self, bd_by: *const Self,
+                handle: *mut DFTI_DESCRIPTOR_HANDLE, ipar: *mut c_int,
+                dpar: *const Self, stat: *mut c_int,
+            ) {
+                unsafe { sys::$solve(f, bd_ax, bd_bx, bd_ay, bd_by, handle, ipar, dpar, stat) }
+            }
+        }
+    };
+}
+impl_helmholtz_scalar!(f32, s_init_helmholtz_2d, s_commit_helmholtz_2d, s_helmholtz_2d);
+impl_helmholtz_scalar!(f64, d_init_helmholtz_2d, d_commit_helmholtz_2d, d_helmholtz_2d);
+
+/// Fast solver for the 2-D Helmholtz equation `Δu − q·u = f` on the
+/// rectangle `[ax, bx] × [ay, by]` (`q = 0` gives Poisson), on a
+/// uniform `nx × ny` grid of intervals (second-order finite
+/// differences, FFT-based).
+///
+/// Grid values are stored column-by-x: node `(i, j)` lives at
+/// `f[i + j * (nx + 1)]`, `0 ≤ i ≤ nx`, `0 ≤ j ≤ ny`.
+/// [`solve`](Self::solve) takes the right-hand side in `f` and
+/// overwrites it with the solution (Dirichlet boundary nodes are set
+/// to the supplied boundary data).
+pub struct Helmholtz2D<T: HelmholtzScalar> {
+    handle: DFTI_DESCRIPTOR_HANDLE,
+    ipar: Vec<c_int>,
+    dpar: Vec<T>,
+    nx: usize,
+    ny: usize,
+    bc: [Boundary; 4],
+    /// `(by - ay)² / ny²`, used to undo MKL's solution scaling.
+    hx2: f64,
+    hy2: f64,
+    committed: bool,
+}
+
+unsafe impl<T: HelmholtzScalar + Send> Send for Helmholtz2D<T> {}
+
+impl<T: HelmholtzScalar> Helmholtz2D<T> {
+    /// Build a solver. Only all-`Dirichlet` boundaries are accepted for
+    /// now. `bc` is ordered `[x = ax, x = bx, y = ay, y = by]`;
+    /// a periodic pair must be periodic on both sides. `nx` and `ny`
+    /// must be even (MKL requirement). `q` is the Helmholtz coefficient
+    /// (`q ≥ 0`; `q = 0` with all-Neumann/periodic sides is singular and
+    /// the solution is determined only up to a constant).
+    pub fn new(
+        (ax, bx): (T, T),
+        (ay, by): (T, T),
+        nx: usize,
+        ny: usize,
+        bc: [Boundary; 4],
+        q: T,
+    ) -> Result<Self> {
+        if nx < 4 || ny < 4 || nx % 2 != 0 || ny % 2 != 0 {
+            return Err(Error::InvalidArgument(
+                "nx and ny must be even and at least 4",
+            ));
+        }
+        if bc.iter().any(|b| *b != Boundary::Dirichlet) {
+            return Err(Error::InvalidArgument(
+                "only Dirichlet boundaries are supported so far (Neumann/periodic unverified)",
+            ));
+        }
+        if (bc[0] == Boundary::Periodic) != (bc[1] == Boundary::Periodic)
+            || (bc[2] == Boundary::Periodic) != (bc[3] == Boundary::Periodic)
+        {
+            return Err(Error::InvalidArgument(
+                "periodic boundary must be set on both sides of the pair",
+            ));
+        }
+        let nx_i: c_int = nx.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let ny_i: c_int = ny.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let bc_c: [core::ffi::c_char; 5] = [
+            bc[0].as_char() as _,
+            bc[1].as_char() as _,
+            bc[2].as_char() as _,
+            bc[3].as_char() as _,
+            0,
+        ];
+        let mut ipar: Vec<c_int> = vec![0; 128];
+        // MKL documents 5*nx/2 + 7*ny/2 + 9 for dpar; pad generously.
+        let mut dpar: Vec<T> = vec![T::default(); 5 * nx / 2 + 7 * ny / 2 + 64];
+        let mut stat: c_int = 0;
+        unsafe {
+            T::init_2d(
+                &ax, &bx, &ay, &by, &nx_i, &ny_i, bc_c.as_ptr(), &q,
+                ipar.as_mut_ptr(), dpar.as_mut_ptr(), &mut stat,
+            );
+        }
+        check_tr(stat)?;
+
+        let handle: DFTI_DESCRIPTOR_HANDLE = ptr::null_mut();
+        let hy = (by.to_f64() - ay.to_f64()) / ny as f64;
+        let hx = (bx.to_f64() - ax.to_f64()) / nx as f64;
+        let this = Self { handle, ipar, dpar, nx, ny, bc, hx2: hx * hx, hy2: hy * hy, committed: false };
+        Ok(this)
+    }
+
+    /// Required length of the grid buffer, `(nx + 1) * (ny + 1)`.
+    #[must_use]
+    pub fn grid_len(&self) -> usize {
+        (self.nx + 1) * (self.ny + 1)
+    }
+
+    /// Solve in place. `f` holds the right-hand side on entry and the
+    /// solution on exit. `bd_ax`/`bd_bx` (length `ny + 1`) and
+    /// `bd_ay`/`bd_by` (length `nx + 1`) carry the Dirichlet values or
+    /// Neumann derivatives for the corresponding side; for a periodic
+    /// side pass an empty slice (ignored).
+    pub fn solve(
+        &mut self,
+        f: &mut [T],
+        bd_ax: &[T],
+        bd_bx: &[T],
+        bd_ay: &[T],
+        bd_by: &[T],
+    ) -> Result<()> {
+        if f.len() < self.grid_len() {
+            return Err(Error::InvalidArgument("grid buffer too small"));
+        }
+        let sides = [
+            (bd_ax, self.ny + 1),
+            (bd_bx, self.ny + 1),
+            (bd_ay, self.nx + 1),
+            (bd_by, self.nx + 1),
+        ];
+        let zeros_x: Vec<T> = vec![T::default(); self.ny + 1];
+        let zeros_y: Vec<T> = vec![T::default(); self.nx + 1];
+        let mut ptrs: [*const T; 4] = [ptr::null(); 4];
+        for (k, (s, need)) in sides.iter().enumerate() {
+            if self.bc[k] == Boundary::Periodic {
+                ptrs[k] = if k < 2 { zeros_x.as_ptr() } else { zeros_y.as_ptr() };
+            } else if s.len() < *need {
+                return Err(Error::InvalidArgument("boundary data slice too short"));
+            } else {
+                ptrs[k] = s.as_ptr();
+            }
+        }
+        // MKL (measured on 2026.2) applies no Dirichlet boundary lift: it
+        // solves the homogeneous problem on the interior. Move the known
+        // boundary values to the right-hand side here: for an interior
+        // node next to a Dirichlet side, f -= g / h^2.
+        {
+            let (nx, ny) = (self.nx, self.ny);
+            let (hx2, hy2) = (self.hx2, self.hy2);
+            let w = nx + 1;
+            let sub = |v: &mut T, g: T, h2: f64| *v = T::from_f64(v.to_f64() - g.to_f64() / h2);
+            for j in 1..ny {
+                sub(&mut f[1 + j * w], bd_ax[j], hx2);
+                sub(&mut f[nx - 1 + j * w], bd_bx[j], hx2);
+            }
+            for i in 1..nx {
+                sub(&mut f[i + w], bd_ay[i], hy2);
+                sub(&mut f[i + (ny - 1) * w], bd_by[i], hy2);
+            }
+        }
+        let mut stat: c_int = 0;
+        if !self.committed {
+            // MKL needs the real boundary data (and a right-hand side of
+            // the right shape) at commit time; commit on a copy of `f`.
+            let mut probe: Vec<T> = f[..self.grid_len()].to_vec();
+            unsafe {
+                T::commit_2d(
+                    probe.as_mut_ptr(), ptrs[0], ptrs[1], ptrs[2], ptrs[3],
+                    &mut self.handle, self.ipar.as_mut_ptr(),
+                    self.dpar.as_mut_ptr(), &mut stat,
+                );
+            }
+            check_tr(stat)?;
+            self.committed = true;
+        }
+        unsafe {
+            T::solve_2d(
+                f.as_mut_ptr(), ptrs[0], ptrs[1], ptrs[2], ptrs[3],
+                &mut self.handle, self.ipar.as_mut_ptr(),
+                self.dpar.as_ptr(), &mut stat,
+            );
+        }
+        check_tr(stat)?;
+        // Measured against MKL 2026.2 (pip, LP64): the library returns
+        // (-Δ + q)⁻¹ f / hy² rather than the documented (Δ - q)⁻¹ f, so
+        // map non-Dirichlet nodes back by -hy². MKL leaves Dirichlet
+        // nodes untouched, so write the user's boundary data there.
+        let nx = self.nx;
+        for j in 0..=self.ny {
+            for i in 0..=nx {
+                let fixed = (i == 0 && self.bc[0] == Boundary::Dirichlet)
+                    || (i == nx && self.bc[1] == Boundary::Dirichlet)
+                    || (j == 0 && self.bc[2] == Boundary::Dirichlet)
+                    || (j == self.ny && self.bc[3] == Boundary::Dirichlet);
+                if !fixed {
+                    let v = &mut f[i + j * (nx + 1)];
+                    *v = T::from_f64(-self.hy2 * v.to_f64());
+                }
+            }
+        }
+        let ny = self.ny;
+        if self.bc[0] == Boundary::Dirichlet {
+            for j in 0..=ny { f[j * (nx + 1)] = bd_ax[j]; }
+        }
+        if self.bc[1] == Boundary::Dirichlet {
+            for j in 0..=ny { f[nx + j * (nx + 1)] = bd_bx[j]; }
+        }
+        if self.bc[2] == Boundary::Dirichlet {
+            for i in 0..=nx { f[i] = bd_ay[i]; }
+        }
+        if self.bc[3] == Boundary::Dirichlet {
+            for i in 0..=nx { f[i + ny * (nx + 1)] = bd_by[i]; }
+        }
+        Ok(())
+    }
+}
+
+impl<T: HelmholtzScalar> Drop for Helmholtz2D<T> {
+    fn drop(&mut self) {
+        if self.handle.is_null() {
+            return;
+        }
+        let mut stat: c_int = 0;
+        unsafe {
+            sys::free_helmholtz_2d(&mut self.handle, self.ipar.as_mut_ptr(), &mut stat);
+        }
+    }
+}

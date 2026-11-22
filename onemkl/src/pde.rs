@@ -340,7 +340,7 @@ impl Boundary {
 }
 
 /// Scalar types supported by the Helmholtz solver.
-#[allow(missing_docs)]
+#[allow(missing_docs, clippy::missing_safety_doc, clippy::too_many_arguments)]
 pub trait HelmholtzScalar: Copy + Default + 'static {
     fn to_f64(self) -> f64;
     fn from_f64(v: f64) -> Self;
@@ -574,7 +574,7 @@ impl<T: HelmholtzScalar> Helmholtz2D<T> {
         bc: [Boundary; 4],
         q: T,
     ) -> Result<Self> {
-        if nx < 4 || ny < 4 || nx % 2 != 0 || ny % 2 != 0 {
+        if nx < 4 || ny < 4 || !nx.is_multiple_of(2) || !ny.is_multiple_of(2) {
             return Err(Error::InvalidArgument(
                 "nx and ny must be even and at least 4",
             ));
@@ -744,6 +744,7 @@ unsafe impl<T: HelmholtzScalar + Send> Send for Helmholtz3D<T> {}
 
 impl<T: HelmholtzScalar> Helmholtz3D<T> {
     /// Build a solver; `nx`, `ny`, `nz` must be even and at least 4.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         (ax, bx): (T, T),
         (ay, by): (T, T),
@@ -754,7 +755,7 @@ impl<T: HelmholtzScalar> Helmholtz3D<T> {
         bc: [Boundary; 6],
         q: T,
     ) -> Result<Self> {
-        if [nx, ny, nz].iter().any(|&n| n < 4 || n % 2 != 0) {
+        if [nx, ny, nz].iter().any(|&n| n < 4 || !n.is_multiple_of(2)) {
             return Err(Error::InvalidArgument("nx, ny, nz must be even and at least 4"));
         }
         check_pairs(&bc)?;
@@ -927,7 +928,7 @@ impl<T: HelmholtzScalar> SphericalHelmholtz<T> {
     /// Build a solver for `np` intervals in `φ` (even, ≥ 4) and `nt`
     /// intervals in `θ` (≥ 2).
     pub fn new(np: usize, nt: usize, q: T) -> Result<Self> {
-        if np < 4 || np % 2 != 0 || nt < 2 {
+        if np < 4 || !np.is_multiple_of(2) || nt < 2 {
             return Err(Error::InvalidArgument("np must be even and ≥ 4, nt ≥ 2"));
         }
         let np_i: c_int = np.try_into().map_err(|_| Error::DimensionOverflow)?;

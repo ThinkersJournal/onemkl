@@ -72,6 +72,10 @@ jobs:
       - name: cargo test
         run: cargo test --workspace --no-fail-fast
 
+      # Single dynamic library (mkl_rt): layers are chosen at run time.
+      - name: cargo test (link-rt)
+        run: cargo test -p onemkl --no-default-features --features "lp64,threading-sequential,link-rt" --test service_rt
+
       - name: cargo doc (no warnings)
         env:
           RUSTDOCFLAGS: -D warnings

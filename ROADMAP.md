@@ -177,12 +177,14 @@ specialized ones:
   validation (currently subsumed by `_init`), ~~`?jacobix` (Jacobian
   with central differences)~~ (done — `numerical_jacobian_central`, double only), session API for step-by-step driving.
 - **Service**: ~~CBWR (`mkl_cbwr_*`)~~ (done — `cbwr_set` / `cbwr_set_strict` / `cbwr_branch` / `cbwr_strict` / `cbwr_auto_branch`), ~~`mkl_set_progress`,
-  `mkl_set_xerbla`~~ (done — `set_progress_handler` / `set_xerbla_handler`), `mkl_set_pardiso_pivot`,
-  `mkl_enable_instructions`, single-dynamic-library control.
+  `mkl_set_xerbla`~~ (done — `set_progress_handler` / `set_xerbla_handler`), ~~`mkl_set_pardiso_pivot`~~ (done — `pardiso::set_pardiso_pivot_callback`, raw unsafe form),
+  ~~`mkl_enable_instructions`~~ (done — `enable_instructions`), ~~single-dynamic-library control~~ (done — `link-rt`, `set_interface_layer` / `set_threading_layer`; Linux only measured).
 - **PDE Support**: ~~trigonometric transforms (sine / cosine /
-  staggered)~~ (done — `TrigTransform<T>` in `pde`); Cartesian and
-  spherical Poisson / Helmholtz solvers (`d_helmholtz_2d` /
-  `d_helmholtz_3d`).
+  staggered)~~ (done — `TrigTransform<T>` in `pde`); ~~Cartesian
+  Poisson / Helmholtz (2-D / 3-D, Dirichlet / Neumann / periodic)~~
+  (done — `Helmholtz2D` / `Helmholtz3D`); ~~periodic spherical
+  Helmholtz~~ (done — `SphericalHelmholtz`, full sphere); non-periodic
+  spherical (`?_sph_np`) and partial spheres remain.
 - **Compact BLAS / LAPACK**: full set (`mkl_?gepack_compact`,
   `mkl_?geunpack_compact`, `mkl_?get_size_compact`, `*_potrf`,
   `*_getrfnp`, `*_geqrf`, `*_getrinp`).

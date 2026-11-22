@@ -199,6 +199,14 @@ Every non-MPI domain at Comprehensive:
 - **VSL Comprehensive**: every BRNG + every method code; summary
   statistics with all weights / outliers / partial-task variants.
 - **FEAST Comprehensive**: full RCI interface.
+- **f16 support** (ranked below the rows above; additive, minor version):
+  `impl Scalar` and `RealScalar` for `half::f16` behind an optional `half`
+  feature (`scalar.rs` is sealed, so downstream crates cannot), and a safe
+  f16-in/f32-out gemm over `gemm_f16f16f32` (f32 accumulate; MKL has no
+  plain f16 gemm besides `hgemm` / `gemm_f16f16f32` on `u16` bits). Check the
+  existing `mixed_precision::hgemm` before building. Reason: Fuel lost its
+  f16 hgemm when its old oneMKL code was removed. Source: CireSnave
+  2026-11-22.
 
 ### 0.6.0 — MPI domains
 

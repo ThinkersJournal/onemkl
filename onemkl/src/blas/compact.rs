@@ -444,10 +444,19 @@ pub trait CompactFactorScalar: CompactScalar {
         info: *mut c_int,
         format: sys::MKL_COMPACT_PACK::Type, nm: c_int,
     );
+    #[allow(clippy::too_many_arguments)]
+    unsafe fn getrinp_compact(
+        layout: sys::MKL_LAYOUT::Type,
+        n: c_int,
+        ap: *mut Self, ldap: c_int,
+        work: *mut Self, lwork: c_int,
+        info: *mut c_int,
+        format: sys::MKL_COMPACT_PACK::Type, nm: c_int,
+    );
 }
 
 macro_rules! impl_compact_factor {
-    ($t:ty, $trsm:ident, $potrf:ident, $getrfnp:ident, $geqrf:ident) => {
+    ($t:ty, $trsm:ident, $potrf:ident, $getrfnp:ident, $geqrf:ident, $getrinp:ident) => {
         impl CompactFactorScalar for $t {
             fn zero() -> Self { 0.0 }
             fn to_workspace_len(self) -> usize { self.ceil() as usize }
@@ -502,11 +511,21 @@ macro_rules! impl_compact_factor {
                     sys::$geqrf(layout, m, n, ap, ldap, taup, work, lwork, info, format, nm)
                 }
             }
+            unsafe fn getrinp_compact(
+                layout: sys::MKL_LAYOUT::Type,
+                n: c_int,
+                ap: *mut Self, ldap: c_int,
+                work: *mut Self, lwork: c_int,
+                info: *mut c_int,
+                format: sys::MKL_COMPACT_PACK::Type, nm: c_int,
+            ) {
+                unsafe { sys::$getrinp(layout, n, ap, ldap, work, lwork, info, format, nm) }
+            }
         }
     };
 }
-impl_compact_factor!(f32, mkl_strsm_compact, mkl_spotrf_compact, mkl_sgetrfnp_compact, mkl_sgeqrf_compact);
-impl_compact_factor!(f64, mkl_dtrsm_compact, mkl_dpotrf_compact, mkl_dgetrfnp_compact, mkl_dgeqrf_compact);
+impl_compact_factor!(f32, mkl_strsm_compact, mkl_spotrf_compact, mkl_sgetrfnp_compact, mkl_sgeqrf_compact, mkl_sgetrinp_compact);
+impl_compact_factor!(f64, mkl_dtrsm_compact, mkl_dpotrf_compact, mkl_dgetrfnp_compact, mkl_dgeqrf_compact, mkl_dgetrinp_compact);
 
 /// Packed buffer length needed for a `rows x cols` matrix in `layout`
 /// with packed leading dimension `ldap`, or an error if `ldap` is smaller
@@ -679,6 +698,42 @@ pub fn geqrf<T: CompactFactorScalar>(
             ap.as_mut_ptr(), ldap_i, taup.as_mut_ptr(),
             work.as_mut_ptr(), to_c(lwork)?, &mut info,
             format.as_mkl(), nm_i,
+        );
+    }
+    Ok(info)
+}
+
+/// Compact in-place inverse of `num_matrices` `n x n` matrices that were
+/// factored by [`getrfnp`] (no pivoting): on exit `ap` holds `A⁻¹`. The
+/// workspace is allocated internally from MKL's workspace query. Returns
+/// MKL's `info`. Wraps `mkl_*getrinp_compact`.
+pub fn getrinp<T: CompactFactorScalar>(
+    layout: Layout,
+    n: usize,
+    ap: &mut [T],
+    ldap: usize,
+    format: CompactFormat,
+    num_matrices: usize,
+) -> Result<i32> {
+    if ap.len() < packed_len::<T>(layout, n, n, ldap, format, num_matrices)? {
+        return Err(Error::InvalidArgument("ap is smaller than the compact size of A"));
+    }
+    let (n_i, ldap_i, nm_i) = (to_c(n)?, to_c(ldap)?, to_c(num_matrices)?);
+    let mut info: c_int = 0;
+    // Workspace query (lwork = -1): MKL writes the required size to work[0].
+    let mut query = [T::zero()];
+    unsafe {
+        T::getrinp_compact(
+            map_layout(layout), n_i, ap.as_mut_ptr(), ldap_i,
+            query.as_mut_ptr(), -1, &mut info, format.as_mkl(), nm_i,
+        );
+    }
+    let lwork = query[0].to_workspace_len().max(1);
+    let mut work = vec![T::zero(); lwork];
+    unsafe {
+        T::getrinp_compact(
+            map_layout(layout), n_i, ap.as_mut_ptr(), ldap_i,
+            work.as_mut_ptr(), to_c(lwork)?, &mut info, format.as_mkl(), nm_i,
         );
     }
     Ok(info)

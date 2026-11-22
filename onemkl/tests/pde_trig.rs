@@ -166,3 +166,75 @@ fn helmholtz_2d_nonzero_dirichlet_data_is_exact_for_quadratics() {
     }
 }
 
+
+
+use onemkl::pde::Helmholtz3D;
+
+#[test]
+fn helmholtz_3d_dirichlet_is_second_order() {
+    fn err(n: usize, q: f64) -> f64 {
+        let pi = std::f64::consts::PI;
+        let h = 1.0 / n as f64;
+        let ex = |x: f64, y: f64, z: f64| (pi * x).sin() * (pi * y).sin() * (pi * z).sin();
+        let w = n + 1;
+        let mut f = vec![0.0; w * w * w];
+        for k in 0..=n { for j in 0..=n { for i in 0..=n {
+            f[i + j * w + k * w * w] =
+                -(3.0 * pi * pi + q) * ex(i as f64 * h, j as f64 * h, k as f64 * h);
+        }}}
+        let z = vec![0.0; w * w];
+        let mut s = Helmholtz3D::<f64>::new(
+            (0.0, 1.0), (0.0, 1.0), (0.0, 1.0), n, n, n, [Boundary::Dirichlet; 6], q,
+        ).unwrap();
+        s.solve(&mut f, [&z, &z, &z, &z, &z, &z]).unwrap();
+        let mut e = 0.0_f64;
+        for k in 0..=n { for j in 0..=n { for i in 0..=n {
+            e = e.max((f[i + j * w + k * w * w] - ex(i as f64 * h, j as f64 * h, k as f64 * h)).abs());
+        }}}
+        e
+    }
+    for q in [0.0, 3.0] {
+        let (e16, e32) = (err(16, q), err(32, q));
+        assert!(e32 < 2e-3, "q={q}: error {e32}");
+        let ratio = e16 / e32;
+        assert!((3.5..4.5).contains(&ratio), "q={q}: ratio {ratio}");
+    }
+}
+
+#[test]
+fn helmholtz_3d_nonzero_dirichlet_data_is_exact_for_polynomials() {
+    // u = x^2 - y^2 + z^2 + xyz + 1: Δu = 2, reproduced exactly by the
+    // 7-point stencil, on a 2x1x1 box with nx=16, ny=8, nz=4.
+    let (nx, ny, nz) = (16usize, 8usize, 4usize);
+    let (lx, ly, lz) = (2.0_f64, 1.0_f64, 1.0_f64);
+    let (hx, hy, hz) = (lx / nx as f64, ly / ny as f64, lz / nz as f64);
+    let u = |x: f64, y: f64, z: f64| x * x - y * y + z * z + x * y * z + 1.0;
+    let (wx, wy) = (nx + 1, ny + 1);
+    let mut f = vec![2.0; wx * wy * (nz + 1)];
+    let mut ax = vec![0.0; wy * (nz + 1)];
+    let mut bx = ax.clone();
+    for k in 0..=nz { for j in 0..=ny {
+        ax[j + k * wy] = u(0.0, j as f64 * hy, k as f64 * hz);
+        bx[j + k * wy] = u(lx, j as f64 * hy, k as f64 * hz);
+    }}
+    let mut ay = vec![0.0; wx * (nz + 1)];
+    let mut by = ay.clone();
+    for k in 0..=nz { for i in 0..=nx {
+        ay[i + k * wx] = u(i as f64 * hx, 0.0, k as f64 * hz);
+        by[i + k * wx] = u(i as f64 * hx, ly, k as f64 * hz);
+    }}
+    let mut az = vec![0.0; wx * wy];
+    let mut bz = az.clone();
+    for j in 0..=ny { for i in 0..=nx {
+        az[i + j * wx] = u(i as f64 * hx, j as f64 * hy, 0.0);
+        bz[i + j * wx] = u(i as f64 * hx, j as f64 * hy, lz);
+    }}
+    let mut s = Helmholtz3D::<f64>::new(
+        (0.0, lx), (0.0, ly), (0.0, lz), nx, ny, nz, [Boundary::Dirichlet; 6], 0.0,
+    ).unwrap();
+    s.solve(&mut f, [&ax, &bx, &ay, &by, &az, &bz]).unwrap();
+    for k in 0..=nz { for j in 0..=ny { for i in 0..=nx {
+        let want = u(i as f64 * hx, j as f64 * hy, k as f64 * hz);
+        assert_abs_diff_eq!(f[i + j * wx + k * wx * wy], want, epsilon = 1e-9);
+    }}}
+}

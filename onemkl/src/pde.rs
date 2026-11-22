@@ -361,10 +361,24 @@ pub trait HelmholtzScalar: Copy + Default + 'static {
         handle: *mut DFTI_DESCRIPTOR_HANDLE, ipar: *mut c_int,
         dpar: *const Self, stat: *mut c_int,
     );
+    unsafe fn init_3d(
+        lim: [*const Self; 6], n: [*const c_int; 3], bc: *const core::ffi::c_char,
+        q: *const Self, ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+    );
+    unsafe fn commit_3d(
+        f: *mut Self, bd: [*const Self; 6],
+        xh: *mut DFTI_DESCRIPTOR_HANDLE, yh: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+    );
+    unsafe fn solve_3d(
+        f: *mut Self, bd: [*const Self; 6],
+        xh: *mut DFTI_DESCRIPTOR_HANDLE, yh: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int, dpar: *const Self, stat: *mut c_int,
+    );
 }
 
 macro_rules! impl_helmholtz_scalar {
-    ($t:ty, $init:ident, $commit:ident, $solve:ident) => {
+    ($t:ty, $init:ident, $commit:ident, $solve:ident, $init3:ident, $commit3:ident, $solve3:ident) => {
         impl HelmholtzScalar for $t {
             fn to_f64(self) -> f64 { self as f64 }
             fn from_f64(v: f64) -> Self { v as $t }
@@ -391,11 +405,37 @@ macro_rules! impl_helmholtz_scalar {
             ) {
                 unsafe { sys::$solve(f, bd_ax, bd_bx, bd_ay, bd_by, handle, ipar, dpar, stat) }
             }
+            unsafe fn init_3d(
+                l: [*const Self; 6], n: [*const c_int; 3], bc: *const core::ffi::c_char,
+                q: *const Self, ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+            ) {
+                unsafe {
+                    sys::$init3(l[0], l[1], l[2], l[3], l[4], l[5], n[0], n[1], n[2], bc, q, ipar, dpar, stat)
+                }
+            }
+            unsafe fn commit_3d(
+                f: *mut Self, b: [*const Self; 6],
+                xh: *mut DFTI_DESCRIPTOR_HANDLE, yh: *mut DFTI_DESCRIPTOR_HANDLE,
+                ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+            ) {
+                unsafe {
+                    sys::$commit3(f, b[0], b[1], b[2], b[3], b[4], b[5], xh, yh, ipar, dpar, stat)
+                }
+            }
+            unsafe fn solve_3d(
+                f: *mut Self, b: [*const Self; 6],
+                xh: *mut DFTI_DESCRIPTOR_HANDLE, yh: *mut DFTI_DESCRIPTOR_HANDLE,
+                ipar: *mut c_int, dpar: *const Self, stat: *mut c_int,
+            ) {
+                unsafe {
+                    sys::$solve3(f, b[0], b[1], b[2], b[3], b[4], b[5], xh, yh, ipar, dpar, stat)
+                }
+            }
         }
     };
 }
-impl_helmholtz_scalar!(f32, s_init_helmholtz_2d, s_commit_helmholtz_2d, s_helmholtz_2d);
-impl_helmholtz_scalar!(f64, d_init_helmholtz_2d, d_commit_helmholtz_2d, d_helmholtz_2d);
+impl_helmholtz_scalar!(f32, s_init_helmholtz_2d, s_commit_helmholtz_2d, s_helmholtz_2d, s_init_helmholtz_3d, s_commit_helmholtz_3d, s_helmholtz_3d);
+impl_helmholtz_scalar!(f64, d_init_helmholtz_2d, d_commit_helmholtz_2d, d_helmholtz_2d, d_init_helmholtz_3d, d_commit_helmholtz_3d, d_helmholtz_3d);
 
 /// Fast solver for the 2-D Helmholtz equation `Δu − q·u = f` on the
 /// rectangle `[ax, bx] × [ay, by]` (`q = 0` gives Poisson), on a
@@ -605,6 +645,189 @@ impl<T: HelmholtzScalar> Drop for Helmholtz2D<T> {
         let mut stat: c_int = 0;
         unsafe {
             sys::free_helmholtz_2d(&mut self.handle, self.ipar.as_mut_ptr(), &mut stat);
+        }
+    }
+}
+
+/// Fast solver for the 3-D Helmholtz equation `Δu − q·u = f` on a box
+/// with all-Dirichlet faces and a uniform `nx × ny × nz` grid (see
+/// [`Helmholtz2D`] for the conventions and the measured MKL behaviour
+/// the wrapper corrects: sign and `1/hz²` scaling of MKL's result, and
+/// no Dirichlet boundary lift).
+///
+/// Node `(i, j, k)` is `f[i + j*(nx+1) + k*(nx+1)*(ny+1)]`. Boundary
+/// data per face, in the order `[ax, bx, ay, by, az, bz]`: x faces are
+/// `(ny+1)*(nz+1)` long (`j + k*(ny+1)`), y faces `(nx+1)*(nz+1)`
+/// (`i + k*(nx+1)`), z faces `(nx+1)*(ny+1)` (`i + j*(nx+1)`).
+pub struct Helmholtz3D<T: HelmholtzScalar> {
+    xh: DFTI_DESCRIPTOR_HANDLE,
+    yh: DFTI_DESCRIPTOR_HANDLE,
+    ipar: Vec<c_int>,
+    dpar: Vec<T>,
+    n: [usize; 3],
+    h2: [f64; 3],
+    committed: bool,
+}
+
+unsafe impl<T: HelmholtzScalar + Send> Send for Helmholtz3D<T> {}
+
+impl<T: HelmholtzScalar> Helmholtz3D<T> {
+    /// Build a solver. All six faces must be `Dirichlet` (others are
+    /// unverified); `nx`, `ny`, `nz` must be even and at least 4.
+    pub fn new(
+        (ax, bx): (T, T),
+        (ay, by): (T, T),
+        (az, bz): (T, T),
+        nx: usize,
+        ny: usize,
+        nz: usize,
+        bc: [Boundary; 6],
+        q: T,
+    ) -> Result<Self> {
+        if [nx, ny, nz].iter().any(|&n| n < 4 || n % 2 != 0) {
+            return Err(Error::InvalidArgument("nx, ny, nz must be even and at least 4"));
+        }
+        if bc.iter().any(|b| *b != Boundary::Dirichlet) {
+            return Err(Error::InvalidArgument(
+                "only Dirichlet boundaries are supported so far (Neumann/periodic unverified)",
+            ));
+        }
+        let ni = [nx, ny, nz].map(|n| n as i64);
+        if ni.iter().any(|&n| c_int::try_from(n).is_err()) {
+            return Err(Error::DimensionOverflow);
+        }
+        let (nx_i, ny_i, nz_i) = (nx as c_int, ny as c_int, nz as c_int);
+        let bc_c: [core::ffi::c_char; 7] = [
+            bc[0].as_char() as _, bc[1].as_char() as _, bc[2].as_char() as _,
+            bc[3].as_char() as _, bc[4].as_char() as _, bc[5].as_char() as _, 0,
+        ];
+        let mut ipar: Vec<c_int> = vec![0; 128];
+        // MKL's documented 3-D dpar size is quadratic in the grid; cover
+        // the largest face product generously.
+        let face = ((nx + 1) * (ny + 1)).max((ny + 1) * (nz + 1)).max((nx + 1) * (nz + 1));
+        let mut dpar: Vec<T> = vec![T::default(); 7 * face + 40 * (nx + ny + nz) + 200];
+        let mut stat: c_int = 0;
+        unsafe {
+            T::init_3d(
+                [&ax, &bx, &ay, &by, &az, &bz],
+                [&nx_i, &ny_i, &nz_i],
+                bc_c.as_ptr(), &q, ipar.as_mut_ptr(), dpar.as_mut_ptr(), &mut stat,
+            );
+        }
+        check_tr(stat)?;
+        let step = |a: T, b: T, n: usize| {
+            let h = (b.to_f64() - a.to_f64()) / n as f64;
+            h * h
+        };
+        Ok(Self {
+            xh: ptr::null_mut(),
+            yh: ptr::null_mut(),
+            ipar,
+            dpar,
+            n: [nx, ny, nz],
+            h2: [step(ax, bx, nx), step(ay, by, ny), step(az, bz, nz)],
+            committed: false,
+        })
+    }
+
+    /// Required grid length, `(nx + 1) * (ny + 1) * (nz + 1)`.
+    #[must_use]
+    pub fn grid_len(&self) -> usize {
+        (self.n[0] + 1) * (self.n[1] + 1) * (self.n[2] + 1)
+    }
+
+    /// Solve in place; `bd` holds the Dirichlet values of the faces
+    /// `[ax, bx, ay, by, az, bz]` (layouts in the type docs).
+    pub fn solve(&mut self, f: &mut [T], bd: [&[T]; 6]) -> Result<()> {
+        let [nx, ny, nz] = self.n;
+        let (wx, wy) = (nx + 1, ny + 1);
+        if f.len() < self.grid_len() {
+            return Err(Error::InvalidArgument("grid buffer too small"));
+        }
+        let need = [wy * (nz + 1), wy * (nz + 1), wx * (nz + 1), wx * (nz + 1), wx * wy, wx * wy];
+        if bd.iter().zip(need).any(|(s, n)| s.len() < n) {
+            return Err(Error::InvalidArgument("boundary data slice too short"));
+        }
+        // MKL applies no Dirichlet lift: move boundary values to the rhs.
+        let [hx2, hy2, hz2] = self.h2;
+        let sub = |v: &mut T, g: T, h2: f64| *v = T::from_f64(v.to_f64() - g.to_f64() / h2);
+        let at = |i: usize, j: usize, k: usize| i + j * wx + k * wx * wy;
+        for k in 1..nz {
+            for j in 1..ny {
+                sub(&mut f[at(1, j, k)], bd[0][j + k * wy], hx2);
+                sub(&mut f[at(nx - 1, j, k)], bd[1][j + k * wy], hx2);
+            }
+        }
+        for k in 1..nz {
+            for i in 1..nx {
+                sub(&mut f[at(i, 1, k)], bd[2][i + k * wx], hy2);
+                sub(&mut f[at(i, ny - 1, k)], bd[3][i + k * wx], hy2);
+            }
+        }
+        for j in 1..ny {
+            for i in 1..nx {
+                sub(&mut f[at(i, j, 1)], bd[4][i + j * wx], hz2);
+                sub(&mut f[at(i, j, nz - 1)], bd[5][i + j * wx], hz2);
+            }
+        }
+        let zeros: Vec<T> = vec![T::default(); wx.max(wy) * (nz + 1).max(wx.max(wy))];
+        let zp = [zeros.as_ptr(); 6];
+        let mut stat: c_int = 0;
+        if !self.committed {
+            let mut probe: Vec<T> = f[..self.grid_len()].to_vec();
+            unsafe {
+                T::commit_3d(
+                    probe.as_mut_ptr(), zp, &mut self.xh, &mut self.yh,
+                    self.ipar.as_mut_ptr(), self.dpar.as_mut_ptr(), &mut stat,
+                );
+            }
+            check_tr(stat)?;
+            self.committed = true;
+        }
+        unsafe {
+            T::solve_3d(
+                f.as_mut_ptr(), zp, &mut self.xh, &mut self.yh,
+                self.ipar.as_mut_ptr(), self.dpar.as_ptr(), &mut stat,
+            );
+        }
+        check_tr(stat)?;
+        // Undo MKL's sign and 1/hz^2 scaling (measured, see the type docs).
+        for k in 1..nz {
+            for j in 1..ny {
+                for i in 1..nx {
+                    let v = &mut f[at(i, j, k)];
+                    *v = T::from_f64(-hz2 * v.to_f64());
+                }
+            }
+        }
+        for k in 0..=nz {
+            for j in 0..=ny {
+                for i in 0..=nx {
+                    let g = if i == 0 { Some(bd[0][j + k * wy]) }
+                        else if i == nx { Some(bd[1][j + k * wy]) }
+                        else if j == 0 { Some(bd[2][i + k * wx]) }
+                        else if j == ny { Some(bd[3][i + k * wx]) }
+                        else if k == 0 { Some(bd[4][i + j * wx]) }
+                        else if k == nz { Some(bd[5][i + j * wx]) }
+                        else { None };
+                    if let Some(g) = g {
+                        f[at(i, j, k)] = g;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<T: HelmholtzScalar> Drop for Helmholtz3D<T> {
+    fn drop(&mut self) {
+        if self.xh.is_null() && self.yh.is_null() {
+            return;
+        }
+        let mut stat: c_int = 0;
+        unsafe {
+            sys::free_helmholtz_3d(&mut self.xh, &mut self.yh, self.ipar.as_mut_ptr(), &mut stat);
         }
     }
 }

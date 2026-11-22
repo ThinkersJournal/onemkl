@@ -694,3 +694,159 @@ impl Drop for TrnlsSession {
         }
     }
 }
+
+/// Step-by-step driver of the bound-constrained trust-region solver
+/// (`dtrnlspbc_*`); the bounded counterpart of [`TrnlsSession`]. The session
+/// owns `x`, the bounds and the residual / Jacobian buffers.
+pub struct TrnlsBoundedSession {
+    /// Boxed so the handle's address survives moves of the session.
+    handle: Box<sys::_TRNSPBC_HANDLE_t>,
+    n: usize,
+    m: usize,
+    x: Vec<f64>,
+    lower: Vec<f64>,
+    upper: Vec<f64>,
+    fvec: Vec<f64>,
+    fjac: Vec<f64>,
+    opts: Box<TrnlsOptions>,
+    /// Reverse-communication state: MKL reads it back on the next call.
+    rci: c_int,
+    done: Option<TrnlsResult>,
+}
+
+impl TrnlsBoundedSession {
+    /// Start a session with `n` variables, `m` residuals, initial guess `x0`
+    /// and element-wise bounds `lower[i] <= x[i] <= upper[i]`.
+    pub fn new(
+        n: usize,
+        m: usize,
+        x0: &[f64],
+        lower: &[f64],
+        upper: &[f64],
+        opts: TrnlsOptions,
+    ) -> Result<Self> {
+        if x0.len() != n || lower.len() != n || upper.len() != n {
+            return Err(Error::InvalidArgument(
+                "x0, lower, and upper must each have length n",
+            ));
+        }
+        let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let mut s = Self {
+            handle: Box::new(ptr::null_mut()),
+            n,
+            m,
+            x: x0.to_vec(),
+            lower: lower.to_vec(),
+            upper: upper.to_vec(),
+            fvec: vec![0.0; m],
+            fjac: vec![0.0; checked_len(m, n)?],
+            opts: Box::new(opts),
+            rci: 0,
+            done: None,
+        };
+        let status = unsafe {
+            sys::dtrnlspbc_init(
+                &mut *s.handle,
+                &n_i,
+                &m_i,
+                s.x.as_mut_ptr(),
+                s.lower.as_ptr(),
+                s.upper.as_ptr(),
+                s.opts.eps.as_ptr(),
+                &s.opts.max_iterations,
+                &s.opts.max_trial_steps,
+                &s.opts.initial_trust_region,
+            )
+        };
+        if status != sys::TR_SUCCESS as c_int {
+            *s.handle = ptr::null_mut();
+            return Err(Error::LapackComputationFailure { info: status });
+        }
+        Ok(s)
+    }
+
+    /// Current iterate; evaluate residual / Jacobian here.
+    #[must_use]
+    pub fn x(&self) -> &[f64] {
+        &self.x
+    }
+
+    /// Residual buffer (length `m`) to fill on [`TrnlsStep::NeedResidual`].
+    pub fn residual_mut(&mut self) -> &mut [f64] {
+        &mut self.fvec
+    }
+
+    /// Jacobian buffer (column-major `m x n`) to fill on [`TrnlsStep::NeedJacobian`].
+    pub fn jacobian_mut(&mut self) -> &mut [f64] {
+        &mut self.fjac
+    }
+
+    /// Validate the buffers and bounds (`dtrnlspbc_check`); see [`TrnlsCheck`].
+    pub fn check(&mut self) -> Result<TrnlsCheck> {
+        let n_i = self.n as c_int;
+        let m_i = self.m as c_int;
+        let mut info = [0 as c_int; 6];
+        let status = unsafe {
+            sys::dtrnlspbc_check(
+                &mut *self.handle,
+                &n_i,
+                &m_i,
+                self.fjac.as_ptr(),
+                self.fvec.as_ptr(),
+                self.lower.as_ptr(),
+                self.upper.as_ptr(),
+                self.opts.eps.as_ptr(),
+                info.as_mut_ptr(),
+            )
+        };
+        if status != sys::TR_SUCCESS as c_int {
+            return Err(Error::LapackComputationFailure { info: status });
+        }
+        Ok(TrnlsCheck { info })
+    }
+
+    /// Advance the solver one reverse-communication step. After `Done`,
+    /// further calls return the same result.
+    pub fn step(&mut self) -> Result<TrnlsStep> {
+        if let Some(r) = self.done {
+            return Ok(TrnlsStep::Done(r));
+        }
+        let status = unsafe {
+            sys::dtrnlspbc_solve(&mut *self.handle, self.fvec.as_mut_ptr(), self.fjac.as_mut_ptr(), &mut self.rci)
+        };
+        if status != sys::TR_SUCCESS as c_int {
+            return Err(Error::LapackComputationFailure { info: status });
+        }
+        match self.rci {
+            1 => Ok(TrnlsStep::NeedResidual),
+            2 => Ok(TrnlsStep::NeedJacobian),
+            -6..=0 => {
+                let (mut iters, mut st_cr, mut r1, mut r2) = (0 as c_int, 0 as c_int, 0.0_f64, 0.0_f64);
+                let status = unsafe { sys::dtrnlspbc_get(&mut *self.handle, &mut iters, &mut st_cr, &mut r1, &mut r2) };
+                if status != sys::TR_SUCCESS as c_int {
+                    return Err(Error::LapackComputationFailure { info: status });
+                }
+                let r = TrnlsResult {
+                    iterations: iters,
+                    stopping_criterion: st_cr,
+                    initial_residual_norm: r1,
+                    final_residual_norm: r2,
+                };
+                self.done = Some(r);
+                Ok(TrnlsStep::Done(r))
+            }
+            other => Err(Error::LapackComputationFailure { info: other }),
+        }
+    }
+}
+
+impl Drop for TrnlsBoundedSession {
+    fn drop(&mut self) {
+        if !(*self.handle).is_null() {
+            unsafe {
+                let _ = sys::dtrnlspbc_delete(&mut *self.handle);
+            }
+        }
+    }
+}

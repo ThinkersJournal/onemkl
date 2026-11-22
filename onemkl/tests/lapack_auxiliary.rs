@@ -5,10 +5,11 @@
 use approx::assert_abs_diff_eq;
 
 use onemkl::lapack::{
-    gecon, getrf, lacpy, lange, larfg, laswp, LacpyPart, MatrixNorm,
+    gecon, geqrf, getrf, lacpy, lange, larfb, larfg, larft, laswp, LacpyPart, MatrixNorm,
+    ReflectorDirection, ReflectorStorage,
 };
 use onemkl::matrix::{MatrixMut, MatrixRef};
-use onemkl::Layout;
+use onemkl::{Layout, Side, Transpose};
 
 #[test]
 fn lacpy_full_matrix() {
@@ -139,4 +140,56 @@ fn larfg_handles_already_canonical() {
     let result = larfg::<f64>(3, &mut alpha, &mut x, 1).unwrap();
     assert_abs_diff_eq!(alpha, 7.0, epsilon = 1e-12);
     assert_abs_diff_eq!(result.tau, 0.0, epsilon = 1e-12);
+}
+
+#[test]
+fn larft_and_larfb_reproduce_the_qr_r_factor() {
+    // 3x2 column-major A; geqrf gives reflectors (V below the diagonal,
+    // implicit unit diagonal) and tau. Applying Q^T = H^T to a copy of A
+    // with larfb (using T from larft) must reproduce R, the upper
+    // triangle geqrf wrote, with zeros below it.
+    let a0 = vec![1.0_f64, 2.0, 2.0, 3.0, -1.0, 4.0];
+    let mut qr = a0.clone();
+    let mut tau = vec![0.0_f64; 2];
+    {
+        let mut m = MatrixMut::new(&mut qr, 3, 2, Layout::ColMajor).unwrap();
+        geqrf(&mut m, &mut tau).unwrap();
+    }
+    // V: unit lower trapezoid of the geqrf output.
+    let v = vec![1.0_f64, qr[1], qr[2], 0.0, 1.0, qr[5]];
+    let mut t = vec![0.0_f64; 4];
+    {
+        let v_ref = MatrixRef::new(&v, 3, 2, Layout::ColMajor).unwrap();
+        let mut t_view = MatrixMut::new(&mut t, 2, 2, Layout::ColMajor).unwrap();
+        larft(ReflectorDirection::Forward, ReflectorStorage::Columnwise, &v_ref, &tau, &mut t_view)
+            .unwrap();
+    }
+    // Diagonal of T is tau.
+    assert_abs_diff_eq!(t[0], tau[0], epsilon = 1e-12);
+    assert_abs_diff_eq!(t[3], tau[1], epsilon = 1e-12);
+
+    let mut c = a0.clone();
+    {
+        let v_ref = MatrixRef::new(&v, 3, 2, Layout::ColMajor).unwrap();
+        let t_ref = MatrixRef::new(&t, 2, 2, Layout::ColMajor).unwrap();
+        let mut c_view = MatrixMut::new(&mut c, 3, 2, Layout::ColMajor).unwrap();
+        larfb(
+            Side::Left,
+            Transpose::Trans,
+            ReflectorDirection::Forward,
+            ReflectorStorage::Columnwise,
+            &v_ref,
+            &t_ref,
+            &mut c_view,
+        )
+        .unwrap();
+    }
+    // R = [[qr[0], qr[3]], [0, qr[4]]]; the third row and the (1,0)
+    // entry must be zero.
+    assert_abs_diff_eq!(c[0], qr[0], epsilon = 1e-12);
+    assert_abs_diff_eq!(c[3], qr[3], epsilon = 1e-12);
+    assert_abs_diff_eq!(c[4], qr[4], epsilon = 1e-12);
+    assert_abs_diff_eq!(c[1], 0.0, epsilon = 1e-12);
+    assert_abs_diff_eq!(c[2], 0.0, epsilon = 1e-12);
+    assert_abs_diff_eq!(c[5], 0.0, epsilon = 1e-12);
 }

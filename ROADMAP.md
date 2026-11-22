@@ -156,7 +156,7 @@ account for the vast majority of downstream use:
 - **LAPACK Comprehensive**: ~~core auxiliary routines (`?lacpy`,
   `?lange`, `?gecon`, `?larfg`, `?laswp`)~~ (done in
   `lapack::{lacpy, lange, gecon, laswp, larfg}`); remaining
-  auxiliary set (`?lacgv`, `?lacrm`, `?syconv`, `?larft`, `?larfb`,
+  auxiliary set (`?lacgv`, `?lacrm`, `?syconv`, ~~`?larft`, `?larfb`~~ (done — `lapack::{larft, larfb}`),
   etc.), Netlib-compatibility additions, `?tppack` / `?tpunpack`.
 - **Sparse Comprehensive**: ~~matrix manipulation
   (`mkl_sparse_*_add`, `mkl_sparse_*_spmm`,
@@ -185,9 +185,9 @@ specialized ones:
   (done — `Helmholtz2D` / `Helmholtz3D`); ~~periodic spherical
   Helmholtz~~ (done — `SphericalHelmholtz`, full sphere); non-periodic
   spherical (`?_sph_np`) and partial spheres remain.
-- **Compact BLAS / LAPACK**: full set (`mkl_?gepack_compact`,
+- **Compact BLAS / LAPACK**: ~~full set (`mkl_?gepack_compact`,
   `mkl_?geunpack_compact`, `mkl_?get_size_compact`, `*_potrf`,
-  `*_getrfnp`, `*_geqrf`, `*_getrinp`).
+  `*_getrfnp`, `*_geqrf`, `*_getrinp`)~~ (done, f32/f64).
 
 ### 0.5.0 — All domains Comprehensive (single-node)
 

@@ -24,7 +24,7 @@ mod scalar;
 
 pub use scalar::{ComplexLapackScalar, LapackScalar, RealLapackScalar};
 
-use crate::enums::{Layout, Transpose, UpLo};
+use crate::enums::{Layout, Side, Transpose, UpLo};
 use crate::error::{Error, Result};
 use crate::matrix::{MatrixMut, MatrixRef};
 use crate::util::dim_to_mkl_int;
@@ -2285,4 +2285,146 @@ where
     };
     check_info(info)?;
     Ok(HouseholderReflector { alpha: *alpha, tau })
+}
+
+/// Order in which the elementary reflectors of a block reflector are
+/// applied (`DIRECT` in `?larft` / `?larfb`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ReflectorDirection {
+    /// `H = H(1) H(2) ... H(k)`.
+    Forward,
+    /// `H = H(k) ... H(2) H(1)`.
+    Backward,
+}
+
+impl ReflectorDirection {
+    fn as_char(self) -> core::ffi::c_char {
+        (match self {
+            Self::Forward => b'F',
+            Self::Backward => b'B',
+        }) as core::ffi::c_char
+    }
+}
+
+/// How the reflector vectors are stored in `V` (`STOREV`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ReflectorStorage {
+    /// Column `i` of `V` holds `v(i)`.
+    Columnwise,
+    /// Row `i` of `V` holds `v(i)`.
+    Rowwise,
+}
+
+impl ReflectorStorage {
+    fn as_char(self) -> core::ffi::c_char {
+        (match self {
+            Self::Columnwise => b'C',
+            Self::Rowwise => b'R',
+        }) as core::ffi::c_char
+    }
+}
+
+/// Form the `k x k` triangular factor `T` of a block reflector
+/// `H = I - V T Vᴴ` from `k` elementary reflectors (`V`, `tau`), as
+/// produced by `geqrf`. Wraps `LAPACKE_*larft`. `V` is `n x k`
+/// (columnwise) or `k x n` (rowwise); `tau` has `k` entries.
+pub fn larft<T: LapackScalar>(
+    direct: ReflectorDirection,
+    storev: ReflectorStorage,
+    v: &MatrixRef<'_, T>,
+    tau: &[T],
+    t: &mut MatrixMut<'_, T>,
+) -> Result<()> {
+    let k = t.rows();
+    if t.cols() != k {
+        return Err(Error::InvalidArgument("T must be square (k x k)"));
+    }
+    if tau.len() < k {
+        return Err(Error::InvalidArgument("tau must have at least k entries"));
+    }
+    let n = match storev {
+        ReflectorStorage::Columnwise => {
+            if v.cols() != k {
+                return Err(Error::InvalidArgument("columnwise V must be n x k"));
+            }
+            v.rows()
+        }
+        ReflectorStorage::Rowwise => {
+            if v.rows() != k {
+                return Err(Error::InvalidArgument("rowwise V must be k x n"));
+            }
+            v.cols()
+        }
+    };
+    let layout = ensure_layout(&[v.layout(), t.layout()])?;
+    let info = unsafe {
+        T::lapacke_larft(
+            layout.as_lapack(),
+            direct.as_char(),
+            storev.as_char(),
+            dim_to_mkl_int(n)?,
+            dim_to_mkl_int(k)?,
+            v.as_ptr(),
+            dim_to_mkl_int(v.leading_dim())?,
+            tau.as_ptr(),
+            t.as_mut_ptr(),
+            dim_to_mkl_int(t.leading_dim())?,
+        )
+    };
+    check_info(info)
+}
+
+/// Apply the block reflector `H` (or `Hᴴ`) to an `m x n` matrix `C` from
+/// the left or right: `C := op(H) C` or `C := C op(H)`, with `H`
+/// described by `V` and the factor `T` from [`larft`]. Wraps
+/// `LAPACKE_*larfb`. `V` is `m x k`/`n x k` (columnwise) or `k x m`/`k x n`
+/// (rowwise) for `Side::Left`/`Side::Right`.
+pub fn larfb<T: LapackScalar>(
+    side: Side,
+    trans: Transpose,
+    direct: ReflectorDirection,
+    storev: ReflectorStorage,
+    v: &MatrixRef<'_, T>,
+    t: &MatrixRef<'_, T>,
+    c: &mut MatrixMut<'_, T>,
+) -> Result<()> {
+    let k = t.rows();
+    if t.cols() != k {
+        return Err(Error::InvalidArgument("T must be square (k x k)"));
+    }
+    let (order, vk) = match (storev, side) {
+        (ReflectorStorage::Columnwise, Side::Left) => (c.rows(), (v.rows(), v.cols())),
+        (ReflectorStorage::Columnwise, Side::Right) => (c.cols(), (v.rows(), v.cols())),
+        (ReflectorStorage::Rowwise, Side::Left) => (c.rows(), (v.cols(), v.rows())),
+        (ReflectorStorage::Rowwise, Side::Right) => (c.cols(), (v.cols(), v.rows())),
+    };
+    if vk != (order, k) {
+        return Err(Error::InvalidArgument(
+            "V must hold k reflectors of the order of the side C is multiplied on",
+        ));
+    }
+    let layout = ensure_layout(&[v.layout(), t.layout(), c.layout()])?;
+    let side_c = match side {
+        Side::Left => b'L',
+        Side::Right => b'R',
+    } as core::ffi::c_char;
+    let info = unsafe {
+        T::lapacke_larfb(
+            layout.as_lapack(),
+            side_c,
+            trans.as_char() as core::ffi::c_char,
+            direct.as_char(),
+            storev.as_char(),
+            dim_to_mkl_int(c.rows())?,
+            dim_to_mkl_int(c.cols())?,
+            dim_to_mkl_int(k)?,
+            v.as_ptr(),
+            dim_to_mkl_int(v.leading_dim())?,
+            t.as_ptr(),
+            dim_to_mkl_int(t.leading_dim())?,
+            c.as_mut_ptr(),
+            dim_to_mkl_int(c.leading_dim())?,
+        )
+    };
+    check_info(info)
 }

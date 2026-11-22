@@ -64,4 +64,8 @@ blacs = []
 pblas = ["blacs"]
 
 [build-dependencies]
-bindgen = "0.73"
+# default-features = false drops bindgen's `prettyplease` dep: bindgen allows
+# prettyplease >=0.2.7,<0.4 and syn >=2,<4, and a lock that pairs syn 3 with
+# prettyplease 0.2 (held there by e.g. prost-build) fails to compile bindgen
+# (E0277 ParseQuote). The generated bindings are included unformatted.
+bindgen = { version = "0.73", default-features = false, features = ["logging"] }

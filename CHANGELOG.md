@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+### Fixed
+
+- `onemkl-sys` build: `bindgen` is now built with `default-features = false` (feature `logging` only), which drops its `prettyplease` dependency. A lock that pairs `syn` 3 with `prettyplease` 0.2 (held there by, e.g., `prost-build` 0.14.4) made bindgen 0.73.2 fail to compile (`E0277: syn::file::File: ParseQuote` at bindgen `lib.rs:1017`). Reproduced in a scratch crate (bindgen 0.73 + prost-build =0.14.4, lock edited to bindgen->syn 3 + prettyplease 0.2.37: fails; with this change: builds); `onemkl-sys` built on Linux (WSL, oneMKL 2026.2.1). The generated bindings are now unformatted. Not run: Windows, macOS, docs.rs.
+
 ### Added
 
 - `pde::SphericalHelmholtz` (`?_sph_p`): fast Helmholtz solver `Δ_S u - q·u = F` on the full unit sphere surface (periodic in phi, theta 0..pi). The documentation pages for `?_init_sph_p` could not be read (every release returned only the site sidebar), so the convention was measured on oneMKL 2026.2.1 (pip, Linux x86_64, LP64): argument order `(ap, bp, at, bt)`; the solver matrix measured from unit-ring inputs is `h_t²·sin(t_j)·(-Δ_h + q)` with the conservative theta stencil built from averaged node sines and weight 1 on the pole rows (exact match at 9x9), which the wrapper turns into the documented-style equation. Test `pde_trig`: a sum of Y_1^0, Y_2^1 and Y_2^2 with `q=3` converges at second order (error 2.7e-2, 6.8e-3, 1.7e-3, 4.3e-4 for np/nt = 16/8 to 128/64). The phi-mode term for m >= 1 was validated only through that convergence test, not measured separately. Not wrapped or exercised: the non-periodic `?_sph_np`, partial spheres (the domain is fixed to the full sphere), `f32`, `q = 0`, other MKL versions, Windows, macOS, OpenMP/TBB, ILP64; `dpar` size is the documented-by-search formula padded 4x plus 200, not taken from the vendor docs.

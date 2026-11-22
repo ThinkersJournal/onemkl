@@ -375,3 +375,52 @@ fn helmholtz_3d_mixed_periodic_dirichlet_neumann_is_second_order() {
     assert!(e32 < 5e-2, "error {e32}");
     assert!((3.5..4.5).contains(&(e16 / e32)), "ratio {}", e16 / e32);
 }
+
+#[test]
+fn helmholtz_f32_reproduces_polynomials_2d_and_3d() {
+    use Boundary::*;
+    // 2-D: x Dirichlet, y Neumann, q = 3, u = x^2 - y^2 + xy + 1.
+    let (nx, ny) = (16usize, 8usize);
+    let (lx, ly, q) = (2.0_f32, 1.0_f32, 3.0_f32);
+    let (hx, hy) = (lx / nx as f32, ly / ny as f32);
+    let w = nx + 1;
+    let u = |x: f32, y: f32| x * x - y * y + x * y + 1.0;
+    let mut f = vec![0.0_f32; w * (ny + 1)];
+    for j in 0..=ny { for i in 0..=nx { f[i + j * w] = -q * u(i as f32 * hx, j as f32 * hy); } }
+    let ax: Vec<f32> = (0..=ny).map(|j| u(0.0, j as f32 * hy)).collect();
+    let bx: Vec<f32> = (0..=ny).map(|j| u(lx, j as f32 * hy)).collect();
+    let ay: Vec<f32> = (0..=nx).map(|i| -(i as f32 * hx)).collect();
+    let by: Vec<f32> = (0..=nx).map(|i| -2.0 * ly + i as f32 * hx).collect();
+    let mut s = Helmholtz2D::<f32>::new(
+        (0.0, lx), (0.0, ly), nx, ny, [Dirichlet, Dirichlet, Neumann, Neumann], q,
+    ).unwrap();
+    s.solve(&mut f, &ax, &bx, &ay, &by).unwrap();
+    for j in 0..=ny { for i in 0..=nx {
+        assert_abs_diff_eq!(f[i + j * w], u(i as f32 * hx, j as f32 * hy), epsilon = 2e-3);
+    }}
+
+    // 3-D: all Dirichlet, u = x^2 - y^2 + z^2 + xyz + 1, Δu = 2.
+    let n = 8usize;
+    let h = 1.0_f32 / n as f32;
+    let u3 = |x: f32, y: f32, z: f32| x * x - y * y + z * z + x * y * z + 1.0;
+    let w = n + 1;
+    let mut f = vec![2.0_f32; w * w * w];
+    let mut faces: Vec<Vec<f32>> = vec![vec![0.0; w * w]; 6];
+    for b in 0..w { for a in 0..w {
+        let (p, r) = (a as f32 * h, b as f32 * h);
+        faces[0][a + b * w] = u3(0.0, p, r); faces[1][a + b * w] = u3(1.0, p, r);
+        faces[2][a + b * w] = u3(p, 0.0, r); faces[3][a + b * w] = u3(p, 1.0, r);
+        faces[4][a + b * w] = u3(p, r, 0.0); faces[5][a + b * w] = u3(p, r, 1.0);
+    }}
+    let mut s = Helmholtz3D::<f32>::new(
+        (0.0, 1.0), (0.0, 1.0), (0.0, 1.0), n, n, n, [Dirichlet; 6], 0.0,
+    ).unwrap();
+    s.solve(&mut f, [&faces[0], &faces[1], &faces[2], &faces[3], &faces[4], &faces[5]]).unwrap();
+    for k in 0..=n { for j in 0..=n { for i in 0..=n {
+        assert_abs_diff_eq!(
+            f[i + j * w + k * w * w],
+            u3(i as f32 * h, j as f32 * h, k as f32 * h),
+            epsilon = 2e-3
+        );
+    }}}
+}

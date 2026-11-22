@@ -201,12 +201,12 @@ Every non-MPI domain at Comprehensive:
 - **FEAST Comprehensive**: full RCI interface.
 - **f16 support** (ranked below the rows above; additive, minor version):
   `impl Scalar` and `RealScalar` for `half::f16` behind an optional `half`
-  feature (`scalar.rs` is sealed, so downstream crates cannot), and a safe
-  f16-in/f32-out gemm over `gemm_f16f16f32` (f32 accumulate; MKL has no
-  plain f16 gemm besides `hgemm` / `gemm_f16f16f32` on `u16` bits). Check the
-  existing `mixed_precision::hgemm` before building. Reason: Fuel lost its
-  f16 hgemm when its old oneMKL code was removed. Source: CireSnave
-  2026-11-22.
+  feature (`scalar.rs` is sealed, so downstream crates cannot), so
+  `level3::gemm` accepts f16; optionally typed `half::f16` wrappers over the
+  existing `mixed_precision::{gemm_f16_f32, hgemm}`, which already exist
+  but take raw `u16` bits (`hgemm` needs `cols * ld` elements per operand:
+  document it). Reason: Fuel lost its f16 hgemm when its old oneMKL code
+  was removed. Source: CireSnave 2026-11-22.
 
 ### 0.6.0 — MPI domains
 

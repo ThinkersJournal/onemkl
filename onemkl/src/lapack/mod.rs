@@ -2523,3 +2523,138 @@ pub fn lacrm<T: ComplexAuxScalar>(
     };
     check_info(info)
 }
+
+/// Scalar types with the symmetric Bunch-Kaufman routines [`sytrf`] and
+/// [`syconv`] (real and complex *symmetric*, not Hermitian).
+#[allow(missing_docs)]
+pub trait SymConvScalar: Copy + 'static {
+    unsafe fn lapacke_sytrf(
+        layout: core::ffi::c_int,
+        uplo: core::ffi::c_char,
+        n: core::ffi::c_int,
+        a: *mut Self,
+        lda: core::ffi::c_int,
+        ipiv: *mut core::ffi::c_int,
+    ) -> i32;
+    #[allow(clippy::too_many_arguments)]
+    unsafe fn lapacke_syconv(
+        layout: core::ffi::c_int,
+        uplo: core::ffi::c_char,
+        way: core::ffi::c_char,
+        n: core::ffi::c_int,
+        a: *mut Self,
+        lda: core::ffi::c_int,
+        ipiv: *const core::ffi::c_int,
+        e: *mut Self,
+    ) -> i32;
+}
+
+macro_rules! impl_symconv {
+    ($t:ty, $ct:ty, $sytrf:ident, $syconv:ident) => {
+        impl SymConvScalar for $t {
+            unsafe fn lapacke_sytrf(
+                layout: core::ffi::c_int,
+                uplo: core::ffi::c_char,
+                n: core::ffi::c_int,
+                a: *mut Self,
+                lda: core::ffi::c_int,
+                ipiv: *mut core::ffi::c_int,
+            ) -> i32 {
+                unsafe { onemkl_sys::$sytrf(layout, uplo, n, a.cast::<$ct>(), lda, ipiv) }
+            }
+            unsafe fn lapacke_syconv(
+                layout: core::ffi::c_int,
+                uplo: core::ffi::c_char,
+                way: core::ffi::c_char,
+                n: core::ffi::c_int,
+                a: *mut Self,
+                lda: core::ffi::c_int,
+                ipiv: *const core::ffi::c_int,
+                e: *mut Self,
+            ) -> i32 {
+                unsafe {
+                    onemkl_sys::$syconv(layout, uplo, way, n, a.cast::<$ct>(), lda, ipiv, e.cast::<$ct>())
+                }
+            }
+        }
+    };
+}
+impl_symconv!(f32, f32, LAPACKE_ssytrf, LAPACKE_ssyconv);
+impl_symconv!(f64, f64, LAPACKE_dsytrf, LAPACKE_dsyconv);
+impl_symconv!(num_complex::Complex32, onemkl_sys::MKL_Complex8, LAPACKE_csytrf, LAPACKE_csyconv);
+impl_symconv!(num_complex::Complex64, onemkl_sys::MKL_Complex16, LAPACKE_zsytrf, LAPACKE_zsyconv);
+
+/// Direction of a [`syconv`] conversion.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SyconvWay {
+    /// `'C'` — convert the [`sytrf`] output into the factor `L` / `U`
+    /// (in `a`) and the off-diagonal entries of the block-diagonal `D`
+    /// (in `e`).
+    Convert,
+    /// `'R'` — revert a prior `Convert` back to the [`sytrf`] storage.
+    Revert,
+}
+
+/// Bunch-Kaufman factorization of a symmetric matrix, `A = U D Uᵀ` or
+/// `L D Lᵀ`, with `ipiv` encoding the pivots (negative entries mark 2x2
+/// blocks). Wraps `LAPACKE_*sytrf`. `ipiv` must hold at least `n` entries.
+pub fn sytrf<T: SymConvScalar>(uplo: UpLo, a: &mut MatrixMut<'_, T>, ipiv: &mut [i32]) -> Result<()> {
+    let n = a.rows();
+    if a.cols() != n {
+        return Err(Error::InvalidArgument("A must be square"));
+    }
+    if ipiv.len() < n {
+        return Err(Error::InvalidArgument("ipiv must have at least n entries"));
+    }
+    let info = unsafe {
+        T::lapacke_sytrf(
+            a.layout().as_lapack(),
+            uplo.as_char() as core::ffi::c_char,
+            dim_to_mkl_int(n)?,
+            a.as_mut_ptr(),
+            dim_to_mkl_int(a.leading_dim())?,
+            ipiv.as_mut_ptr(),
+        )
+    };
+    check_info(info)
+}
+
+/// Convert the output of [`sytrf`] to / from the split form (`L` or `U`
+/// in `a`, the off-diagonal of `D` in `e`). Wraps `LAPACKE_*syconv`.
+/// `ipiv` is the pivot array from [`sytrf`]; `e` must hold `n` entries
+/// (scratch for `Convert`, the saved values for `Revert`).
+pub fn syconv<T: SymConvScalar>(
+    uplo: UpLo,
+    way: SyconvWay,
+    a: &mut MatrixMut<'_, T>,
+    ipiv: &[i32],
+    e: &mut [T],
+) -> Result<()> {
+    let n = a.rows();
+    if a.cols() != n {
+        return Err(Error::InvalidArgument("A must be square"));
+    }
+    if ipiv.len() < n {
+        return Err(Error::InvalidArgument("ipiv must have at least n entries"));
+    }
+    if e.len() < n {
+        return Err(Error::InvalidArgument("e must have at least n entries"));
+    }
+    let way = match way {
+        SyconvWay::Convert => b'C',
+        SyconvWay::Revert => b'R',
+    };
+    let info = unsafe {
+        T::lapacke_syconv(
+            a.layout().as_lapack(),
+            uplo.as_char() as core::ffi::c_char,
+            way as core::ffi::c_char,
+            dim_to_mkl_int(n)?,
+            a.as_mut_ptr(),
+            dim_to_mkl_int(a.leading_dim())?,
+            ipiv.as_ptr(),
+            e.as_mut_ptr(),
+        )
+    };
+    check_info(info)
+}

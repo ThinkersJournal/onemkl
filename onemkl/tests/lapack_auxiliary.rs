@@ -5,11 +5,11 @@
 use approx::assert_abs_diff_eq;
 
 use onemkl::lapack::{
-    gecon, geqrf, getrf, lacgv, lacpy, lacrm, lange, larfb, larfg, larft, laswp, LacpyPart, MatrixNorm,
+    gecon, geqrf, getrf, syconv, sytrf, SyconvWay, lacgv, lacpy, lacrm, lange, larfb, larfg, larft, laswp, LacpyPart, MatrixNorm,
     ReflectorDirection, ReflectorStorage,
 };
 use onemkl::matrix::{MatrixMut, MatrixRef};
-use onemkl::{Layout, Side, Transpose};
+use onemkl::{Layout, Side, Transpose, UpLo};
 
 #[test]
 fn lacpy_full_matrix() {
@@ -216,4 +216,46 @@ fn lacrm_multiplies_complex_by_real() {
     let mut c_view = MatrixMut::new(&mut c, 2, 2, Layout::RowMajor).unwrap();
     lacrm(&a_ref, &b_ref, &mut c_view).unwrap();
     assert_eq!(c, vec![C::new(7.0, 1.0), C::new(10.0, 2.0), C::new(9.0, -3.0), C::new(12.0, -4.0)]);
+}
+
+/// Zero diagonal forces Bunch-Kaufman to take 2x2 pivots.
+fn syconv_roundtrip(uplo: UpLo, layout: Layout) {
+    let n = 4;
+    let full = [
+        [0.0_f64, 1.0, 2.0, 3.0],
+        [1.0, 0.0, 4.0, 5.0],
+        [2.0, 4.0, 0.0, 6.0],
+        [3.0, 5.0, 6.0, 0.0],
+    ];
+    let mut a = vec![0.0_f64; n * n];
+    for i in 0..n {
+        for j in 0..n {
+            let idx = match layout {
+                Layout::RowMajor => i * n + j,
+                Layout::ColMajor => j * n + i,
+            };
+            a[idx] = full[i][j];
+        }
+    }
+    let mut ipiv = vec![0_i32; n];
+    sytrf(uplo, &mut MatrixMut::new(&mut a, n, n, layout).unwrap(), &mut ipiv).unwrap();
+    assert!(ipiv.iter().any(|&p| p < 0), "expected a 2x2 pivot, ipiv = {ipiv:?}");
+
+    let factored = a.clone();
+    let mut e = vec![0.0_f64; n];
+    syconv(uplo, SyconvWay::Convert, &mut MatrixMut::new(&mut a, n, n, layout).unwrap(), &ipiv, &mut e).unwrap();
+    assert_ne!(a, factored, "Convert must change the buffer");
+    assert!(e.iter().any(|&x| x != 0.0), "2x2 pivot must leave off-diagonal D entries in e: {e:?}");
+
+    syconv(uplo, SyconvWay::Revert, &mut MatrixMut::new(&mut a, n, n, layout).unwrap(), &ipiv, &mut e).unwrap();
+    assert_eq!(a, factored, "Revert must restore the sytrf storage exactly");
+}
+
+#[test]
+fn syconv_roundtrip_all_variants() {
+    for uplo in [UpLo::Lower, UpLo::Upper] {
+        for layout in [Layout::RowMajor, Layout::ColMajor] {
+            syconv_roundtrip(uplo, layout);
+        }
+    }
 }

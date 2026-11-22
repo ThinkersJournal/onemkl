@@ -5,7 +5,7 @@
 use approx::assert_abs_diff_eq;
 
 use onemkl::lapack::{
-    gecon, geqrf, getrf, lacpy, lange, larfb, larfg, larft, laswp, LacpyPart, MatrixNorm,
+    gecon, geqrf, getrf, lacgv, lacpy, lacrm, lange, larfb, larfg, larft, laswp, LacpyPart, MatrixNorm,
     ReflectorDirection, ReflectorStorage,
 };
 use onemkl::matrix::{MatrixMut, MatrixRef};
@@ -192,4 +192,28 @@ fn larft_and_larfb_reproduce_the_qr_r_factor() {
     assert_abs_diff_eq!(c[1], 0.0, epsilon = 1e-12);
     assert_abs_diff_eq!(c[2], 0.0, epsilon = 1e-12);
     assert_abs_diff_eq!(c[5], 0.0, epsilon = 1e-12);
+}
+
+#[test]
+fn lacgv_conjugates_a_strided_complex_vector() {
+    use num_complex::Complex64 as C;
+    let mut x = vec![C::new(1.0, 2.0), C::new(9.0, 9.0), C::new(3.0, -4.0)];
+    lacgv(2, &mut x, 2).unwrap();
+    assert_eq!(x[0], C::new(1.0, -2.0));
+    assert_eq!(x[1], C::new(9.0, 9.0)); // untouched (skipped by the stride)
+    assert_eq!(x[2], C::new(3.0, 4.0));
+}
+
+#[test]
+fn lacrm_multiplies_complex_by_real() {
+    use num_complex::Complex64 as C;
+    // A = [[1+i, 2],[0, 3-i]], B = [[1,2],[3,4]] (row-major).
+    let a = vec![C::new(1.0, 1.0), C::new(2.0, 0.0), C::new(0.0, 0.0), C::new(3.0, -1.0)];
+    let b = vec![1.0_f64, 2.0, 3.0, 4.0];
+    let mut c = vec![C::new(0.0, 0.0); 4];
+    let a_ref = MatrixRef::new(&a, 2, 2, Layout::RowMajor).unwrap();
+    let b_ref = MatrixRef::new(&b, 2, 2, Layout::RowMajor).unwrap();
+    let mut c_view = MatrixMut::new(&mut c, 2, 2, Layout::RowMajor).unwrap();
+    lacrm(&a_ref, &b_ref, &mut c_view).unwrap();
+    assert_eq!(c, vec![C::new(7.0, 1.0), C::new(10.0, 2.0), C::new(9.0, -3.0), C::new(12.0, -4.0)]);
 }

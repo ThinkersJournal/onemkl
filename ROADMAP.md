@@ -156,7 +156,7 @@ account for the vast majority of downstream use:
 - **LAPACK Comprehensive**: ~~core auxiliary routines (`?lacpy`,
   `?lange`, `?gecon`, `?larfg`, `?laswp`)~~ (done in
   `lapack::{lacpy, lange, gecon, laswp, larfg}`); remaining
-  auxiliary set (`?lacgv`, `?lacrm`, `?syconv`, ~~`?larft`, `?larfb`~~ (done — `lapack::{larft, larfb}`),
+  auxiliary set (~~`?lacgv`, `?lacrm`~~ (done), `?syconv`, ~~`?larft`, `?larfb`~~ (done — `lapack::{larft, larfb}`),
   etc.), Netlib-compatibility additions, `?tppack` / `?tpunpack`.
 - **Sparse Comprehensive**: ~~matrix manipulation
   (`mkl_sparse_*_add`, `mkl_sparse_*_spmm`,

@@ -2428,3 +2428,98 @@ pub fn larfb<T: LapackScalar>(
     };
     check_info(info)
 }
+
+/// Complex scalar types with the complex-only auxiliary routines
+/// (`?lacgv`, `?lacrm`).
+#[allow(missing_docs)]
+pub trait ComplexAuxScalar: Copy + 'static {
+    /// The matching real scalar (`f32` for `Complex32`, `f64` for `Complex64`).
+    type Real: Copy + 'static;
+    unsafe fn lapacke_lacgv(n: core::ffi::c_int, x: *mut Self, incx: core::ffi::c_int) -> i32;
+    #[allow(clippy::too_many_arguments)]
+    unsafe fn lapacke_lacrm(
+        layout: core::ffi::c_int,
+        m: core::ffi::c_int,
+        n: core::ffi::c_int,
+        a: *const Self,
+        lda: core::ffi::c_int,
+        b: *const Self::Real,
+        ldb: core::ffi::c_int,
+        c: *mut Self,
+        ldc: core::ffi::c_int,
+    ) -> i32;
+}
+
+macro_rules! impl_complex_aux {
+    ($c:ty, $r:ty, $ct:ty, $lacgv:ident, $lacrm:ident) => {
+        impl ComplexAuxScalar for $c {
+            type Real = $r;
+            unsafe fn lapacke_lacgv(n: core::ffi::c_int, x: *mut Self, incx: core::ffi::c_int) -> i32 {
+                unsafe { onemkl_sys::$lacgv(n, x.cast::<$ct>(), incx) }
+            }
+            unsafe fn lapacke_lacrm(
+                layout: core::ffi::c_int,
+                m: core::ffi::c_int,
+                n: core::ffi::c_int,
+                a: *const Self,
+                lda: core::ffi::c_int,
+                b: *const $r,
+                ldb: core::ffi::c_int,
+                c: *mut Self,
+                ldc: core::ffi::c_int,
+            ) -> i32 {
+                unsafe {
+                    onemkl_sys::$lacrm(layout, m, n, a.cast::<$ct>(), lda, b, ldb, c.cast::<$ct>(), ldc)
+                }
+            }
+        }
+    };
+}
+impl_complex_aux!(num_complex::Complex32, f32, onemkl_sys::MKL_Complex8, LAPACKE_clacgv, LAPACKE_clacrm);
+impl_complex_aux!(num_complex::Complex64, f64, onemkl_sys::MKL_Complex16, LAPACKE_zlacgv, LAPACKE_zlacrm);
+
+/// Conjugate `n` elements of a complex vector in place (stride `incx`,
+/// which may be negative). Wraps `LAPACKE_*lacgv`.
+pub fn lacgv<T: ComplexAuxScalar>(n: usize, x: &mut [T], incx: i32) -> Result<()> {
+    if incx == 0 {
+        return Err(Error::InvalidArgument("incx must be non-zero"));
+    }
+    if n > 0 && x.len() < 1 + (n - 1) * incx.unsigned_abs() as usize {
+        return Err(Error::InvalidArgument("x is too short for n elements at stride incx"));
+    }
+    // LAPACKE reads the vector starting at x[0] for a positive stride and
+    // at the far end for a negative one, exactly as the reference does.
+    let info = unsafe { T::lapacke_lacgv(dim_to_mkl_int(n)?, x.as_mut_ptr(), incx) };
+    check_info(info)
+}
+
+/// Complex-by-real matrix product `C := A * B`, with `A` and `C` complex
+/// `m x n` and `B` real `n x n`. Wraps `LAPACKE_*lacrm`.
+pub fn lacrm<T: ComplexAuxScalar>(
+    a: &MatrixRef<'_, T>,
+    b: &MatrixRef<'_, T::Real>,
+    c: &mut MatrixMut<'_, T>,
+) -> Result<()> {
+    let (m, n) = (a.rows(), a.cols());
+    if b.rows() != n || b.cols() != n {
+        return Err(Error::InvalidArgument("B must be n x n for an m x n A"));
+    }
+    if c.rows() != m || c.cols() != n {
+        return Err(Error::InvalidArgument("C must have the shape of A"));
+    }
+    let layout = ensure_layout(&[a.layout(), b.layout(), c.layout()])?;
+    let info = unsafe {
+        T::lapacke_lacrm(
+            layout.as_lapack(),
+            dim_to_mkl_int(m)?,
+            dim_to_mkl_int(n)?,
+            a.as_ptr(),
+            dim_to_mkl_int(a.leading_dim())?,
+            b.as_ptr(),
+            dim_to_mkl_int(b.leading_dim())?,
+            c.as_mut_ptr(),
+            dim_to_mkl_int(c.leading_dim())?,
+        )
+    };
+    check_info(info)
+}

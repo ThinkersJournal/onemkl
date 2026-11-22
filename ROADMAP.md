@@ -182,8 +182,8 @@ specialized ones:
   staggered)~~ (done — `TrigTransform<T>` in `pde`); ~~Cartesian
   Poisson / Helmholtz (2-D / 3-D, Dirichlet / Neumann / periodic)~~
   (done — `Helmholtz2D` / `Helmholtz3D`); ~~periodic spherical
-  Helmholtz~~ (done — `SphericalHelmholtz`, full sphere); non-periodic
-  spherical (`?_sph_np`) and partial spheres remain.
+  Helmholtz~~ (done — `SphericalHelmholtz`, full sphere); ~~non-periodic
+  spherical (`?_sph_np`)~~ (done — `SphericalPatchHelmholtz`, Dirichlet patch away from the poles); polar caps and non-Dirichlet patch sides remain.
 - **Compact BLAS / LAPACK**: ~~full set (`mkl_?gepack_compact`,
   `mkl_?geunpack_compact`, `mkl_?get_size_compact`, `*_potrf`,
   `*_getrfnp`, `*_geqrf`, `*_getrinp`)~~ (done, f32/f64).

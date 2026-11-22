@@ -466,3 +466,95 @@ fn spherical_helmholtz_is_second_order() {
         assert!((3.0..5.0).contains(&(a / b)), "ratio {}", a / b);
     }
 }
+
+use onemkl::pde::SphericalPatchHelmholtz;
+
+const PATCH: (f64, f64, f64, f64) = (0.3, 2.0, 0.6, 2.4); // ap, bp, at, bt
+
+fn patch_u(t: f64, p: f64) -> f64 {
+    t.cos() + 0.5 * t.sin() * t.cos() * p.cos() + 0.25 * t.sin().powi(2) * (2.0 * p).cos()
+}
+
+/// Max interior error vs the continuous solution; boundary data = exact `u`.
+fn patch_error<T: onemkl::pde::HelmholtzScalar>(np: usize, nt: usize) -> f64 {
+    let (ap, bp, at, bt) = PATCH;
+    let q = 3.0;
+    let w = np + 1;
+    let rhs = |t: f64, p: f64| {
+        -(2.0 + q) * t.cos()
+            - (6.0 + q) * 0.5 * t.sin() * t.cos() * p.cos()
+            - (6.0 + q) * 0.25 * t.sin().powi(2) * (2.0 * p).cos()
+    };
+    let node = |i: usize, j: usize| (at + j as f64 * (bt - at) / nt as f64, ap + i as f64 * (bp - ap) / np as f64);
+    let mut f = vec![T::default(); w * (nt + 1)];
+    for j in 0..=nt {
+        for i in 0..=np {
+            let (t, p) = node(i, j);
+            let boundary = i == 0 || i == np || j == 0 || j == nt;
+            f[i + j * w] = T::from_f64(if boundary { patch_u(t, p) } else { rhs(t, p) });
+        }
+    }
+    let mut s = SphericalPatchHelmholtz::<T>::new(ap, bp, at, bt, np, nt, T::from_f64(q)).unwrap();
+    s.solve(&mut f).unwrap();
+    let mut e = 0.0_f64;
+    for j in 0..=nt {
+        for i in 0..=np {
+            let (t, p) = node(i, j);
+            e = e.max((f[i + j * w].to_f64() - patch_u(t, p)).abs());
+        }
+    }
+    e
+}
+
+#[test]
+fn spherical_patch_is_second_order() {
+    let e: Vec<f64> = [(16, 8), (32, 16), (64, 32), (128, 64)].iter().map(|&(a, b)| patch_error::<f64>(a, b)).collect();
+    eprintln!("patch errors {e:?}");
+    assert!(e[3] < 1e-3, "error {}", e[3]);
+    for k in 0..3 {
+        assert!((3.0..5.0).contains(&(e[k] / e[k + 1])), "ratio {}", e[k] / e[k + 1]);
+    }
+}
+
+#[test]
+fn spherical_patch_f32_converges() {
+    let e = patch_error::<f32>(64, 32);
+    assert!(e < 2e-3, "f32 error {e}");
+}
+
+/// Exact check of the wrapper's discrete model: apply the discrete operator
+/// to an arbitrary grid function (non-zero boundary), solve, recover it.
+#[test]
+fn spherical_patch_reproduces_a_discrete_solution() {
+    let (ap, bp, at, bt) = PATCH;
+    let (np, nt, q) = (10usize, 7usize, 2.5_f64);
+    let w = np + 1;
+    let (hp, ht) = ((bp - ap) / np as f64, (bt - at) / nt as f64);
+    let s = |j: usize| (at + j as f64 * ht).sin();
+    let u: Vec<f64> = (0..w * (nt + 1)).map(|k| ((k * 37 % 101) as f64) / 50.0 - 1.0).collect();
+    let mut f = u.clone();
+    for j in 1..nt {
+        let (sj, sp, sm) = (s(j), 0.5 * (s(j) + s(j + 1)), 0.5 * (s(j) + s(j - 1)));
+        for i in 1..np {
+            let k = i + j * w;
+            let au = ht * ht * sj * q * u[k]
+                + sp * (u[k] - u[k + w]) + sm * (u[k] - u[k - w])
+                + ht * ht / (sj * hp * hp) * (2.0 * u[k] - u[k - 1] - u[k + 1]);
+            f[k] = -au / (ht * ht * sj);
+        }
+    }
+    let mut sol = SphericalPatchHelmholtz::<f64>::new(ap, bp, at, bt, np, nt, q).unwrap();
+    sol.solve(&mut f).unwrap();
+    for k in 0..f.len() {
+        assert!((f[k] - u[k]).abs() < 1e-10, "node {k}: {} vs {}", f[k], u[k]);
+    }
+}
+
+#[test]
+fn spherical_patch_rejects_poles_and_bad_sizes() {
+    let pi = std::f64::consts::PI;
+    assert!(SphericalPatchHelmholtz::<f64>::new(0.0, 1.0, 0.0, 1.0, 8, 8, 1.0).is_err());
+    assert!(SphericalPatchHelmholtz::<f64>::new(0.0, 1.0, 1.0, pi, 8, 8, 1.0).is_err());
+    assert!(SphericalPatchHelmholtz::<f64>::new(1.0, 1.0, 0.5, 1.0, 8, 8, 1.0).is_err());
+    assert!(SphericalPatchHelmholtz::<f64>::new(0.0, 1.0, 0.5, 1.0, 1, 8, 1.0).is_err());
+}

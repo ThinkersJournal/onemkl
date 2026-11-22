@@ -387,10 +387,23 @@ pub trait HelmholtzScalar: Copy + Default + 'static {
         f: *mut Self, h1: *mut DFTI_DESCRIPTOR_HANDLE, h2: *mut DFTI_DESCRIPTOR_HANDLE,
         ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
     );
+    unsafe fn init_sph_np(
+        lim: [*const Self; 4], np: *const c_int, nt: *const c_int, q: *const Self,
+        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+    );
+    unsafe fn commit_sph_np(
+        f: *mut Self, h: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+    );
+    unsafe fn solve_sph_np(
+        f: *mut Self, h: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+    );
+    unsafe fn free_sph_np(h: *mut DFTI_DESCRIPTOR_HANDLE, ipar: *mut c_int, stat: *mut c_int);
 }
 
 macro_rules! impl_helmholtz_scalar {
-    ($t:ty, $init:ident, $commit:ident, $solve:ident, $init3:ident, $commit3:ident, $solve3:ident, $inits:ident, $commits:ident, $solves:ident) => {
+    ($t:ty, $init:ident, $commit:ident, $solve:ident, $init3:ident, $commit3:ident, $solve3:ident, $inits:ident, $commits:ident, $solves:ident, $initn:ident, $commitn:ident, $solven:ident) => {
         impl HelmholtzScalar for $t {
             fn to_f64(self) -> f64 { self as f64 }
             fn from_f64(v: f64) -> Self { v as $t }
@@ -461,11 +474,32 @@ macro_rules! impl_helmholtz_scalar {
             ) {
                 unsafe { sys::$solves(f, h1, h2, ipar, dpar, stat) }
             }
+            unsafe fn init_sph_np(
+                l: [*const Self; 4], np: *const c_int, nt: *const c_int, q: *const Self,
+                ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+            ) {
+                unsafe { sys::$initn(l[0], l[1], l[2], l[3], np, nt, q, ipar, dpar, stat) }
+            }
+            unsafe fn commit_sph_np(
+                f: *mut Self, h: *mut DFTI_DESCRIPTOR_HANDLE,
+                ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+            ) {
+                unsafe { sys::$commitn(f, h, ipar, dpar, stat) }
+            }
+            unsafe fn solve_sph_np(
+                f: *mut Self, h: *mut DFTI_DESCRIPTOR_HANDLE,
+                ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+            ) {
+                unsafe { sys::$solven(f, h, ipar, dpar, stat) }
+            }
+            unsafe fn free_sph_np(h: *mut DFTI_DESCRIPTOR_HANDLE, ipar: *mut c_int, stat: *mut c_int) {
+                unsafe { sys::free_sph_np(h, ipar, stat) }
+            }
         }
     };
 }
-impl_helmholtz_scalar!(f32, s_init_helmholtz_2d, s_commit_helmholtz_2d, s_helmholtz_2d, s_init_helmholtz_3d, s_commit_helmholtz_3d, s_helmholtz_3d, s_init_sph_p, s_commit_sph_p, s_sph_p);
-impl_helmholtz_scalar!(f64, d_init_helmholtz_2d, d_commit_helmholtz_2d, d_helmholtz_2d, d_init_helmholtz_3d, d_commit_helmholtz_3d, d_helmholtz_3d, d_init_sph_p, d_commit_sph_p, d_sph_p);
+impl_helmholtz_scalar!(f32, s_init_helmholtz_2d, s_commit_helmholtz_2d, s_helmholtz_2d, s_init_helmholtz_3d, s_commit_helmholtz_3d, s_helmholtz_3d, s_init_sph_p, s_commit_sph_p, s_sph_p, s_init_sph_np, s_commit_sph_np, s_sph_np);
+impl_helmholtz_scalar!(f64, d_init_helmholtz_2d, d_commit_helmholtz_2d, d_helmholtz_2d, d_init_helmholtz_3d, d_commit_helmholtz_3d, d_helmholtz_3d, d_init_sph_p, d_commit_sph_p, d_sph_p, d_init_sph_np, d_commit_sph_np, d_sph_np);
 
 /// Index range of the unknown nodes along one axis of `n` intervals
 /// for the boundary pair `(lo, hi)`: Dirichlet nodes are fixed,
@@ -1013,5 +1047,140 @@ impl<T: HelmholtzScalar> Drop for SphericalHelmholtz<T> {
         unsafe {
             sys::free_sph_p(&mut self.h1, &mut self.h2, self.ipar.as_mut_ptr(), &mut stat);
         }
+    }
+}
+
+/// Helmholtz solver `Δ_S u − q·u = F` on a patch of the sphere surface,
+/// `φ ∈ [ap, bp]`, `θ ∈ [at, bt]` with `0 < at < bt < π` (no pole), with
+/// Dirichlet data on all four sides, wrapping MKL's non-periodic spherical
+/// solver (`?_sph_np`).
+///
+/// Node `(i, j)` (`φ = ap + (bp−ap)·i/np`, `θ = at + (bt−at)·j/nt`) is
+/// `f[i + j*(np+1)]`. On entry the interior nodes hold `F` and the boundary
+/// nodes (`i = 0`, `i = np`, `j = 0`, `j = nt`) hold the Dirichlet data `g`;
+/// on exit the interior holds `u` and the boundary is unchanged.
+///
+/// **Measured MKL behaviour** (oneMKL 2026.2.1, Linux x86_64, LP64): argument
+/// order `(ap, bp, at, bt)`; the interior block (`1 ≤ i < np`, `1 ≤ j < nt`)
+/// of the solver matrix is the inverse of
+/// `hθ²·sinθⱼ·q + (sₚ + sₘ)` on the diagonal, `−sₚ`/`−sₘ` to the θ
+/// neighbours (`sₚ`, `sₘ` the averaged node sines at `θⱼ ± hθ/2`) and
+/// `2hθ²/(sinθⱼ·hφ²)` on the diagonal / `−hθ²/(sinθⱼ·hφ²)` to the φ
+/// neighbours (agreement with a dense model 1e-15 on 2 domains at
+/// np = 6, nt = 4). MKL treats the boundary rows and columns as decoupled
+/// lines carrying no usable boundary condition (`j = 0, nt` pass `f`
+/// through; `i = 0, np` are solved as θ-only problems), so the wrapper moves
+/// the Dirichlet data into the right-hand side itself and never uses MKL's
+/// boundary output. The mapping is `f = −hθ²·sinθⱼ·F` plus that lift.
+pub struct SphericalPatchHelmholtz<T: HelmholtzScalar> {
+    h: DFTI_DESCRIPTOR_HANDLE,
+    ipar: Vec<c_int>,
+    dpar: Vec<T>,
+    np: usize,
+    nt: usize,
+    hp: f64,
+    ht: f64,
+    at: f64,
+    committed: bool,
+}
+
+unsafe impl<T: HelmholtzScalar + Send> Send for SphericalPatchHelmholtz<T> {}
+
+impl<T: HelmholtzScalar> SphericalPatchHelmholtz<T> {
+    /// Build a solver for the patch `[ap, bp] × [at, bt]` with `np` × `nt`
+    /// intervals (`np ≥ 2`, `nt ≥ 2`, `0 < at < bt < π`, `ap < bp`).
+    pub fn new(ap: f64, bp: f64, at: f64, bt: f64, np: usize, nt: usize, q: T) -> Result<Self> {
+        if np < 2 || nt < 2 {
+            return Err(Error::InvalidArgument("np and nt must be at least 2"));
+        }
+        if !(ap < bp) || !(0.0 < at && at < bt && bt < core::f64::consts::PI) {
+            return Err(Error::InvalidArgument("need ap < bp and 0 < at < bt < pi"));
+        }
+        let np_i: c_int = np.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let nt_i: c_int = nt.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let lim = [T::from_f64(ap), T::from_f64(bp), T::from_f64(at), T::from_f64(bt)];
+        let mut ipar: Vec<c_int> = vec![0; 128];
+        let mut dpar: Vec<T> = vec![T::default(); 4 * (5 * np / 2 + nt + 10) + 200];
+        let mut stat: c_int = 0;
+        unsafe {
+            T::init_sph_np(
+                [&lim[0], &lim[1], &lim[2], &lim[3]], &np_i, &nt_i, &q,
+                ipar.as_mut_ptr(), dpar.as_mut_ptr(), &mut stat,
+            );
+        }
+        check_tr(stat)?;
+        Ok(Self {
+            h: ptr::null_mut(),
+            ipar,
+            dpar,
+            np,
+            nt,
+            hp: (bp - ap) / np as f64,
+            ht: (bt - at) / nt as f64,
+            at,
+            committed: false,
+        })
+    }
+
+    /// Required grid length, `(np + 1) * (nt + 1)`.
+    #[must_use]
+    pub fn grid_len(&self) -> usize {
+        (self.np + 1) * (self.nt + 1)
+    }
+
+    /// Solve in place (see the type docs for what `f` holds on entry / exit).
+    pub fn solve(&mut self, f: &mut [T]) -> Result<()> {
+        if f.len() < self.grid_len() {
+            return Err(Error::InvalidArgument("grid buffer too small"));
+        }
+        let (np, nt) = (self.np, self.nt);
+        let w = np + 1;
+        let (hp, ht) = (self.hp, self.ht);
+        let sin_at = |j: usize| (self.at + j as f64 * ht).sin();
+        let g: Vec<f64> = f[..self.grid_len()].iter().map(|v| v.to_f64()).collect();
+        let mut rhs = vec![T::default(); self.grid_len()];
+        for j in 1..nt {
+            let sj = sin_at(j);
+            let sp = 0.5 * (sj + sin_at(j + 1));
+            let sm = 0.5 * (sj + sin_at(j - 1));
+            let c = ht * ht / (sj * hp * hp);
+            for i in 1..np {
+                let mut v = -ht * ht * sj * g[i + j * w];
+                if j == 1 { v += sm * g[i]; }
+                if j == nt - 1 { v += sp * g[i + nt * w]; }
+                if i == 1 { v += c * g[j * w]; }
+                if i == np - 1 { v += c * g[np + j * w]; }
+                rhs[i + j * w] = T::from_f64(v);
+            }
+        }
+        let mut stat: c_int = 0;
+        if !self.committed {
+            let mut probe = rhs.clone();
+            unsafe {
+                T::commit_sph_np(probe.as_mut_ptr(), &mut self.h, self.ipar.as_mut_ptr(), self.dpar.as_mut_ptr(), &mut stat);
+            }
+            check_tr(stat)?;
+            self.committed = true;
+        }
+        unsafe {
+            T::solve_sph_np(rhs.as_mut_ptr(), &mut self.h, self.ipar.as_mut_ptr(), self.dpar.as_mut_ptr(), &mut stat);
+        }
+        check_tr(stat)?;
+        for j in 1..nt {
+            for i in 1..np {
+                f[i + j * w] = rhs[i + j * w];
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<T: HelmholtzScalar> Drop for SphericalPatchHelmholtz<T> {
+    fn drop(&mut self) {
+        if self.h.is_null() {
+            return;
+        }
+        let mut stat: c_int = 0;
+        unsafe { T::free_sph_np(&mut self.h, self.ipar.as_mut_ptr(), &mut stat) };
     }
 }

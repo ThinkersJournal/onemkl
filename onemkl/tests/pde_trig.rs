@@ -424,3 +424,45 @@ fn helmholtz_f32_reproduces_polynomials_2d_and_3d() {
         );
     }}}
 }
+
+use onemkl::pde::SphericalHelmholtz;
+
+/// Max error of `Δ_S u - q u = F` for a sum of spherical harmonics
+/// Y_1^0 (cos t), Y_2^1 (sin t cos t cos p) and Y_2^2 (sin^2 t cos 2p).
+fn sph_error(np: usize, nt: usize) -> f64 {
+    let pi = std::f64::consts::PI;
+    let q = 3.0;
+    let w = np + 1;
+    let u = |t: f64, p: f64| {
+        t.cos() + 0.5 * t.sin() * t.cos() * p.cos() + 0.25 * t.sin().powi(2) * (2.0 * p).cos()
+    };
+    // Laplace-Beltrami eigenvalues -l(l+1): -2, -6, -6.
+    let rhs = |t: f64, p: f64| {
+        -(2.0 + q) * t.cos()
+            - (6.0 + q) * 0.5 * t.sin() * t.cos() * p.cos()
+            - (6.0 + q) * 0.25 * t.sin().powi(2) * (2.0 * p).cos()
+    };
+    let mut f = vec![0.0; w * (nt + 1)];
+    for j in 0..=nt { for i in 0..=np {
+        f[i + j * w] = rhs(j as f64 * pi / nt as f64, i as f64 * 2.0 * pi / np as f64);
+    }}
+    let mut s = SphericalHelmholtz::<f64>::new(np, nt, q).unwrap();
+    s.solve(&mut f).unwrap();
+    let mut e = 0.0_f64;
+    for j in 0..=nt { for i in 0..=np {
+        let want = u(j as f64 * pi / nt as f64, i as f64 * 2.0 * pi / np as f64);
+        e = e.max((f[i + j * w] - want).abs());
+    }}
+    e
+}
+
+#[test]
+fn spherical_helmholtz_is_second_order() {
+    let (e1, e2) = (sph_error(16, 8), sph_error(32, 16));
+    let (e3, e4) = (sph_error(64, 32), sph_error(128, 64));
+    eprintln!("sph errors {e1:e} {e2:e} {e3:e} {e4:e}");
+    assert!(e4 < 1e-3, "error {e4}");
+    for (a, b) in [(e1, e2), (e2, e3), (e3, e4)] {
+        assert!((3.0..5.0).contains(&(a / b)), "ratio {}", a / b);
+    }
+}

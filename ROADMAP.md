@@ -173,9 +173,8 @@ specialized ones:
 
 - **Optimization**: ~~`?trnlsp_get` with full return shape (initial /
   final residual norms), `?jacobi` direct caller~~ (done — residual
-  norms in `TrnlsResult`, `djacobi_with_callback`); `?trnlsp_check`
-  validation (currently subsumed by `_init`), ~~`?jacobix` (Jacobian
-  with central differences)~~ (done — `numerical_jacobian_central`, double only), session API for step-by-step driving.
+  norms in `TrnlsResult`, `djacobi_with_callback`); ~~`?trnlsp_check`~~ (done — `TrnlsSession::check`), ~~`?jacobix` (Jacobian
+  with central differences)~~ (done — `numerical_jacobian_central`, double only), ~~session API for step-by-step driving~~ (done — `TrnlsSession`, unconstrained only).
 - **Service**: ~~CBWR (`mkl_cbwr_*`)~~ (done — `cbwr_set` / `cbwr_set_strict` / `cbwr_branch` / `cbwr_strict` / `cbwr_auto_branch`), ~~`mkl_set_progress`,
   `mkl_set_xerbla`~~ (done — `set_progress_handler` / `set_xerbla_handler`), ~~`mkl_set_pardiso_pivot`~~ (done — `pardiso::set_pardiso_pivot_callback`, raw unsafe form),
   ~~`mkl_enable_instructions`~~ (done — `enable_instructions`), ~~single-dynamic-library control~~ (done — `link-rt`, `set_interface_layer` / `set_threading_layer`; Linux only measured).

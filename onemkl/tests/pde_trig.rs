@@ -238,3 +238,140 @@ fn helmholtz_3d_nonzero_dirichlet_data_is_exact_for_polynomials() {
         assert_abs_diff_eq!(f[i + j * wx + k * wx * wy], want, epsilon = 1e-9);
     }}}
 }
+
+
+#[test]
+fn helmholtz_2d_neumann_data_is_exact_for_quadratics() {
+    // x: Dirichlet, y: Neumann (outward normal derivative), q = 3,
+    // u = x^2 - y^2 + xy + 1 (harmonic) on [0,2]x[0,1], 16x8.
+    let (nx, ny) = (16usize, 8usize);
+    let (lx, ly, q) = (2.0_f64, 1.0_f64, 3.0_f64);
+    let (hx, hy) = (lx / nx as f64, ly / ny as f64);
+    let w = nx + 1;
+    let u = |x: f64, y: f64| x * x - y * y + x * y + 1.0;
+    let mut f = vec![0.0; w * (ny + 1)];
+    for j in 0..=ny { for i in 0..=nx {
+        f[i + j * w] = -q * u(i as f64 * hx, j as f64 * hy);
+    }}
+    let ax: Vec<f64> = (0..=ny).map(|j| u(0.0, j as f64 * hy)).collect();
+    let bx: Vec<f64> = (0..=ny).map(|j| u(lx, j as f64 * hy)).collect();
+    // du/dy = -2y + x; outward normal at y = 0 is -y.
+    let ay: Vec<f64> = (0..=nx).map(|i| -(i as f64 * hx)).collect();
+    let by: Vec<f64> = (0..=nx).map(|i| -2.0 * ly + i as f64 * hx).collect();
+    let bc = [Boundary::Dirichlet, Boundary::Dirichlet, Boundary::Neumann, Boundary::Neumann];
+    let mut s = Helmholtz2D::<f64>::new((0.0, lx), (0.0, ly), nx, ny, bc, q).unwrap();
+    s.solve(&mut f, &ax, &bx, &ay, &by).unwrap();
+    for j in 0..=ny { for i in 0..=nx {
+        assert_abs_diff_eq!(f[i + j * w], u(i as f64 * hx, j as f64 * hy), epsilon = 1e-9);
+    }}
+}
+
+fn conv_2d(n: usize, bc: [Boundary; 4]) -> f64 {
+    // x periodic (or Neumann), y Dirichlet (or Neumann); q = 3.
+    let pi = std::f64::consts::PI;
+    let h = 1.0 / n as f64;
+    let w = n + 1;
+    let q = 3.0;
+    let (u, lam): (Box<dyn Fn(f64, f64) -> f64>, f64) = if bc[0] == Boundary::Periodic {
+        (Box::new(move |x, y| (2.0 * pi * x).sin() * (pi * y).sin()), 5.0 * pi * pi)
+    } else {
+        (Box::new(move |x, y| (pi * x).cos() * (pi * y).cos()), 2.0 * pi * pi)
+    };
+    let mut f = vec![0.0; w * w];
+    for j in 0..=n { for i in 0..=n {
+        f[i + j * w] = -(lam + q) * u(i as f64 * h, j as f64 * h);
+    }}
+    let z = vec![0.0; w];
+    let mut s = Helmholtz2D::<f64>::new((0.0, 1.0), (0.0, 1.0), n, n, bc, q).unwrap();
+    s.solve(&mut f, &z, &z, &z, &z).unwrap();
+    let mut e = 0.0_f64;
+    for j in 0..=n { for i in 0..=n {
+        e = e.max((f[i + j * w] - u(i as f64 * h, j as f64 * h)).abs());
+    }}
+    e
+}
+
+#[test]
+fn helmholtz_2d_periodic_and_neumann_are_second_order() {
+    use Boundary::*;
+    for bc in [[Periodic, Periodic, Dirichlet, Dirichlet], [Neumann; 4], [Dirichlet, Dirichlet, Periodic, Periodic]] {
+        if bc[2] == Periodic {
+            continue; // the sin(pi y) factor above is not y-periodic
+        }
+        let (e16, e32) = (conv_2d(16, bc), conv_2d(32, bc));
+        let ratio = e16 / e32;
+        assert!(e32 < 5e-3, "{bc:?}: error {e32}");
+        assert!((3.5..4.5).contains(&ratio), "{bc:?}: ratio {ratio}");
+    }
+}
+
+#[test]
+fn helmholtz_3d_neumann_data_is_exact_for_polynomials() {
+    // x, z Dirichlet; y Neumann. u = x^2 - y^2 + z^2 + xyz + 1, Δu = 2,
+    // q = 0 (nonsingular because of the Dirichlet faces).
+    let (nx, ny, nz) = (8usize, 8usize, 4usize);
+    let (lx, ly, lz) = (1.0_f64, 1.0_f64, 1.0_f64);
+    let (hx, hy, hz) = (lx / nx as f64, ly / ny as f64, lz / nz as f64);
+    let u = |x: f64, y: f64, z: f64| x * x - y * y + z * z + x * y * z + 1.0;
+    let (wx, wy) = (nx + 1, ny + 1);
+    let mut f = vec![2.0; wx * wy * (nz + 1)];
+    let mut ax = vec![0.0; wy * (nz + 1)];
+    let mut bx = ax.clone();
+    for k in 0..=nz { for j in 0..=ny {
+        ax[j + k * wy] = u(0.0, j as f64 * hy, k as f64 * hz);
+        bx[j + k * wy] = u(lx, j as f64 * hy, k as f64 * hz);
+    }}
+    // du/dy = -2y + xz; outward normal at y = 0 is -y.
+    let mut ay = vec![0.0; wx * (nz + 1)];
+    let mut by = ay.clone();
+    for k in 0..=nz { for i in 0..=nx {
+        let (x, z) = (i as f64 * hx, k as f64 * hz);
+        ay[i + k * wx] = -(x * z);
+        by[i + k * wx] = -2.0 * ly + x * z;
+    }}
+    let mut az = vec![0.0; wx * wy];
+    let mut bz = az.clone();
+    for j in 0..=ny { for i in 0..=nx {
+        az[i + j * wx] = u(i as f64 * hx, j as f64 * hy, 0.0);
+        bz[i + j * wx] = u(i as f64 * hx, j as f64 * hy, lz);
+    }}
+    use Boundary::*;
+    let bc = [Dirichlet, Dirichlet, Neumann, Neumann, Dirichlet, Dirichlet];
+    let mut s = Helmholtz3D::<f64>::new((0.0, lx), (0.0, ly), (0.0, lz), nx, ny, nz, bc, 0.0).unwrap();
+    s.solve(&mut f, [&ax, &bx, &ay, &by, &az, &bz]).unwrap();
+    for k in 0..=nz { for j in 0..=ny { for i in 0..=nx {
+        assert_abs_diff_eq!(
+            f[i + j * wx + k * wx * wy],
+            u(i as f64 * hx, j as f64 * hy, k as f64 * hz),
+            epsilon = 1e-9
+        );
+    }}}
+}
+
+#[test]
+fn helmholtz_3d_mixed_periodic_dirichlet_neumann_is_second_order() {
+    use Boundary::*;
+    fn err(n: usize) -> f64 {
+        let pi = std::f64::consts::PI;
+        let h = 1.0 / n as f64;
+        let w = n + 1;
+        let q = 3.0;
+        let u = |x: f64, y: f64, z: f64| (2.0 * pi * x).sin() * (pi * y).sin() * (pi * z).cos();
+        let mut f = vec![0.0; w * w * w];
+        for k in 0..=n { for j in 0..=n { for i in 0..=n {
+            f[i + j * w + k * w * w] = -(6.0 * pi * pi + q) * u(i as f64 * h, j as f64 * h, k as f64 * h);
+        }}}
+        let z = vec![0.0; w * w];
+        let bc = [Periodic, Periodic, Dirichlet, Dirichlet, Neumann, Neumann];
+        let mut s = Helmholtz3D::<f64>::new((0.0, 1.0), (0.0, 1.0), (0.0, 1.0), n, n, n, bc, q).unwrap();
+        s.solve(&mut f, [&z, &z, &z, &z, &z, &z]).unwrap();
+        let mut e = 0.0_f64;
+        for k in 0..=n { for j in 0..=n { for i in 0..=n {
+            e = e.max((f[i + j * w + k * w * w] - u(i as f64 * h, j as f64 * h, k as f64 * h)).abs());
+        }}}
+        e
+    }
+    let (e16, e32) = (err(16), err(32));
+    assert!(e32 < 5e-2, "error {e32}");
+    assert!((3.5..4.5).contains(&(e16 / e32)), "ratio {}", e16 / e32);
+}

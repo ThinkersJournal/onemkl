@@ -150,9 +150,9 @@ account for the vast majority of downstream use:
   in `blas::jit`); ~~packed compute (`cblas_gemm_*_pack`,
   `cblas_gemm_*_compute`)~~ (done — `PackedMatrix<T>` plus
   `gemm_compute_packed_{a,b}` in `blas::packed`); ~~compact BLAS
-  GEMM + pack / unpack lifecycle~~ (done — `blas::compact`); other
+  GEMM + pack / unpack lifecycle~~ (done — `blas::compact`); ~~other
   compact kernels (`?trsm_compact`, `?potrf_compact`,
-  `?getrfnp_compact`, `?geqrf_compact`).
+  `?getrfnp_compact`, `?geqrf_compact`)~~ (done, f32/f64).
 - **LAPACK Comprehensive**: ~~core auxiliary routines (`?lacpy`,
   `?lange`, `?gecon`, `?larfg`, `?laswp`)~~ (done in
   `lapack::{lacpy, lange, gecon, laswp, larfg}`); remaining

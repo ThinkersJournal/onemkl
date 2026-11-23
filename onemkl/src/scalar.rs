@@ -23,6 +23,8 @@ mod sealed {
     impl Sealed for f64 {}
     impl Sealed for num_complex::Complex32 {}
     impl Sealed for num_complex::Complex64 {}
+    #[cfg(feature = "half")]
+    impl Sealed for half::f16 {}
 }
 
 /// Common operations and metadata for any scalar type supported by oneMKL.
@@ -129,6 +131,24 @@ impl Scalar for f64 {
 }
 impl RealScalar for f64 {}
 
+/// `half::f16` (feature `half`). It carries no `BlasScalar` impl: oneMKL has
+/// no f16 level-1/2 routines and only `hgemm` / `gemm_f16f16f32` at level 3,
+/// reached through `blas::mixed_precision::f16`.
+#[cfg(feature = "half")]
+impl Scalar for half::f16 {
+    type Real = half::f16;
+    #[inline]
+    fn zero() -> Self {
+        half::f16::ZERO
+    }
+    #[inline]
+    fn one() -> Self {
+        half::f16::ONE
+    }
+}
+#[cfg(feature = "half")]
+impl RealScalar for half::f16 {}
+
 impl Scalar for Complex32 {
     type Real = f32;
     #[inline]
@@ -198,5 +218,16 @@ mod tests {
         assert_eq!(align_of::<Complex32>(), align_of::<MKL_Complex8>());
         assert_eq!(size_of::<Complex64>(), size_of::<MKL_Complex16>());
         assert_eq!(align_of::<Complex64>(), align_of::<MKL_Complex16>());
+    }
+
+    #[cfg(feature = "half")]
+    #[test]
+    fn f16_scalar_identities() {
+        use half::f16;
+        assert_eq!(<f16 as Scalar>::zero().to_f32(), 0.0);
+        assert_eq!(<f16 as Scalar>::one().to_f32(), 1.0);
+        assert_eq!(core::mem::size_of::<f16>(), 2);
+        fn needs_real<T: RealScalar>() {}
+        needs_real::<f16>();
     }
 }

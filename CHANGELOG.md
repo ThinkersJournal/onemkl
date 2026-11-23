@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- `fft::PackedRealFftPlan<T>` and `fft::RealPackedFormat` (`Ccs` / `Pack` / `Perm`): 1-D in-place real FFT using the packed real-array spectrum layouts (`DFTI_PACKED_FORMAT`), with optional scales. Checked against a naive DFT for n = 4, 8, 9, 15, both layouts' even/odd cases, and a scaled round trip (Linux x86_64, WSL, oneMKL 2026.2.1, `cargo test -p onemkl --features fft --test fft_packed`: 3 passed). Not run: Windows, macOS, N-D packed transforms, f32 numerics.
+
 ## 0.3.7 - 2026-11-23 (allocated by pm-assist)
 
 ### Fixed

@@ -707,3 +707,176 @@ impl<T: FftScalar> Drop for RealFftPlan<T> {
         }
     }
 }
+
+// =====================================================================
+// PackedRealFftPlan — 1-D in-place real FFT in CCS / PACK / PERM storage
+// =====================================================================
+
+/// Packed storage format of the spectrum of a 1-D real transform
+/// (`DFTI_PACKED_FORMAT`). For an `n`-point transform with
+/// `X[k] = re_k + i im_k`:
+///
+/// - [`Ccs`](Self::Ccs): `re_0, 0, re_1, im_1, ..., re_{n/2}, im_{n/2}`
+///   (`2 * (n/2 + 1)` reals; the zero imaginary parts of `X[0]`, and of
+///   `X[n/2]` for even `n`, are stored explicitly).
+/// - [`Pack`](Self::Pack): `re_0, re_1, im_1, re_2, im_2, ...` (`n` reals;
+///   `im_{n/2}` is absent for even `n`).
+/// - [`Perm`](Self::Perm): like `Pack`, but for even `n` the real
+///   `re_{n/2}` is stored second: `re_0, re_{n/2}, re_1, im_1, ...`;
+///   identical to `Pack` for odd `n`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RealPackedFormat {
+    /// `DFTI_CCS_FORMAT`.
+    Ccs,
+    /// `DFTI_PACK_FORMAT`.
+    Pack,
+    /// `DFTI_PERM_FORMAT`.
+    Perm,
+}
+
+impl RealPackedFormat {
+    #[inline]
+    fn as_dfti(self) -> sys::DFTI_CONFIG_VALUE::Type {
+        match self {
+            Self::Ccs => sys::DFTI_CONFIG_VALUE::DFTI_CCS_FORMAT,
+            Self::Pack => sys::DFTI_CONFIG_VALUE::DFTI_PACK_FORMAT,
+            Self::Perm => sys::DFTI_CONFIG_VALUE::DFTI_PERM_FORMAT,
+        }
+    }
+}
+
+/// 1-D in-place real FFT using a packed (real-array) spectrum format.
+///
+/// The same buffer holds the real signal on entry to
+/// [`forward_in_place`](Self::forward_in_place) and the packed spectrum on
+/// exit (and vice versa for [`backward_in_place`](Self::backward_in_place)).
+/// The buffer must have at least [`buffer_len`](Self::buffer_len) elements
+/// (`n + 2` for CCS with even `n`, otherwise `n`; for CCS the signal
+/// occupies the first `n`). Contrast [`RealFftPlan`], which is out of place
+/// and uses the CCE complex layout.
+pub struct PackedRealFftPlan<T: FftScalar> {
+    handle: DFTI_DESCRIPTOR_HANDLE,
+    buffer_len: usize,
+    _marker: PhantomData<T>,
+}
+
+unsafe impl<T: FftScalar> Send for PackedRealFftPlan<T> {}
+
+impl<T: FftScalar> PackedRealFftPlan<T> {
+    /// Plan of length `n` with unit scaling.
+    pub fn new(n: usize, format: RealPackedFormat) -> Result<Self> {
+        Self::build(n, format, None)
+    }
+
+    /// Plan of length `n` with explicit forward / backward scales (see
+    /// [`FftPlan::complex_nd_with_scales`]).
+    pub fn with_scales(
+        n: usize,
+        format: RealPackedFormat,
+        forward_scale: T,
+        backward_scale: T,
+    ) -> Result<Self> {
+        Self::build(n, format, Some((forward_scale, backward_scale)))
+    }
+
+    fn build(n: usize, format: RealPackedFormat, scales: Option<(T, T)>) -> Result<Self> {
+        if n == 0 {
+            return Err(Error::InvalidArgument("FFT length must be positive"));
+        }
+        let n_long = c_long::try_from(n).map_err(|_| Error::DimensionOverflow)?;
+        let mut handle: DFTI_DESCRIPTOR_HANDLE = ptr::null_mut();
+        check_dfti(unsafe {
+            sys::DftiCreateDescriptor(
+                &mut handle,
+                T::PRECISION.as_dfti(),
+                sys::DFTI_CONFIG_VALUE::DFTI_REAL,
+                1 as c_long,
+                n_long,
+            )
+        })?;
+        let configure = |handle: DFTI_DESCRIPTOR_HANDLE| -> Result<()> {
+            check_dfti(unsafe {
+                sys::DftiSetValue(
+                    handle,
+                    sys::DFTI_CONFIG_PARAM::DFTI_PLACEMENT,
+                    sys::DFTI_CONFIG_VALUE::DFTI_INPLACE,
+                )
+            })?;
+            check_dfti(unsafe {
+                sys::DftiSetValue(
+                    handle,
+                    sys::DFTI_CONFIG_PARAM::DFTI_CONJUGATE_EVEN_STORAGE,
+                    sys::DFTI_CONFIG_VALUE::DFTI_COMPLEX_REAL,
+                )
+            })?;
+            check_dfti(unsafe {
+                sys::DftiSetValue(
+                    handle,
+                    sys::DFTI_CONFIG_PARAM::DFTI_PACKED_FORMAT,
+                    format.as_dfti(),
+                )
+            })?;
+            apply_scales(handle, scales)?;
+            check_dfti(unsafe { sys::DftiCommitDescriptor(handle) })
+        };
+        if let Err(e) = configure(handle) {
+            unsafe {
+                let mut h = handle;
+                let _ = sys::DftiFreeDescriptor(&mut h);
+            }
+            return Err(e);
+        }
+        let buffer_len = match format {
+            RealPackedFormat::Ccs => 2 * (n / 2 + 1),
+            _ => n,
+        };
+        Ok(Self {
+            handle,
+            buffer_len,
+            _marker: PhantomData,
+        })
+    }
+
+    /// Minimum buffer length (in reals) the transform reads / writes.
+    #[inline]
+    #[must_use]
+    pub fn buffer_len(&self) -> usize {
+        self.buffer_len
+    }
+
+    /// Forward transform: real signal in, packed spectrum out, in place.
+    pub fn forward_in_place(&mut self, buf: &mut [T]) -> Result<()> {
+        self.check_len(buf.len())?;
+        check_dfti(unsafe {
+            sys::DftiComputeForward(self.handle, buf.as_mut_ptr().cast::<core::ffi::c_void>())
+        })
+    }
+
+    /// Backward transform: packed spectrum in, real signal out, in place
+    /// (un-normalized unless the plan was built with scales).
+    pub fn backward_in_place(&mut self, buf: &mut [T]) -> Result<()> {
+        self.check_len(buf.len())?;
+        check_dfti(unsafe {
+            sys::DftiComputeBackward(self.handle, buf.as_mut_ptr().cast::<core::ffi::c_void>())
+        })
+    }
+
+    fn check_len(&self, len: usize) -> Result<()> {
+        if len < self.buffer_len {
+            return Err(Error::InvalidArgument(
+                "packed FFT buffer shorter than buffer_len()",
+            ));
+        }
+        Ok(())
+    }
+}
+
+impl<T: FftScalar> Drop for PackedRealFftPlan<T> {
+    fn drop(&mut self) {
+        if !self.handle.is_null() {
+            unsafe {
+                let _ = sys::DftiFreeDescriptor(&mut self.handle);
+            }
+        }
+    }
+}

@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - `fft::PackedRealFftPlan<T>` and `fft::RealPackedFormat` (`Ccs` / `Pack` / `Perm`): 1-D in-place real FFT using the packed real-array spectrum layouts (`DFTI_PACKED_FORMAT`), with optional scales. Checked against a naive DFT for n = 4, 8, 9, 15, both layouts' even/odd cases, and a scaled round trip (Linux x86_64, WSL, oneMKL 2026.2.1, `cargo test -p onemkl --features fft --test fft_packed`: 3 passed). Not run: Windows, macOS, N-D packed transforms, f32 numerics.
 
+- `fft::BatchedFftPlan<T>`: in-place batch of `howmany` 1-D complex transforms with a per-transform distance and an element stride (`DFTI_NUMBER_OF_TRANSFORMS`, `DFTI_{INPUT,OUTPUT}_{DISTANCE,STRIDES}`); overlapping layouts are rejected. Checked against a naive DFT (n = 8, 9, 10; distance padding verified untouched; stride 1-3; scaled round trip) on Linux x86_64 (WSL, oneMKL 2026.2.1, `--test fft_batched`: 5 passed). Not run: Windows, macOS, f32, out-of-place or real batches, interleaved layouts.
+
 ## 0.3.7 - 2026-11-23 (allocated by pm-assist)
 
 ### Fixed

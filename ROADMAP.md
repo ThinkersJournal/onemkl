@@ -194,7 +194,7 @@ Every non-MPI domain at Comprehensive:
 
 - **FFT Comprehensive**: every storage format, transform type, and
   config flag DFTI exposes.
-  Done so far: 1-D packed real storage (CCS / PACK / PERM) via `PackedRealFftPlan`; 1-D batched complex with distance / stride via `BatchedFftPlan`; remaining: N-D packed, N-D strides, batched real / out-of-place / interleaved, thread limit, ordering / workspace flags.
+  Done so far: 1-D packed real storage (CCS / PACK / PERM) via `PackedRealFftPlan`; 1-D batched complex with distance / stride via `BatchedFftPlan`, 1-D batched real via `BatchedRealFftPlan`; remaining: N-D packed, N-D strides, strided or interleaved real batches, thread limit, ordering / workspace flags.
 - **Data Fitting Comprehensive**: integration call-back form, cell
   search call-backs, all spline editors.
 - **VSL Comprehensive**: every BRNG + every method code; summary

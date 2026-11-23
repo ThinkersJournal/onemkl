@@ -68,4 +68,8 @@ pblas = ["blacs"]
 # prettyplease >=0.2.7,<0.4 and syn >=2,<4, and a lock that pairs syn 3 with
 # prettyplease 0.2 (held there by e.g. prost-build) fails to compile bindgen
 # (E0277 ParseQuote). The generated bindings are included unformatted.
-bindgen = { version = "0.73", default-features = false, features = ["logging"] }
+# "runtime" makes clang-sys dlopen libclang only when bindgen actually runs;
+# without it libclang is linked into the build script, which then fails to
+# start (Windows STATUS_DLL_NOT_FOUND 0xc0000135) on machines without libclang,
+# including the DOCS_RS path that never calls bindgen.
+bindgen = { version = "0.73", default-features = false, features = ["logging", "runtime"] }

@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.3.7 - 2026-11-23 (allocated by pm-assist)
+
+### Fixed
+
+- `onemkl-sys` build: `bindgen` regains its `runtime` feature (kept `default-features = false`, so `prettyplease` stays dropped). Without it `clang-sys` linked libclang into the build script, which failed to start on machines without libclang (Windows `STATUS_DLL_NOT_FOUND` 0xc0000135; needed a `libclang-dev` CI workaround). With it libclang is dlopen'd only when bindgen runs. Evidence (Windows, no libclang.dll): `DOCS_RS=1 cargo build -p onemkl-sys` exits 101/0xc0000135 on 0.3.6 and exits 0 with this change; `cargo tree -e features` shows `clang-sys feature "runtime"` 0 -> 1. The CI `libclang-dev` step stays: bindgen still needs libclang when it runs. Not run: the syn-3/prost-build stuck-lock scratch crate, Linux/macOS.
+
 ## 0.3.6 - 2026-11-23 (allocated by pm-assist)
 
 ### Fixed

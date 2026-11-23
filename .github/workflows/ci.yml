@@ -36,7 +36,12 @@ jobs:
           echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" \
             | sudo tee /etc/apt/sources.list.d/oneAPI.list
           sudo apt-get update
-          sudo apt-get install -y intel-oneapi-mkl-devel libclang-dev
+          sudo apt-get install -y intel-oneapi-mkl-devel
+
+      # bindgen needs libclang on every run, not only on an oneAPI cache miss:
+      # ubuntu-latest (26.04) no longer ships it, so a cache hit left it absent.
+      - name: Install libclang (bindgen)
+        run: sudo apt-get update && sudo apt-get install -y libclang-dev
 
       - name: Source oneAPI environment
         run: |

@@ -24,7 +24,7 @@ mod scalar;
 
 pub use scalar::{ComplexLapackScalar, LapackScalar, RealLapackScalar};
 
-use crate::enums::{Layout, Transpose, UpLo};
+use crate::enums::{Layout, Side, Transpose, UpLo};
 use crate::error::{Error, Result};
 use crate::matrix::{MatrixMut, MatrixRef};
 use crate::util::dim_to_mkl_int;
@@ -2285,4 +2285,376 @@ where
     };
     check_info(info)?;
     Ok(HouseholderReflector { alpha: *alpha, tau })
+}
+
+/// Order in which the elementary reflectors of a block reflector are
+/// applied (`DIRECT` in `?larft` / `?larfb`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ReflectorDirection {
+    /// `H = H(1) H(2) ... H(k)`.
+    Forward,
+    /// `H = H(k) ... H(2) H(1)`.
+    Backward,
+}
+
+impl ReflectorDirection {
+    fn as_char(self) -> core::ffi::c_char {
+        (match self {
+            Self::Forward => b'F',
+            Self::Backward => b'B',
+        }) as core::ffi::c_char
+    }
+}
+
+/// How the reflector vectors are stored in `V` (`STOREV`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ReflectorStorage {
+    /// Column `i` of `V` holds `v(i)`.
+    Columnwise,
+    /// Row `i` of `V` holds `v(i)`.
+    Rowwise,
+}
+
+impl ReflectorStorage {
+    fn as_char(self) -> core::ffi::c_char {
+        (match self {
+            Self::Columnwise => b'C',
+            Self::Rowwise => b'R',
+        }) as core::ffi::c_char
+    }
+}
+
+/// Form the `k x k` triangular factor `T` of a block reflector
+/// `H = I - V T Vᴴ` from `k` elementary reflectors (`V`, `tau`), as
+/// produced by `geqrf`. Wraps `LAPACKE_*larft`. `V` is `n x k`
+/// (columnwise) or `k x n` (rowwise); `tau` has `k` entries.
+pub fn larft<T: LapackScalar>(
+    direct: ReflectorDirection,
+    storev: ReflectorStorage,
+    v: &MatrixRef<'_, T>,
+    tau: &[T],
+    t: &mut MatrixMut<'_, T>,
+) -> Result<()> {
+    let k = t.rows();
+    if t.cols() != k {
+        return Err(Error::InvalidArgument("T must be square (k x k)"));
+    }
+    if tau.len() < k {
+        return Err(Error::InvalidArgument("tau must have at least k entries"));
+    }
+    let n = match storev {
+        ReflectorStorage::Columnwise => {
+            if v.cols() != k {
+                return Err(Error::InvalidArgument("columnwise V must be n x k"));
+            }
+            v.rows()
+        }
+        ReflectorStorage::Rowwise => {
+            if v.rows() != k {
+                return Err(Error::InvalidArgument("rowwise V must be k x n"));
+            }
+            v.cols()
+        }
+    };
+    let layout = ensure_layout(&[v.layout(), t.layout()])?;
+    let info = unsafe {
+        T::lapacke_larft(
+            layout.as_lapack(),
+            direct.as_char(),
+            storev.as_char(),
+            dim_to_mkl_int(n)?,
+            dim_to_mkl_int(k)?,
+            v.as_ptr(),
+            dim_to_mkl_int(v.leading_dim())?,
+            tau.as_ptr(),
+            t.as_mut_ptr(),
+            dim_to_mkl_int(t.leading_dim())?,
+        )
+    };
+    check_info(info)
+}
+
+/// Apply the block reflector `H` (or `Hᴴ`) to an `m x n` matrix `C` from
+/// the left or right: `C := op(H) C` or `C := C op(H)`, with `H`
+/// described by `V` and the factor `T` from [`larft`]. Wraps
+/// `LAPACKE_*larfb`. `V` is `m x k`/`n x k` (columnwise) or `k x m`/`k x n`
+/// (rowwise) for `Side::Left`/`Side::Right`.
+pub fn larfb<T: LapackScalar>(
+    side: Side,
+    trans: Transpose,
+    direct: ReflectorDirection,
+    storev: ReflectorStorage,
+    v: &MatrixRef<'_, T>,
+    t: &MatrixRef<'_, T>,
+    c: &mut MatrixMut<'_, T>,
+) -> Result<()> {
+    let k = t.rows();
+    if t.cols() != k {
+        return Err(Error::InvalidArgument("T must be square (k x k)"));
+    }
+    let (order, vk) = match (storev, side) {
+        (ReflectorStorage::Columnwise, Side::Left) => (c.rows(), (v.rows(), v.cols())),
+        (ReflectorStorage::Columnwise, Side::Right) => (c.cols(), (v.rows(), v.cols())),
+        (ReflectorStorage::Rowwise, Side::Left) => (c.rows(), (v.cols(), v.rows())),
+        (ReflectorStorage::Rowwise, Side::Right) => (c.cols(), (v.cols(), v.rows())),
+    };
+    if vk != (order, k) {
+        return Err(Error::InvalidArgument(
+            "V must hold k reflectors of the order of the side C is multiplied on",
+        ));
+    }
+    let layout = ensure_layout(&[v.layout(), t.layout(), c.layout()])?;
+    let side_c = match side {
+        Side::Left => b'L',
+        Side::Right => b'R',
+    } as core::ffi::c_char;
+    let info = unsafe {
+        T::lapacke_larfb(
+            layout.as_lapack(),
+            side_c,
+            trans.as_char() as core::ffi::c_char,
+            direct.as_char(),
+            storev.as_char(),
+            dim_to_mkl_int(c.rows())?,
+            dim_to_mkl_int(c.cols())?,
+            dim_to_mkl_int(k)?,
+            v.as_ptr(),
+            dim_to_mkl_int(v.leading_dim())?,
+            t.as_ptr(),
+            dim_to_mkl_int(t.leading_dim())?,
+            c.as_mut_ptr(),
+            dim_to_mkl_int(c.leading_dim())?,
+        )
+    };
+    check_info(info)
+}
+
+/// Complex scalar types with the complex-only auxiliary routines
+/// (`?lacgv`, `?lacrm`).
+#[allow(missing_docs)]
+pub trait ComplexAuxScalar: Copy + 'static {
+    /// The matching real scalar (`f32` for `Complex32`, `f64` for `Complex64`).
+    type Real: Copy + 'static;
+    unsafe fn lapacke_lacgv(n: core::ffi::c_int, x: *mut Self, incx: core::ffi::c_int) -> i32;
+    #[allow(clippy::too_many_arguments)]
+    unsafe fn lapacke_lacrm(
+        layout: core::ffi::c_int,
+        m: core::ffi::c_int,
+        n: core::ffi::c_int,
+        a: *const Self,
+        lda: core::ffi::c_int,
+        b: *const Self::Real,
+        ldb: core::ffi::c_int,
+        c: *mut Self,
+        ldc: core::ffi::c_int,
+    ) -> i32;
+}
+
+macro_rules! impl_complex_aux {
+    ($c:ty, $r:ty, $ct:ty, $lacgv:ident, $lacrm:ident) => {
+        impl ComplexAuxScalar for $c {
+            type Real = $r;
+            unsafe fn lapacke_lacgv(n: core::ffi::c_int, x: *mut Self, incx: core::ffi::c_int) -> i32 {
+                unsafe { onemkl_sys::$lacgv(n, x.cast::<$ct>(), incx) }
+            }
+            unsafe fn lapacke_lacrm(
+                layout: core::ffi::c_int,
+                m: core::ffi::c_int,
+                n: core::ffi::c_int,
+                a: *const Self,
+                lda: core::ffi::c_int,
+                b: *const $r,
+                ldb: core::ffi::c_int,
+                c: *mut Self,
+                ldc: core::ffi::c_int,
+            ) -> i32 {
+                unsafe {
+                    onemkl_sys::$lacrm(layout, m, n, a.cast::<$ct>(), lda, b, ldb, c.cast::<$ct>(), ldc)
+                }
+            }
+        }
+    };
+}
+impl_complex_aux!(num_complex::Complex32, f32, onemkl_sys::MKL_Complex8, LAPACKE_clacgv, LAPACKE_clacrm);
+impl_complex_aux!(num_complex::Complex64, f64, onemkl_sys::MKL_Complex16, LAPACKE_zlacgv, LAPACKE_zlacrm);
+
+/// Conjugate `n` elements of a complex vector in place (stride `incx`,
+/// which may be negative). Wraps `LAPACKE_*lacgv`.
+pub fn lacgv<T: ComplexAuxScalar>(n: usize, x: &mut [T], incx: i32) -> Result<()> {
+    if incx == 0 {
+        return Err(Error::InvalidArgument("incx must be non-zero"));
+    }
+    if n > 0 && x.len() < 1 + (n - 1) * incx.unsigned_abs() as usize {
+        return Err(Error::InvalidArgument("x is too short for n elements at stride incx"));
+    }
+    // LAPACKE reads the vector starting at x[0] for a positive stride and
+    // at the far end for a negative one, exactly as the reference does.
+    let info = unsafe { T::lapacke_lacgv(dim_to_mkl_int(n)?, x.as_mut_ptr(), incx) };
+    check_info(info)
+}
+
+/// Complex-by-real matrix product `C := A * B`, with `A` and `C` complex
+/// `m x n` and `B` real `n x n`. Wraps `LAPACKE_*lacrm`.
+pub fn lacrm<T: ComplexAuxScalar>(
+    a: &MatrixRef<'_, T>,
+    b: &MatrixRef<'_, T::Real>,
+    c: &mut MatrixMut<'_, T>,
+) -> Result<()> {
+    let (m, n) = (a.rows(), a.cols());
+    if b.rows() != n || b.cols() != n {
+        return Err(Error::InvalidArgument("B must be n x n for an m x n A"));
+    }
+    if c.rows() != m || c.cols() != n {
+        return Err(Error::InvalidArgument("C must have the shape of A"));
+    }
+    let layout = ensure_layout(&[a.layout(), b.layout(), c.layout()])?;
+    let info = unsafe {
+        T::lapacke_lacrm(
+            layout.as_lapack(),
+            dim_to_mkl_int(m)?,
+            dim_to_mkl_int(n)?,
+            a.as_ptr(),
+            dim_to_mkl_int(a.leading_dim())?,
+            b.as_ptr(),
+            dim_to_mkl_int(b.leading_dim())?,
+            c.as_mut_ptr(),
+            dim_to_mkl_int(c.leading_dim())?,
+        )
+    };
+    check_info(info)
+}
+
+/// Scalar types with the symmetric Bunch-Kaufman routines [`sytrf`] and
+/// [`syconv`] (real and complex *symmetric*, not Hermitian).
+#[allow(missing_docs)]
+pub trait SymConvScalar: Copy + 'static {
+    unsafe fn lapacke_sytrf(
+        layout: core::ffi::c_int,
+        uplo: core::ffi::c_char,
+        n: core::ffi::c_int,
+        a: *mut Self,
+        lda: core::ffi::c_int,
+        ipiv: *mut core::ffi::c_int,
+    ) -> i32;
+    #[allow(clippy::too_many_arguments)]
+    unsafe fn lapacke_syconv(
+        layout: core::ffi::c_int,
+        uplo: core::ffi::c_char,
+        way: core::ffi::c_char,
+        n: core::ffi::c_int,
+        a: *mut Self,
+        lda: core::ffi::c_int,
+        ipiv: *const core::ffi::c_int,
+        e: *mut Self,
+    ) -> i32;
+}
+
+macro_rules! impl_symconv {
+    ($t:ty, $ct:ty, $sytrf:ident, $syconv:ident) => {
+        impl SymConvScalar for $t {
+            unsafe fn lapacke_sytrf(
+                layout: core::ffi::c_int,
+                uplo: core::ffi::c_char,
+                n: core::ffi::c_int,
+                a: *mut Self,
+                lda: core::ffi::c_int,
+                ipiv: *mut core::ffi::c_int,
+            ) -> i32 {
+                unsafe { onemkl_sys::$sytrf(layout, uplo, n, a.cast::<$ct>(), lda, ipiv) }
+            }
+            unsafe fn lapacke_syconv(
+                layout: core::ffi::c_int,
+                uplo: core::ffi::c_char,
+                way: core::ffi::c_char,
+                n: core::ffi::c_int,
+                a: *mut Self,
+                lda: core::ffi::c_int,
+                ipiv: *const core::ffi::c_int,
+                e: *mut Self,
+            ) -> i32 {
+                unsafe {
+                    onemkl_sys::$syconv(layout, uplo, way, n, a.cast::<$ct>(), lda, ipiv, e.cast::<$ct>())
+                }
+            }
+        }
+    };
+}
+impl_symconv!(f32, f32, LAPACKE_ssytrf, LAPACKE_ssyconv);
+impl_symconv!(f64, f64, LAPACKE_dsytrf, LAPACKE_dsyconv);
+impl_symconv!(num_complex::Complex32, onemkl_sys::MKL_Complex8, LAPACKE_csytrf, LAPACKE_csyconv);
+impl_symconv!(num_complex::Complex64, onemkl_sys::MKL_Complex16, LAPACKE_zsytrf, LAPACKE_zsyconv);
+
+/// Direction of a [`syconv`] conversion.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SyconvWay {
+    /// `'C'` — convert the [`sytrf`] output into the factor `L` / `U`
+    /// (in `a`) and the off-diagonal entries of the block-diagonal `D`
+    /// (in `e`).
+    Convert,
+    /// `'R'` — revert a prior `Convert` back to the [`sytrf`] storage.
+    Revert,
+}
+
+/// Bunch-Kaufman factorization of a symmetric matrix, `A = U D Uᵀ` or
+/// `L D Lᵀ`, with `ipiv` encoding the pivots (negative entries mark 2x2
+/// blocks). Wraps `LAPACKE_*sytrf`. `ipiv` must hold at least `n` entries.
+pub fn sytrf<T: SymConvScalar>(uplo: UpLo, a: &mut MatrixMut<'_, T>, ipiv: &mut [i32]) -> Result<()> {
+    let n = a.rows();
+    if a.cols() != n {
+        return Err(Error::InvalidArgument("A must be square"));
+    }
+    if ipiv.len() < n {
+        return Err(Error::InvalidArgument("ipiv must have at least n entries"));
+    }
+    let info = unsafe {
+        T::lapacke_sytrf(
+            a.layout().as_lapack(),
+            uplo.as_char() as core::ffi::c_char,
+            dim_to_mkl_int(n)?,
+            a.as_mut_ptr(),
+            dim_to_mkl_int(a.leading_dim())?,
+            ipiv.as_mut_ptr(),
+        )
+    };
+    check_info(info)
+}
+
+/// Convert the output of [`sytrf`] to / from the split form (`L` or `U`
+/// in `a`, the off-diagonal of `D` in `e`). Wraps `LAPACKE_*syconv`.
+/// `ipiv` is the pivot array from [`sytrf`]; `e` must hold `n` entries
+/// (scratch for `Convert`, the saved values for `Revert`).
+pub fn syconv<T: SymConvScalar>(
+    uplo: UpLo,
+    way: SyconvWay,
+    a: &mut MatrixMut<'_, T>,
+    ipiv: &[i32],
+    e: &mut [T],
+) -> Result<()> {
+    let n = a.rows();
+    if a.cols() != n {
+        return Err(Error::InvalidArgument("A must be square"));
+    }
+    if ipiv.len() < n {
+        return Err(Error::InvalidArgument("ipiv must have at least n entries"));
+    }
+    if e.len() < n {
+        return Err(Error::InvalidArgument("e must have at least n entries"));
+    }
+    let way = match way {
+        SyconvWay::Convert => b'C',
+        SyconvWay::Revert => b'R',
+    };
+    let info = unsafe {
+        T::lapacke_syconv(
+            a.layout().as_lapack(),
+            uplo.as_char() as core::ffi::c_char,
+            way as core::ffi::c_char,
+            dim_to_mkl_int(n)?,
+            a.as_mut_ptr(),
+            dim_to_mkl_int(a.leading_dim())?,
+            ipiv.as_ptr(),
+            e.as_mut_ptr(),
+        )
+    };
+    check_info(info)
 }

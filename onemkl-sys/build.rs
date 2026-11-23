@@ -92,6 +92,8 @@ enum Threading {
 enum Linkage {
     Dynamic,
     Static,
+    /// Single dynamic library (`mkl_rt`).
+    Rt,
 }
 
 #[derive(Default)]
@@ -135,14 +137,19 @@ impl Config {
             ),
         };
 
-        let linkage = match (cfg_feature("link-dynamic"), cfg_feature("link-static")) {
-            (true, false) => Linkage::Dynamic,
-            (false, true) => Linkage::Static,
-            (true, true) => fatal(
-                "features `link-dynamic` and `link-static` are mutually exclusive",
+        let linkage = match (
+            cfg_feature("link-dynamic"),
+            cfg_feature("link-static"),
+            cfg_feature("link-rt"),
+        ) {
+            (true, false, false) => Linkage::Dynamic,
+            (false, true, false) => Linkage::Static,
+            (false, false, true) => Linkage::Rt,
+            (false, false, false) => fatal(
+                "no linkage selected; enable exactly one of `link-dynamic`,                  `link-static` or `link-rt`",
             ),
-            (false, false) => fatal(
-                "no linkage selected; enable exactly one of `link-dynamic` or `link-static`",
+            _ => fatal(
+                "features `link-dynamic`, `link-static` and `link-rt` are mutually exclusive",
             ),
         };
 
@@ -191,12 +198,38 @@ impl Config {
     fn emit_links(&self, mkl: &MklPaths) {
         println!("cargo:rustc-link-search=native={}", mkl.lib_dir.display());
 
+        if self.linkage == Linkage::Rt {
+            // Single dynamic library: `mkl_rt` loads the interface and
+            // threading layers at run time (choose them with
+            // `MKL_Set_Interface_Layer` / `MKL_Set_Threading_Layer` or
+            // the `MKL_INTERFACE_LAYER` / `MKL_THREADING_LAYER`
+            // environment variables), so none of the layered libraries
+            // are linked.
+            if self.mpi_features.cluster_sparse_solver
+                || self.mpi_features.cdft
+                || self.mpi_features.scalapack
+                || self.mpi_features.blacs
+                || self.mpi_features.pblas
+            {
+                fatal("`link-rt` does not support the MPI-dependent domains");
+            }
+            link("dylib", "mkl_rt");
+            if self.target_os != "windows" {
+                println!("cargo:rustc-link-lib=dylib=pthread");
+                println!("cargo:rustc-link-lib=dylib=m");
+                println!("cargo:rustc-link-lib=dylib=dl");
+            }
+            println!("cargo:include={}", mkl.include_dir.display());
+            println!("cargo:lib={}", mkl.lib_dir.display());
+            return;
+        }
+
         let suffix = match self.linkage {
             Linkage::Dynamic if self.is_msvc() => "_dll",
             _ => "",
         };
         let kind = match self.linkage {
-            Linkage::Dynamic => "dylib",
+            Linkage::Dynamic | Linkage::Rt => "dylib",
             Linkage::Static => "static",
         };
 

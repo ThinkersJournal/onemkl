@@ -424,6 +424,80 @@ pub fn enable_instructions(level: IsaLevel) -> Result<()> {
     }
 }
 
+/// Interface layer of the single dynamic library (`link-rt`): the integer
+/// width (and, for [`GnuLp64`](InterfaceLayer::GnuLp64), the GNU Fortran
+/// calling convention) `mkl_rt` uses.
+#[cfg(feature = "link-rt")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InterfaceLayer {
+    /// 32-bit `MKL_INT`, Intel Fortran conventions.
+    Lp64,
+    /// 64-bit `MKL_INT`.
+    Ilp64,
+    /// 32-bit `MKL_INT`, GNU Fortran conventions.
+    GnuLp64,
+}
+
+/// Threading layer of the single dynamic library (`link-rt`).
+#[cfg(feature = "link-rt")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ThreadingLayer {
+    /// Intel OpenMP runtime.
+    IntelOpenMp,
+    /// No internal threading.
+    Sequential,
+    /// GNU OpenMP runtime.
+    GnuOpenMp,
+    /// oneTBB.
+    Tbb,
+}
+
+/// Select `mkl_rt`'s interface layer (`MKL_Set_Interface_Layer`). Call it
+/// **before** any other MKL routine; afterwards MKL ignores it. The layer
+/// must match the `lp64`/`ilp64` feature the bindings were built with.
+/// Returns the layer MKL reports as set.
+#[cfg(feature = "link-rt")]
+pub fn set_interface_layer(layer: InterfaceLayer) -> Result<InterfaceLayer> {
+    let code = match layer {
+        InterfaceLayer::Lp64 => sys::MKL_INTERFACE_LP64,
+        InterfaceLayer::Ilp64 => sys::MKL_INTERFACE_ILP64,
+        InterfaceLayer::GnuLp64 => sys::MKL_INTERFACE_LP64 | sys::MKL_INTERFACE_GNU,
+    } as c_int;
+    let r = unsafe { sys::MKL_Set_Interface_Layer(code) };
+    match r {
+        x if x == sys::MKL_INTERFACE_LP64 as c_int => Ok(InterfaceLayer::Lp64),
+        x if x == sys::MKL_INTERFACE_ILP64 as c_int => Ok(InterfaceLayer::Ilp64),
+        x if x == (sys::MKL_INTERFACE_LP64 | sys::MKL_INTERFACE_GNU) as c_int => {
+            Ok(InterfaceLayer::GnuLp64)
+        }
+        _ => Err(Error::InvalidArgument(
+            "MKL_Set_Interface_Layer: the layer could not be set (already initialised?)",
+        )),
+    }
+}
+
+/// Select `mkl_rt`'s threading layer (`MKL_Set_Threading_Layer`). Call it
+/// **before** any other MKL routine. Returns the layer MKL reports as set.
+#[cfg(feature = "link-rt")]
+pub fn set_threading_layer(layer: ThreadingLayer) -> Result<ThreadingLayer> {
+    let code = match layer {
+        ThreadingLayer::IntelOpenMp => sys::MKL_THREADING_INTEL,
+        ThreadingLayer::Sequential => sys::MKL_THREADING_SEQUENTIAL,
+        ThreadingLayer::GnuOpenMp => sys::MKL_THREADING_GNU,
+        ThreadingLayer::Tbb => sys::MKL_THREADING_TBB,
+    } as c_int;
+    let r = unsafe { sys::MKL_Set_Threading_Layer(code) };
+    match r {
+        x if x == sys::MKL_THREADING_INTEL as c_int => Ok(ThreadingLayer::IntelOpenMp),
+        x if x == sys::MKL_THREADING_SEQUENTIAL as c_int => Ok(ThreadingLayer::Sequential),
+        x if x == sys::MKL_THREADING_GNU as c_int => Ok(ThreadingLayer::GnuOpenMp),
+        x if x == sys::MKL_THREADING_TBB as c_int => Ok(ThreadingLayer::Tbb),
+        _ => Err(Error::InvalidArgument(
+            "MKL_Set_Threading_Layer: the layer could not be set (unavailable or already initialised?)",
+        )),
+    }
+}
+
 /// Read the CPU's current clock counter (TSC-like). Useful for fine-
 /// grained timing of MKL routines.
 pub fn cpu_clocks() -> u64 {

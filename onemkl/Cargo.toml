@@ -56,6 +56,7 @@ threading-intel-openmp = ["onemkl-sys/threading-intel-openmp"]
 threading-tbb = ["onemkl-sys/threading-tbb"]
 link-dynamic = ["onemkl-sys/link-dynamic"]
 link-static = ["onemkl-sys/link-static"]
+link-rt = ["onemkl-sys/link-rt"]
 
 # --- Per-domain features ---
 # Enables the matching `pub mod` in `lib.rs`. Foundation modules

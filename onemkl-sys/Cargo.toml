@@ -42,11 +42,14 @@ threading-intel-openmp = []
 # Intel oneAPI Threading Building Blocks.
 threading-tbb = []
 
-# --- Linkage: pick exactly one ---
+# --- Linkage: pick exactly one of link-dynamic / link-static / link-rt ---
 # Dynamic linking via *_dll.lib import libraries (recommended).
 link-dynamic = []
 # Static linking against the *.lib archives.
 link-static = []
+# Single dynamic library (`mkl_rt`): the interface and threading layers are
+# chosen at run time. Not compatible with the MPI-dependent domains.
+link-rt = []
 
 # --- MPI-dependent domains (opt-in; require MPI on PATH) ---
 # Cluster Sparse Solver (Cluster PARDISO). Requires Intel MPI or MS-MPI.
@@ -61,4 +64,8 @@ blacs = []
 pblas = ["blacs"]
 
 [build-dependencies]
-bindgen = "0.73"
+# default-features = false drops bindgen's `prettyplease` dep: bindgen allows
+# prettyplease >=0.2.7,<0.4 and syn >=2,<4, and a lock that pairs syn 3 with
+# prettyplease 0.2 (held there by e.g. prost-build) fails to compile bindgen
+# (E0277 ParseQuote). The generated bindings are included unformatted.
+bindgen = { version = "0.73", default-features = false, features = ["logging"] }

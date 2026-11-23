@@ -305,6 +305,42 @@ pub trait LapackScalar: Scalar {
         tau: *mut Self,
     ) -> i32;
 
+    /// `LAPACKE_*larft` — form the triangular factor `T` of a block
+    /// reflector.
+    #[allow(clippy::too_many_arguments)]
+    unsafe fn lapacke_larft(
+        layout: c_int,
+        direct: c_char,
+        storev: c_char,
+        n: MKL_INT,
+        k: MKL_INT,
+        v: *const Self,
+        ldv: MKL_INT,
+        tau: *const Self,
+        t: *mut Self,
+        ldt: MKL_INT,
+    ) -> i32;
+
+    /// `LAPACKE_*larfb` — apply a block reflector (or its transpose) to a
+    /// general matrix.
+    #[allow(clippy::too_many_arguments)]
+    unsafe fn lapacke_larfb(
+        layout: c_int,
+        side: c_char,
+        trans: c_char,
+        direct: c_char,
+        storev: c_char,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
+        v: *const Self,
+        ldv: MKL_INT,
+        t: *const Self,
+        ldt: MKL_INT,
+        c: *mut Self,
+        ldc: MKL_INT,
+    ) -> i32;
+
     /// `LAPACKE_*laswp` — apply a series of row interchanges to a
     /// matrix from the IPIV pivot vector.
     #[allow(clippy::too_many_arguments)]
@@ -529,6 +565,7 @@ macro_rules! impl_lapack_real {
         syevd=$syevd:ident, syevr=$syevr:ident,
         lacpy=$lacpy:ident, lange=$lange:ident, gecon=$gecon:ident,
         larfg=$larfg:ident, laswp=$laswp:ident,
+        larft=$larft:ident, larfb=$larfb:ident,
     ) => {
         impl LapackScalar for $ty {
             unsafe fn lapacke_gesv(
@@ -796,6 +833,24 @@ macro_rules! impl_lapack_real {
             ) -> i32 {
                 unsafe { sys::$larfg(n, alpha, x, incx, tau) }
             }
+            unsafe fn lapacke_larft(
+                layout: c_int, direct: c_char, storev: c_char,
+                n: MKL_INT, k: MKL_INT,
+                v: *const Self, ldv: MKL_INT, tau: *const Self,
+                t: *mut Self, ldt: MKL_INT,
+            ) -> i32 {
+                unsafe { sys::$larft(layout, direct, storev, n, k, v, ldv, tau, t, ldt) }
+            }
+            unsafe fn lapacke_larfb(
+                layout: c_int, side: c_char, trans: c_char, direct: c_char, storev: c_char,
+                m: MKL_INT, n: MKL_INT, k: MKL_INT,
+                v: *const Self, ldv: MKL_INT, t: *const Self, ldt: MKL_INT,
+                c: *mut Self, ldc: MKL_INT,
+            ) -> i32 {
+                unsafe {
+                    sys::$larfb(layout, side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc)
+                }
+            }
             unsafe fn lapacke_laswp(
                 layout: c_int,
                 n: MKL_INT,
@@ -910,6 +965,7 @@ impl_lapack_real! {
     syevd=LAPACKE_ssyevd, syevr=LAPACKE_ssyevr,
     lacpy=LAPACKE_slacpy, lange=LAPACKE_slange, gecon=LAPACKE_sgecon,
     larfg=LAPACKE_slarfg, laswp=LAPACKE_slaswp,
+    larft=LAPACKE_slarft, larfb=LAPACKE_slarfb,
 }
 
 impl_lapack_real! {
@@ -930,6 +986,7 @@ impl_lapack_real! {
     syevd=LAPACKE_dsyevd, syevr=LAPACKE_dsyevr,
     lacpy=LAPACKE_dlacpy, lange=LAPACKE_dlange, gecon=LAPACKE_dgecon,
     larfg=LAPACKE_dlarfg, laswp=LAPACKE_dlaswp,
+    larft=LAPACKE_dlarft, larfb=LAPACKE_dlarfb,
 }
 
 macro_rules! impl_lapack_complex {
@@ -951,6 +1008,7 @@ macro_rules! impl_lapack_complex {
         heevd=$heevd:ident, heevr=$heevr:ident,
         lacpy=$lacpy:ident, lange=$lange:ident, gecon=$gecon:ident,
         larfg=$larfg:ident, laswp=$laswp:ident,
+        larft=$larft:ident, larfb=$larfb:ident,
     ) => {
         impl LapackScalar for $ty {
             unsafe fn lapacke_gesv(
@@ -1249,6 +1307,24 @@ macro_rules! impl_lapack_complex {
             ) -> i32 {
                 unsafe { sys::$larfg(n, alpha.cast(), x.cast(), incx, tau.cast()) }
             }
+            unsafe fn lapacke_larft(
+                layout: c_int, direct: c_char, storev: c_char,
+                n: MKL_INT, k: MKL_INT,
+                v: *const Self, ldv: MKL_INT, tau: *const Self,
+                t: *mut Self, ldt: MKL_INT,
+            ) -> i32 {
+                unsafe { sys::$larft(layout, direct, storev, n, k, v.cast(), ldv, tau.cast(), t.cast(), ldt) }
+            }
+            unsafe fn lapacke_larfb(
+                layout: c_int, side: c_char, trans: c_char, direct: c_char, storev: c_char,
+                m: MKL_INT, n: MKL_INT, k: MKL_INT,
+                v: *const Self, ldv: MKL_INT, t: *const Self, ldt: MKL_INT,
+                c: *mut Self, ldc: MKL_INT,
+            ) -> i32 {
+                unsafe {
+                    sys::$larfb(layout, side, trans, direct, storev, m, n, k, v.cast(), ldv, t.cast(), ldt, c.cast(), ldc)
+                }
+            }
             unsafe fn lapacke_laswp(
                 layout: c_int,
                 n: MKL_INT,
@@ -1400,6 +1476,7 @@ impl_lapack_complex! {
     heevd=LAPACKE_cheevd, heevr=LAPACKE_cheevr,
     lacpy=LAPACKE_clacpy, lange=LAPACKE_clange, gecon=LAPACKE_cgecon,
     larfg=LAPACKE_clarfg, laswp=LAPACKE_claswp,
+    larft=LAPACKE_clarft, larfb=LAPACKE_clarfb,
 }
 
 impl_lapack_complex! {
@@ -1421,4 +1498,5 @@ impl_lapack_complex! {
     heevd=LAPACKE_zheevd, heevr=LAPACKE_zheevr,
     lacpy=LAPACKE_zlacpy, lange=LAPACKE_zlange, gecon=LAPACKE_zgecon,
     larfg=LAPACKE_zlarfg, laswp=LAPACKE_zlaswp,
+    larft=LAPACKE_zlarft, larfb=LAPACKE_zlarfb,
 }

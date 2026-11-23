@@ -122,7 +122,10 @@ shown):
 - Interface: `lp64` (default) or `ilp64`.
 - Threading: `threading-sequential` (default), `threading-intel-openmp`,
   or `threading-tbb`.
-- Linkage: `link-dynamic` (default) or `link-static`.
+- Linkage: `link-dynamic` (default), `link-static`, or `link-rt` (single
+  dynamic library `mkl_rt`; pick the interface and threading layers at run
+  time with `service::set_interface_layer` / `service::set_threading_layer`;
+  not available with the MPI-dependent domains).
 
 For a minimal build with only BLAS and LAPACK:
 

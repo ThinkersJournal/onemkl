@@ -152,11 +152,11 @@ account for the vast majority of downstream use:
   `gemm_compute_packed_{a,b}` in `blas::packed`); ~~compact BLAS
   GEMM + pack / unpack lifecycle~~ (done — `blas::compact`); ~~other
   compact kernels (`?trsm_compact`, `?potrf_compact`,
-  `?getrfnp_compact`, `?geqrf_compact`)~~ (done, f32/f64).
+  `?getrfnp_compact`, `?geqrf_compact`, `?getrinp_compact`)~~ (done, f32/f64).
 - **LAPACK Comprehensive**: ~~core auxiliary routines (`?lacpy`,
   `?lange`, `?gecon`, `?larfg`, `?laswp`)~~ (done in
   `lapack::{lacpy, lange, gecon, laswp, larfg}`); remaining
-  auxiliary set (`?lacgv`, `?lacrm`, `?syconv`, `?larft`, `?larfb`,
+  auxiliary set (~~`?lacgv`, `?lacrm`~~ (done), ~~`?syconv`~~ (done — `lapack::{sytrf, syconv}`), ~~`?larft`, `?larfb`~~ (done — `lapack::{larft, larfb}`),
   etc.), Netlib-compatibility additions, `?tppack` / `?tpunpack`.
 - **Sparse Comprehensive**: ~~matrix manipulation
   (`mkl_sparse_*_add`, `mkl_sparse_*_spmm`,
@@ -173,19 +173,20 @@ specialized ones:
 
 - **Optimization**: ~~`?trnlsp_get` with full return shape (initial /
   final residual norms), `?jacobi` direct caller~~ (done — residual
-  norms in `TrnlsResult`, `djacobi_with_callback`); `?trnlsp_check`
-  validation (currently subsumed by `_init`), ~~`?jacobix` (Jacobian
-  with central differences)~~ (done — `numerical_jacobian_central`, double only), session API for step-by-step driving.
+  norms in `TrnlsResult`, `djacobi_with_callback`); ~~`?trnlsp_check`~~ (done — `TrnlsSession::check`), ~~`?jacobix` (Jacobian
+  with central differences)~~ (done — `numerical_jacobian_central`, double only), ~~session API for step-by-step driving~~ (done — `TrnlsSession`, `TrnlsBoundedSession`).
 - **Service**: ~~CBWR (`mkl_cbwr_*`)~~ (done — `cbwr_set` / `cbwr_set_strict` / `cbwr_branch` / `cbwr_strict` / `cbwr_auto_branch`), ~~`mkl_set_progress`,
-  `mkl_set_xerbla`~~ (done — `set_progress_handler` / `set_xerbla_handler`), `mkl_set_pardiso_pivot`,
-  `mkl_enable_instructions`, single-dynamic-library control.
+  `mkl_set_xerbla`~~ (done — `set_progress_handler` / `set_xerbla_handler`), ~~`mkl_set_pardiso_pivot`~~ (done — `pardiso::set_pardiso_pivot_callback`, raw unsafe form),
+  ~~`mkl_enable_instructions`~~ (done — `enable_instructions`), ~~single-dynamic-library control~~ (done — `link-rt`, `set_interface_layer` / `set_threading_layer`; Linux only measured).
 - **PDE Support**: ~~trigonometric transforms (sine / cosine /
-  staggered)~~ (done — `TrigTransform<T>` in `pde`); Cartesian and
-  spherical Poisson / Helmholtz solvers (`d_helmholtz_2d` /
-  `d_helmholtz_3d`).
-- **Compact BLAS / LAPACK**: full set (`mkl_?gepack_compact`,
+  staggered)~~ (done — `TrigTransform<T>` in `pde`); ~~Cartesian
+  Poisson / Helmholtz (2-D / 3-D, Dirichlet / Neumann / periodic)~~
+  (done — `Helmholtz2D` / `Helmholtz3D`); ~~periodic spherical
+  Helmholtz~~ (done — `SphericalHelmholtz`, full sphere); ~~non-periodic
+  spherical (`?_sph_np`)~~ (done — `SphericalPatchHelmholtz`, Dirichlet patch away from the poles); polar caps and non-Dirichlet patch sides remain.
+- **Compact BLAS / LAPACK**: ~~full set (`mkl_?gepack_compact`,
   `mkl_?geunpack_compact`, `mkl_?get_size_compact`, `*_potrf`,
-  `*_getrfnp`, `*_geqrf`, `*_getrinp`).
+  `*_getrfnp`, `*_geqrf`, `*_getrinp`)~~ (done, f32/f64).
 
 ### 0.5.0 — All domains Comprehensive (single-node)
 
@@ -198,6 +199,14 @@ Every non-MPI domain at Comprehensive:
 - **VSL Comprehensive**: every BRNG + every method code; summary
   statistics with all weights / outliers / partial-task variants.
 - **FEAST Comprehensive**: full RCI interface.
+- **f16 support** (ranked below the rows above; additive, minor version):
+  `impl Scalar` and `RealScalar` for `half::f16` behind an optional `half`
+  feature (`scalar.rs` is sealed, so downstream crates cannot), so
+  `level3::gemm` accepts f16; optionally typed `half::f16` wrappers over the
+  existing `mixed_precision::{gemm_f16_f32, hgemm}`, which already exist
+  but take raw `u16` bits (`hgemm` needs `cols * ld` elements per operand:
+  document it). Reason: Fuel lost its f16 hgemm when its old oneMKL code
+  was removed. Source: CireSnave 2026-11-22.
 
 ### 0.6.0 — MPI domains
 

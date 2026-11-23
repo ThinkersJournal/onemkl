@@ -57,7 +57,7 @@ Exactly one feature must be selected from each of:
 | --- | --- |
 | Interface | `lp64` (default), `ilp64` |
 | Threading | `threading-sequential` (default), `threading-intel-openmp`, `threading-tbb` |
-| Linkage | `link-dynamic` (default), `link-static` |
+| Linkage | `link-dynamic` (default), `link-static`, `link-rt` |
 
 ### Per-domain (`onemkl`)
 

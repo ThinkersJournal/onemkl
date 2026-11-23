@@ -4,7 +4,7 @@
 
 use approx::assert_abs_diff_eq;
 use onemkl::blas::compact::{
-    getrfnp, gepack, geunpack, get_size, potrf, trsm, CompactFormat,
+    getrfnp, getrinp, gepack, geunpack, get_size, potrf, trsm, CompactFormat,
 };
 use onemkl::{Diag, Layout, Side, Transpose, UpLo};
 
@@ -100,4 +100,24 @@ fn geqrf_rejects_small_tau() {
     let mut ap = vec![0.0f64; get_size::<f64>(2, 2, FMT, 4).unwrap()];
     let mut tau = vec![0.0f64; 1];
     assert!(geqrf::<f64>(Layout::ColMajor, 2, 2, &mut ap, 2, &mut tau, FMT, 4).is_err());
+}
+
+#[test]
+fn getrinp_inverts_lu_factored_matrices() {
+    // [[4,3],[6,3]] (col-major 4,6,3,3): det -6, inverse [[-1/2, 1/2],[1, -2/3]].
+    // [[2,1],[1,2]]: inverse 1/3 * [[2,-1],[-1,2]].
+    let a = vec![vec![4.0, 6.0, 3.0, 3.0], vec![2.0, 1.0, 1.0, 2.0]];
+    let mut ap = pack(&a, 2, 2);
+    assert_eq!(getrfnp::<f64>(Layout::ColMajor, 2, 2, &mut ap, 2, FMT, 2).unwrap(), 0);
+    assert_eq!(getrinp::<f64>(Layout::ColMajor, 2, &mut ap, 2, FMT, 2).unwrap(), 0);
+    let inv = unpack(&ap, 2, 2, 2);
+    let want = [
+        [-0.5, 1.0, 0.5, -2.0 / 3.0],
+        [2.0 / 3.0, -1.0 / 3.0, -1.0 / 3.0, 2.0 / 3.0],
+    ];
+    for (got, w) in inv.iter().zip(&want) {
+        for (g, e) in got.iter().zip(w) {
+            assert_abs_diff_eq!(g, e, epsilon = 1e-12);
+        }
+    }
 }

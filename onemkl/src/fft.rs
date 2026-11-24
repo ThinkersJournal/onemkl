@@ -707,3 +707,517 @@ impl<T: FftScalar> Drop for RealFftPlan<T> {
         }
     }
 }
+
+// =====================================================================
+// PackedRealFftPlan — 1-D in-place real FFT in CCS / PACK / PERM storage
+// =====================================================================
+
+/// Packed storage format of the spectrum of a 1-D real transform
+/// (`DFTI_PACKED_FORMAT`). For an `n`-point transform with
+/// `X[k] = re_k + i im_k`:
+///
+/// - [`Ccs`](Self::Ccs): `re_0, 0, re_1, im_1, ..., re_{n/2}, im_{n/2}`
+///   (`2 * (n/2 + 1)` reals; the zero imaginary parts of `X[0]`, and of
+///   `X[n/2]` for even `n`, are stored explicitly).
+/// - [`Pack`](Self::Pack): `re_0, re_1, im_1, re_2, im_2, ...` (`n` reals;
+///   `im_{n/2}` is absent for even `n`).
+/// - [`Perm`](Self::Perm): like `Pack`, but for even `n` the real
+///   `re_{n/2}` is stored second: `re_0, re_{n/2}, re_1, im_1, ...`;
+///   identical to `Pack` for odd `n`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RealPackedFormat {
+    /// `DFTI_CCS_FORMAT`.
+    Ccs,
+    /// `DFTI_PACK_FORMAT`.
+    Pack,
+    /// `DFTI_PERM_FORMAT`.
+    Perm,
+}
+
+impl RealPackedFormat {
+    #[inline]
+    fn as_dfti(self) -> sys::DFTI_CONFIG_VALUE::Type {
+        match self {
+            Self::Ccs => sys::DFTI_CONFIG_VALUE::DFTI_CCS_FORMAT,
+            Self::Pack => sys::DFTI_CONFIG_VALUE::DFTI_PACK_FORMAT,
+            Self::Perm => sys::DFTI_CONFIG_VALUE::DFTI_PERM_FORMAT,
+        }
+    }
+}
+
+/// 1-D in-place real FFT using a packed (real-array) spectrum format.
+///
+/// The same buffer holds the real signal on entry to
+/// [`forward_in_place`](Self::forward_in_place) and the packed spectrum on
+/// exit (and vice versa for [`backward_in_place`](Self::backward_in_place)).
+/// The buffer must have at least [`buffer_len`](Self::buffer_len) elements
+/// (`n + 2` for CCS with even `n`, otherwise `n`; for CCS the signal
+/// occupies the first `n`). Contrast [`RealFftPlan`], which is out of place
+/// and uses the CCE complex layout.
+pub struct PackedRealFftPlan<T: FftScalar> {
+    handle: DFTI_DESCRIPTOR_HANDLE,
+    buffer_len: usize,
+    _marker: PhantomData<T>,
+}
+
+unsafe impl<T: FftScalar> Send for PackedRealFftPlan<T> {}
+
+impl<T: FftScalar> PackedRealFftPlan<T> {
+    /// Plan of length `n` with unit scaling.
+    pub fn new(n: usize, format: RealPackedFormat) -> Result<Self> {
+        Self::build(n, format, None)
+    }
+
+    /// Plan of length `n` with explicit forward / backward scales (see
+    /// [`FftPlan::complex_nd_with_scales`]).
+    pub fn with_scales(
+        n: usize,
+        format: RealPackedFormat,
+        forward_scale: T,
+        backward_scale: T,
+    ) -> Result<Self> {
+        Self::build(n, format, Some((forward_scale, backward_scale)))
+    }
+
+    fn build(n: usize, format: RealPackedFormat, scales: Option<(T, T)>) -> Result<Self> {
+        if n == 0 {
+            return Err(Error::InvalidArgument("FFT length must be positive"));
+        }
+        let n_long = c_long::try_from(n).map_err(|_| Error::DimensionOverflow)?;
+        let mut handle: DFTI_DESCRIPTOR_HANDLE = ptr::null_mut();
+        check_dfti(unsafe {
+            sys::DftiCreateDescriptor(
+                &mut handle,
+                T::PRECISION.as_dfti(),
+                sys::DFTI_CONFIG_VALUE::DFTI_REAL,
+                1 as c_long,
+                n_long,
+            )
+        })?;
+        let configure = |handle: DFTI_DESCRIPTOR_HANDLE| -> Result<()> {
+            check_dfti(unsafe {
+                sys::DftiSetValue(
+                    handle,
+                    sys::DFTI_CONFIG_PARAM::DFTI_PLACEMENT,
+                    sys::DFTI_CONFIG_VALUE::DFTI_INPLACE,
+                )
+            })?;
+            check_dfti(unsafe {
+                sys::DftiSetValue(
+                    handle,
+                    sys::DFTI_CONFIG_PARAM::DFTI_CONJUGATE_EVEN_STORAGE,
+                    sys::DFTI_CONFIG_VALUE::DFTI_COMPLEX_REAL,
+                )
+            })?;
+            check_dfti(unsafe {
+                sys::DftiSetValue(
+                    handle,
+                    sys::DFTI_CONFIG_PARAM::DFTI_PACKED_FORMAT,
+                    format.as_dfti(),
+                )
+            })?;
+            apply_scales(handle, scales)?;
+            check_dfti(unsafe { sys::DftiCommitDescriptor(handle) })
+        };
+        if let Err(e) = configure(handle) {
+            unsafe {
+                let mut h = handle;
+                let _ = sys::DftiFreeDescriptor(&mut h);
+            }
+            return Err(e);
+        }
+        let buffer_len = match format {
+            RealPackedFormat::Ccs => 2 * (n / 2 + 1),
+            _ => n,
+        };
+        Ok(Self {
+            handle,
+            buffer_len,
+            _marker: PhantomData,
+        })
+    }
+
+    /// Minimum buffer length (in reals) the transform reads / writes.
+    #[inline]
+    #[must_use]
+    pub fn buffer_len(&self) -> usize {
+        self.buffer_len
+    }
+
+    /// Forward transform: real signal in, packed spectrum out, in place.
+    pub fn forward_in_place(&mut self, buf: &mut [T]) -> Result<()> {
+        self.check_len(buf.len())?;
+        check_dfti(unsafe {
+            sys::DftiComputeForward(self.handle, buf.as_mut_ptr().cast::<core::ffi::c_void>())
+        })
+    }
+
+    /// Backward transform: packed spectrum in, real signal out, in place
+    /// (un-normalized unless the plan was built with scales).
+    pub fn backward_in_place(&mut self, buf: &mut [T]) -> Result<()> {
+        self.check_len(buf.len())?;
+        check_dfti(unsafe {
+            sys::DftiComputeBackward(self.handle, buf.as_mut_ptr().cast::<core::ffi::c_void>())
+        })
+    }
+
+    fn check_len(&self, len: usize) -> Result<()> {
+        if len < self.buffer_len {
+            return Err(Error::InvalidArgument(
+                "packed FFT buffer shorter than buffer_len()",
+            ));
+        }
+        Ok(())
+    }
+}
+
+impl<T: FftScalar> Drop for PackedRealFftPlan<T> {
+    fn drop(&mut self) {
+        if !self.handle.is_null() {
+            unsafe {
+                let _ = sys::DftiFreeDescriptor(&mut self.handle);
+            }
+        }
+    }
+}
+
+// =====================================================================
+// BatchedFftPlan — many 1-D complex transforms, with distance and stride
+// =====================================================================
+
+/// In-place batch of `howmany` 1-D complex transforms of length `n`
+/// (`DFTI_NUMBER_OF_TRANSFORMS`, `DFTI_{INPUT,OUTPUT}_DISTANCE`,
+/// `DFTI_{INPUT,OUTPUT}_STRIDES`).
+///
+/// Element `j` of transform `t` lives at index `t * distance + j * stride`
+/// of the buffer. Elements not addressed that way are left untouched.
+/// `distance` must be at least `(n - 1) * stride + 1` so that transforms do
+/// not overlap (interleaved layouts, e.g. `distance = 1, stride = howmany`,
+/// are therefore not accepted by this constructor).
+pub struct BatchedFftPlan<T: FftScalar> {
+    handle: DFTI_DESCRIPTOR_HANDLE,
+    buffer_len: usize,
+    _marker: PhantomData<T>,
+}
+
+unsafe impl<T: FftScalar> Send for BatchedFftPlan<T> {}
+
+impl<T: FftScalar> BatchedFftPlan<T> {
+    /// Batch with unit scaling.
+    pub fn new(n: usize, howmany: usize, distance: usize, stride: usize) -> Result<Self> {
+        Self::build(n, howmany, distance, stride, None)
+    }
+
+    /// Batch with explicit forward / backward scales (per transform).
+    pub fn with_scales(
+        n: usize,
+        howmany: usize,
+        distance: usize,
+        stride: usize,
+        forward_scale: T,
+        backward_scale: T,
+    ) -> Result<Self> {
+        Self::build(n, howmany, distance, stride, Some((forward_scale, backward_scale)))
+    }
+
+    fn build(
+        n: usize,
+        howmany: usize,
+        distance: usize,
+        stride: usize,
+        scales: Option<(T, T)>,
+    ) -> Result<Self> {
+        if n == 0 || howmany == 0 || stride == 0 {
+            return Err(Error::InvalidArgument(
+                "FFT length, batch count and stride must be positive",
+            ));
+        }
+        let extent = (n - 1)
+            .checked_mul(stride)
+            .and_then(|v| v.checked_add(1))
+            .ok_or(Error::DimensionOverflow)?;
+        if distance < extent {
+            return Err(Error::InvalidArgument(
+                "batch distance smaller than one transform's extent (transforms would overlap)",
+            ));
+        }
+        let buffer_len = (howmany - 1)
+            .checked_mul(distance)
+            .and_then(|v| v.checked_add(extent))
+            .ok_or(Error::DimensionOverflow)?;
+        let to_long = |v: usize| c_long::try_from(v).map_err(|_| Error::DimensionOverflow);
+        let (n_l, h_l, d_l, s_l) = (to_long(n)?, to_long(howmany)?, to_long(distance)?, to_long(stride)?);
+        let strides: [c_long; 2] = [0, s_l];
+
+        let mut handle: DFTI_DESCRIPTOR_HANDLE = ptr::null_mut();
+        check_dfti(unsafe {
+            sys::DftiCreateDescriptor(
+                &mut handle,
+                T::PRECISION.as_dfti(),
+                sys::DFTI_CONFIG_VALUE::DFTI_COMPLEX,
+                1 as c_long,
+                n_l,
+            )
+        })?;
+        let configure = |handle: DFTI_DESCRIPTOR_HANDLE| -> Result<()> {
+            use sys::DFTI_CONFIG_PARAM as P;
+            check_dfti(unsafe {
+                sys::DftiSetValue(handle, P::DFTI_PLACEMENT, sys::DFTI_CONFIG_VALUE::DFTI_INPLACE)
+            })?;
+            check_dfti(unsafe { sys::DftiSetValue(handle, P::DFTI_NUMBER_OF_TRANSFORMS, h_l) })?;
+            check_dfti(unsafe { sys::DftiSetValue(handle, P::DFTI_INPUT_DISTANCE, d_l) })?;
+            check_dfti(unsafe { sys::DftiSetValue(handle, P::DFTI_OUTPUT_DISTANCE, d_l) })?;
+            check_dfti(unsafe {
+                sys::DftiSetValue(handle, P::DFTI_INPUT_STRIDES, strides.as_ptr())
+            })?;
+            check_dfti(unsafe {
+                sys::DftiSetValue(handle, P::DFTI_OUTPUT_STRIDES, strides.as_ptr())
+            })?;
+            apply_scales(handle, scales)?;
+            check_dfti(unsafe { sys::DftiCommitDescriptor(handle) })
+        };
+        if let Err(e) = configure(handle) {
+            unsafe {
+                let mut h = handle;
+                let _ = sys::DftiFreeDescriptor(&mut h);
+            }
+            return Err(e);
+        }
+        Ok(Self {
+            handle,
+            buffer_len,
+            _marker: PhantomData,
+        })
+    }
+
+    /// Minimum buffer length: `(howmany - 1) * distance + (n - 1) * stride + 1`.
+    #[inline]
+    #[must_use]
+    pub fn buffer_len(&self) -> usize {
+        self.buffer_len
+    }
+
+    /// Forward transform of every batch member, in place.
+    pub fn forward_in_place(&mut self, x: &mut [Complex<T>]) -> Result<()> {
+        self.check_len(x.len())?;
+        check_dfti(unsafe { sys::DftiComputeForward(self.handle, x.as_mut_ptr().cast()) })
+    }
+
+    /// Backward transform of every batch member, in place (un-normalized
+    /// unless the plan was built with scales).
+    pub fn backward_in_place(&mut self, x: &mut [Complex<T>]) -> Result<()> {
+        self.check_len(x.len())?;
+        check_dfti(unsafe { sys::DftiComputeBackward(self.handle, x.as_mut_ptr().cast()) })
+    }
+
+    fn check_len(&self, len: usize) -> Result<()> {
+        if len < self.buffer_len {
+            return Err(Error::InvalidArgument(
+                "batched FFT buffer shorter than buffer_len()",
+            ));
+        }
+        Ok(())
+    }
+}
+
+impl<T: FftScalar> Drop for BatchedFftPlan<T> {
+    fn drop(&mut self) {
+        if !self.handle.is_null() {
+            unsafe {
+                let _ = sys::DftiFreeDescriptor(&mut self.handle);
+            }
+        }
+    }
+}
+
+// =====================================================================
+// BatchedRealFftPlan — many 1-D real transforms (real <-> CCE complex)
+// =====================================================================
+
+/// Out-of-place batch of `howmany` 1-D real transforms of length `n`.
+/// Forward maps real transform `t` at `input[t * real_distance ..][..n]` to
+/// its CCE spectrum at `out[t * complex_distance ..][..n/2 + 1]`; backward
+/// reverses that. Elements outside those ranges are untouched. Both
+/// distances must be at least one transform's extent (`n` real,
+/// `n/2 + 1` complex), so members never overlap.
+pub struct BatchedRealFftPlan<T: FftScalar> {
+    fwd: DFTI_DESCRIPTOR_HANDLE,
+    bwd: DFTI_DESCRIPTOR_HANDLE,
+    real_len: usize,
+    complex_len: usize,
+    _marker: PhantomData<T>,
+}
+
+unsafe impl<T: FftScalar> Send for BatchedRealFftPlan<T> {}
+
+impl<T: FftScalar> BatchedRealFftPlan<T> {
+    /// Batch with unit scaling.
+    pub fn new(n: usize, howmany: usize, real_distance: usize, complex_distance: usize) -> Result<Self> {
+        Self::build(n, howmany, real_distance, complex_distance, None)
+    }
+
+    /// Batch with explicit forward / backward scales (per transform).
+    pub fn with_scales(
+        n: usize,
+        howmany: usize,
+        real_distance: usize,
+        complex_distance: usize,
+        forward_scale: T,
+        backward_scale: T,
+    ) -> Result<Self> {
+        Self::build(
+            n,
+            howmany,
+            real_distance,
+            complex_distance,
+            Some((forward_scale, backward_scale)),
+        )
+    }
+
+    fn build(
+        n: usize,
+        howmany: usize,
+        rd: usize,
+        cd: usize,
+        scales: Option<(T, T)>,
+    ) -> Result<Self> {
+        if n == 0 || howmany == 0 {
+            return Err(Error::InvalidArgument("FFT length and batch count must be positive"));
+        }
+        let h = cce_complex_len(n);
+        if rd < n || cd < h {
+            return Err(Error::InvalidArgument(
+                "batch distance smaller than one transform's extent (transforms would overlap)",
+            ));
+        }
+        let span = |dist: usize, extent: usize| -> Result<usize> {
+            (howmany - 1)
+                .checked_mul(dist)
+                .and_then(|v| v.checked_add(extent))
+                .ok_or(Error::DimensionOverflow)
+        };
+        let (real_len, complex_len) = (span(rd, n)?, span(cd, h)?);
+        let to_long = |v: usize| c_long::try_from(v).map_err(|_| Error::DimensionOverflow);
+        let (n_l, h_l, rd_l, cd_l) = (to_long(n)?, to_long(howmany)?, to_long(rd)?, to_long(cd)?);
+
+        // DFTI's input / output distances describe the transform being
+        // computed, so the backward direction needs its own descriptor with
+        // the two distances swapped.
+        let make = |in_d: c_long, out_d: c_long| -> Result<DFTI_DESCRIPTOR_HANDLE> {
+            let mut handle: DFTI_DESCRIPTOR_HANDLE = ptr::null_mut();
+            check_dfti(unsafe {
+                sys::DftiCreateDescriptor(
+                    &mut handle,
+                    T::PRECISION.as_dfti(),
+                    sys::DFTI_CONFIG_VALUE::DFTI_REAL,
+                    1 as c_long,
+                    n_l,
+                )
+            })?;
+            let configure = |handle: DFTI_DESCRIPTOR_HANDLE| -> Result<()> {
+                use sys::DFTI_CONFIG_PARAM as P;
+                check_dfti(unsafe {
+                    sys::DftiSetValue(handle, P::DFTI_PLACEMENT, sys::DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE)
+                })?;
+                check_dfti(unsafe {
+                    sys::DftiSetValue(
+                        handle,
+                        P::DFTI_CONJUGATE_EVEN_STORAGE,
+                        sys::DFTI_CONFIG_VALUE::DFTI_COMPLEX_COMPLEX,
+                    )
+                })?;
+                check_dfti(unsafe { sys::DftiSetValue(handle, P::DFTI_NUMBER_OF_TRANSFORMS, h_l) })?;
+                check_dfti(unsafe { sys::DftiSetValue(handle, P::DFTI_INPUT_DISTANCE, in_d) })?;
+                check_dfti(unsafe { sys::DftiSetValue(handle, P::DFTI_OUTPUT_DISTANCE, out_d) })?;
+                apply_scales(handle, scales)?;
+                check_dfti(unsafe { sys::DftiCommitDescriptor(handle) })
+            };
+            if let Err(e) = configure(handle) {
+                unsafe {
+                    let mut hh = handle;
+                    let _ = sys::DftiFreeDescriptor(&mut hh);
+                }
+                return Err(e);
+            }
+            Ok(handle)
+        };
+        let fwd = make(rd_l, cd_l)?;
+        let bwd = match make(cd_l, rd_l) {
+            Ok(h) => h,
+            Err(e) => {
+                unsafe {
+                    let mut hh = fwd;
+                    let _ = sys::DftiFreeDescriptor(&mut hh);
+                }
+                return Err(e);
+            }
+        };
+        Ok(Self {
+            fwd,
+            bwd,
+            real_len,
+            complex_len,
+            _marker: PhantomData,
+        })
+    }
+
+    /// Minimum real buffer length: `(howmany - 1) * real_distance + n`.
+    #[inline]
+    #[must_use]
+    pub fn real_buffer_len(&self) -> usize {
+        self.real_len
+    }
+
+    /// Minimum complex buffer length: `(howmany - 1) * complex_distance + n/2 + 1`.
+    #[inline]
+    #[must_use]
+    pub fn complex_buffer_len(&self) -> usize {
+        self.complex_len
+    }
+
+    /// Forward: real signals in, CCE spectra out.
+    pub fn forward(&mut self, input: &[T], out: &mut [Complex<T>]) -> Result<()> {
+        self.check_len(input.len(), out.len())?;
+        check_dfti(unsafe {
+            sys::DftiComputeForward(
+                self.fwd,
+                input.as_ptr() as *mut core::ffi::c_void,
+                out.as_mut_ptr().cast::<core::ffi::c_void>(),
+            )
+        })
+    }
+
+    /// Backward: CCE spectra in, real signals out (un-normalized unless
+    /// scaled). The spectra must be conjugate-even.
+    pub fn backward(&mut self, input: &[Complex<T>], out: &mut [T]) -> Result<()> {
+        self.check_len(out.len(), input.len())?;
+        check_dfti(unsafe {
+            sys::DftiComputeBackward(
+                self.bwd,
+                input.as_ptr() as *mut core::ffi::c_void,
+                out.as_mut_ptr().cast::<core::ffi::c_void>(),
+            )
+        })
+    }
+
+    fn check_len(&self, real: usize, complex: usize) -> Result<()> {
+        if real < self.real_len || complex < self.complex_len {
+            return Err(Error::InvalidArgument(
+                "batched real FFT buffer shorter than real_buffer_len() / complex_buffer_len()",
+            ));
+        }
+        Ok(())
+    }
+}
+
+impl<T: FftScalar> Drop for BatchedRealFftPlan<T> {
+    fn drop(&mut self) {
+        for h in [&mut self.fwd, &mut self.bwd] {
+            if !h.is_null() {
+                unsafe {
+                    let _ = sys::DftiFreeDescriptor(h);
+                }
+            }
+        }
+    }
+}

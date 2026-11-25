@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.3.9 - 2026-11-25 (allocated by pm-assist)
+
+### Added
+
+- Optional feature `half`: `Scalar` and `RealScalar` for `half::f16`, and typed `blas::mixed_precision::f16::{gemm_f16_f32, hgemm}` over the existing `u16` GEMMs. Not done, by design: `level3::gemm` over f16 (it needs `BlasScalar`, ~30 cblas methods, and oneMKL has no f16 level-1/2 routines). Tests `blas_f16_typed` (Linux x86_64, LP64, sequential, oneMKL 2026.2.1 pip, row-major NoTrans 3x4x5): `gemm_f16_f32` equals an f32 reference exactly on f16-exact data; `hgemm` within 2% (f16 rounding; accumulation precision unmeasured); a sibling test shows the reference differs for a transposed B. Not exercised: column-major, transposes, `ld > rows`, Windows, macOS, OpenMP/TBB, ILP64.
+
 ## 0.3.8 - 2026-11-24 (allocated by pm-assist)
 
 ### Added

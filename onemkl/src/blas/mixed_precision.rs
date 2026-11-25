@@ -476,6 +476,87 @@ pub fn hgemm(
     Ok(())
 }
 
+/// Typed `half::f16` wrappers (feature `half`) over [`gemm_f16_f32`] and
+/// [`hgemm`]. `half::f16` is `repr(transparent)` over `u16`, so the slices are
+/// reinterpreted, not copied.
+#[cfg(feature = "half")]
+pub mod f16 {
+    use super::*;
+    use half::f16;
+
+    fn bits(s: &[f16]) -> &[u16] {
+        // SAFETY: `f16` is `#[repr(transparent)]` over `u16` (same size and alignment).
+        unsafe { core::slice::from_raw_parts(s.as_ptr().cast::<u16>(), s.len()) }
+    }
+    fn bits_mut(s: &mut [f16]) -> &mut [u16] {
+        // SAFETY: as in `bits`; the unique borrow is carried over.
+        unsafe { core::slice::from_raw_parts_mut(s.as_mut_ptr().cast::<u16>(), s.len()) }
+    }
+
+    /// `C ← alpha · op(A) · op(B) + beta · C`, `A`/`B` in `f16`, `C` and the
+    /// accumulator in `f32` (`cblas_gemm_f16f16f32`).
+    #[allow(clippy::too_many_arguments)]
+    pub fn gemm_f16_f32(
+        layout: Layout,
+        transa: Transpose,
+        transb: Transpose,
+        m: usize,
+        n: usize,
+        k: usize,
+        alpha: f32,
+        a: &[f16],
+        lda: usize,
+        b: &[f16],
+        ldb: usize,
+        beta: f32,
+        c: &mut [f32],
+        ldc: usize,
+    ) -> Result<()> {
+        super::gemm_f16_f32(
+            layout, transa, transb, m, n, k, alpha, bits(a), lda, bits(b), ldb, beta, c, ldc,
+        )
+    }
+
+    /// `C ← alpha · op(A) · op(B) + beta · C` entirely in `f16`
+    /// (`cblas_hgemm`). Each operand needs `cols * ld` elements (stricter than
+    /// the Fortran `(cols-1)*ld + rows`). Accumulation precision is not
+    /// measured here.
+    #[allow(clippy::too_many_arguments)]
+    pub fn hgemm(
+        layout: Layout,
+        transa: Transpose,
+        transb: Transpose,
+        m: usize,
+        n: usize,
+        k: usize,
+        alpha: f16,
+        a: &[f16],
+        lda: usize,
+        b: &[f16],
+        ldb: usize,
+        beta: f16,
+        c: &mut [f16],
+        ldc: usize,
+    ) -> Result<()> {
+        super::hgemm(
+            layout,
+            transa,
+            transb,
+            m,
+            n,
+            k,
+            alpha.to_bits(),
+            bits(a),
+            lda,
+            bits(b),
+            ldb,
+            beta.to_bits(),
+            bits_mut(c),
+            ldc,
+        )
+    }
+}
+
 // =====================================================================
 // bf16 helpers
 // =====================================================================

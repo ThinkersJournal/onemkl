@@ -708,6 +708,51 @@ impl<T: FftScalar> Drop for RealFftPlan<T> {
     }
 }
 
+/// Validates an N-D strided layout (`strides[i]` = element distance along
+/// dimension `i`) and returns the minimum buffer length it needs:
+/// `1 + sum((dims[i] - 1) * strides[i])`. Rejects an empty or rank-mismatched
+/// layout, zero dimensions or strides, and layouts that overlap themselves.
+fn strided_layout_len(dims: &[usize], strides: &[usize]) -> Result<usize> {
+    if dims.is_empty() {
+        return Err(Error::InvalidArgument(
+            "FFT plan needs at least one dimension",
+        ));
+    }
+    if dims.len() != strides.len() {
+        return Err(Error::InvalidArgument(
+            "dims and strides must have the same length",
+        ));
+    }
+    if dims.contains(&0) || strides.contains(&0) {
+        return Err(Error::InvalidArgument(
+            "dimensions and strides must be positive",
+        ));
+    }
+    // Non-overlap: ordered by stride, each stride must clear the
+    // extent spanned by the next-faster dimension.
+    let mut order: Vec<usize> = (0..dims.len()).collect();
+    order.sort_by_key(|&i| strides[i]);
+    for w in order.windows(2) {
+        let (a, b) = (w[0], w[1]);
+        let span = strides[a]
+            .checked_mul(dims[a])
+            .ok_or(Error::DimensionOverflow)?;
+        if dims[a] > 1 && strides[b] < span {
+            return Err(Error::InvalidArgument(
+                "strides overlap: a stride is smaller than the extent of a faster dimension",
+            ));
+        }
+    }
+    let mut buffer_len = 1usize;
+    for (&d, &s) in dims.iter().zip(strides) {
+        buffer_len = (d - 1)
+            .checked_mul(s)
+            .and_then(|v| buffer_len.checked_add(v))
+            .ok_or(Error::DimensionOverflow)?;
+    }
+    Ok(buffer_len)
+}
+
 // =====================================================================
 // StridedFftPlan — N-D in-place complex FFT over explicit element strides
 // =====================================================================
@@ -745,43 +790,7 @@ impl<T: FftScalar> StridedFftPlan<T> {
     }
 
     fn build(dims: &[usize], strides: &[usize], scales: Option<(T, T)>) -> Result<Self> {
-        if dims.is_empty() {
-            return Err(Error::InvalidArgument(
-                "FFT plan needs at least one dimension",
-            ));
-        }
-        if dims.len() != strides.len() {
-            return Err(Error::InvalidArgument(
-                "dims and strides must have the same length",
-            ));
-        }
-        if dims.contains(&0) || strides.contains(&0) {
-            return Err(Error::InvalidArgument(
-                "dimensions and strides must be positive",
-            ));
-        }
-        // Non-overlap: ordered by stride, each stride must clear the
-        // extent spanned by the next-faster dimension.
-        let mut order: Vec<usize> = (0..dims.len()).collect();
-        order.sort_by_key(|&i| strides[i]);
-        for w in order.windows(2) {
-            let (a, b) = (w[0], w[1]);
-            let span = strides[a]
-                .checked_mul(dims[a])
-                .ok_or(Error::DimensionOverflow)?;
-            if dims[a] > 1 && strides[b] < span {
-                return Err(Error::InvalidArgument(
-                    "strides overlap: a stride is smaller than the extent of a faster dimension",
-                ));
-            }
-        }
-        let mut buffer_len = 1usize;
-        for (&d, &s) in dims.iter().zip(strides) {
-            buffer_len = (d - 1)
-                .checked_mul(s)
-                .and_then(|v| buffer_len.checked_add(v))
-                .ok_or(Error::DimensionOverflow)?;
-        }
+        let buffer_len = strided_layout_len(dims, strides)?;
         let to_long = |v: usize| c_long::try_from(v).map_err(|_| Error::DimensionOverflow);
         let dims_l: Vec<c_long> = dims.iter().map(|&d| to_long(d)).collect::<Result<_>>()?;
         // MKL layout: [offset, stride_0, stride_1, ...].
@@ -877,6 +886,226 @@ impl<T: FftScalar> Drop for StridedFftPlan<T> {
         if !self.handle.is_null() {
             unsafe {
                 let _ = sys::DftiFreeDescriptor(&mut self.handle);
+            }
+        }
+    }
+}
+
+// =====================================================================
+// StridedRealFftPlan — N-D out-of-place real FFT over explicit strides
+// =====================================================================
+
+/// N-D out-of-place real FFT (CCE spectrum) over strided layouts.
+///
+/// `real_strides[i]` is the distance, in real elements, between
+/// consecutive indices of dimension `i` of the real array;
+/// `complex_strides[i]` the same, in complex elements, for the spectrum,
+/// whose last dimension is halved to `dims[last] / 2 + 1`. Both layouts
+/// must be positive and must not overlap themselves; gaps between the
+/// strided positions are never touched.
+pub struct StridedRealFftPlan<T: FftScalar> {
+    handle: DFTI_DESCRIPTOR_HANDLE,
+    back_handle: DFTI_DESCRIPTOR_HANDLE,
+    real_buffer_len: usize,
+    complex_buffer_len: usize,
+    _marker: PhantomData<T>,
+}
+
+unsafe impl<T: FftScalar> Send for StridedRealFftPlan<T> {}
+
+impl<T: FftScalar> StridedRealFftPlan<T> {
+    /// Unscaled plan over `dims` with the given real / complex strides.
+    pub fn new(dims: &[usize], real_strides: &[usize], complex_strides: &[usize]) -> Result<Self> {
+        Self::build(dims, real_strides, complex_strides, None)
+    }
+
+    /// Plan with explicit forward / backward scales.
+    pub fn with_scales(
+        dims: &[usize],
+        real_strides: &[usize],
+        complex_strides: &[usize],
+        forward_scale: T,
+        backward_scale: T,
+    ) -> Result<Self> {
+        Self::build(
+            dims,
+            real_strides,
+            complex_strides,
+            Some((forward_scale, backward_scale)),
+        )
+    }
+
+    fn build(
+        dims: &[usize],
+        real_strides: &[usize],
+        complex_strides: &[usize],
+        scales: Option<(T, T)>,
+    ) -> Result<Self> {
+        let real_buffer_len = strided_layout_len(dims, real_strides)?;
+        let mut cdims = dims.to_vec();
+        let last = cdims.len() - 1;
+        cdims[last] = cce_complex_len(cdims[last]);
+        let complex_buffer_len = strided_layout_len(&cdims, complex_strides)?;
+
+        let to_long = |v: usize| c_long::try_from(v).map_err(|_| Error::DimensionOverflow);
+        let dims_l: Vec<c_long> = dims.iter().map(|&d| to_long(d)).collect::<Result<_>>()?;
+        // MKL layout: [offset, stride_0, stride_1, ...].
+        let with_offset = |s: &[usize]| -> Result<Vec<c_long>> {
+            let mut v: Vec<c_long> = Vec::with_capacity(s.len() + 1);
+            v.push(0);
+            for &x in s {
+                v.push(to_long(x)?);
+            }
+            Ok(v)
+        };
+        let in_l = with_offset(real_strides)?;
+        let out_l = with_offset(complex_strides)?;
+        let ndim = to_long(dims.len())?;
+
+        // MKL reads INPUT_STRIDES / OUTPUT_STRIDES as the strides of the
+        // input / output of the transform being computed, so the backward
+        // direction gets its own descriptor with the roles swapped.
+        let make = |in_s: &[c_long], out_s: &[c_long]| -> Result<DFTI_DESCRIPTOR_HANDLE> {
+            let mut handle: DFTI_DESCRIPTOR_HANDLE = ptr::null_mut();
+            check_dfti(unsafe {
+                if dims.len() == 1 {
+                    sys::DftiCreateDescriptor(
+                        &mut handle,
+                        T::PRECISION.as_dfti(),
+                        sys::DFTI_CONFIG_VALUE::DFTI_REAL,
+                        ndim,
+                        dims_l[0],
+                    )
+                } else {
+                    sys::DftiCreateDescriptor(
+                        &mut handle,
+                        T::PRECISION.as_dfti(),
+                        sys::DFTI_CONFIG_VALUE::DFTI_REAL,
+                        ndim,
+                        dims_l.as_ptr(),
+                    )
+                }
+            })?;
+            let configure = |handle: DFTI_DESCRIPTOR_HANDLE| -> Result<()> {
+                use sys::DFTI_CONFIG_PARAM as P;
+                check_dfti(unsafe {
+                    sys::DftiSetValue(
+                        handle,
+                        P::DFTI_CONJUGATE_EVEN_STORAGE,
+                        sys::DFTI_CONFIG_VALUE::DFTI_COMPLEX_COMPLEX,
+                    )
+                })?;
+                check_dfti(unsafe {
+                    sys::DftiSetValue(
+                        handle,
+                        P::DFTI_PLACEMENT,
+                        sys::DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE,
+                    )
+                })?;
+                check_dfti(unsafe {
+                    sys::DftiSetValue(handle, P::DFTI_INPUT_STRIDES, in_s.as_ptr())
+                })?;
+                check_dfti(unsafe {
+                    sys::DftiSetValue(handle, P::DFTI_OUTPUT_STRIDES, out_s.as_ptr())
+                })?;
+                apply_scales(handle, scales)?;
+                check_dfti(unsafe { sys::DftiCommitDescriptor(handle) })
+            };
+            if let Err(e) = configure(handle) {
+                unsafe {
+                    let mut h = handle;
+                    let _ = sys::DftiFreeDescriptor(&mut h);
+                }
+                return Err(e);
+            }
+            Ok(handle)
+        };
+        let handle = make(&in_l, &out_l)?;
+        let back_handle = match make(&out_l, &in_l) {
+            Ok(h) => h,
+            Err(e) => {
+                unsafe {
+                    let mut h = handle;
+                    let _ = sys::DftiFreeDescriptor(&mut h);
+                }
+                return Err(e);
+            }
+        };
+        Ok(Self {
+            handle,
+            back_handle,
+            real_buffer_len,
+            complex_buffer_len,
+            _marker: PhantomData,
+        })
+    }
+
+    /// Minimum real buffer length: `1 + sum((dims[i] - 1) * real_strides[i])`.
+    #[inline]
+    #[must_use]
+    pub fn real_buffer_len(&self) -> usize {
+        self.real_buffer_len
+    }
+
+    /// Minimum complex (spectrum) buffer length, with the last dimension
+    /// halved to `dims[last] / 2 + 1`.
+    #[inline]
+    #[must_use]
+    pub fn complex_buffer_len(&self) -> usize {
+        self.complex_buffer_len
+    }
+
+    /// Forward transform `out <- FFT(input)`.
+    pub fn forward(&mut self, input: &[T], out: &mut [Complex<T>]) -> Result<()> {
+        if input.len() < self.real_buffer_len {
+            return Err(Error::InvalidArgument(
+                "real input buffer too small for strided real FFT plan",
+            ));
+        }
+        if out.len() < self.complex_buffer_len {
+            return Err(Error::InvalidArgument(
+                "complex output buffer too small for strided real FFT plan",
+            ));
+        }
+        check_dfti(unsafe {
+            sys::DftiComputeForward(
+                self.handle,
+                input.as_ptr() as *mut core::ffi::c_void,
+                out.as_mut_ptr().cast::<core::ffi::c_void>(),
+            )
+        })
+    }
+
+    /// Backward transform `out <- IFFT(input)` (un-normalized unless
+    /// scaled). The input must satisfy CCE Hermitian symmetry.
+    pub fn backward(&mut self, input: &[Complex<T>], out: &mut [T]) -> Result<()> {
+        if input.len() < self.complex_buffer_len {
+            return Err(Error::InvalidArgument(
+                "complex input buffer too small for strided real FFT plan",
+            ));
+        }
+        if out.len() < self.real_buffer_len {
+            return Err(Error::InvalidArgument(
+                "real output buffer too small for strided real FFT plan",
+            ));
+        }
+        check_dfti(unsafe {
+            sys::DftiComputeBackward(
+                self.back_handle,
+                input.as_ptr() as *mut core::ffi::c_void,
+                out.as_mut_ptr().cast::<core::ffi::c_void>(),
+            )
+        })
+    }
+}
+
+impl<T: FftScalar> Drop for StridedRealFftPlan<T> {
+    fn drop(&mut self) {
+        for h in [&mut self.handle, &mut self.back_handle] {
+            if !h.is_null() {
+                unsafe {
+                    let _ = sys::DftiFreeDescriptor(h);
+                }
             }
         }
     }

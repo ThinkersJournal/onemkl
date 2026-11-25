@@ -891,6 +891,61 @@ impl<T: FftScalar> Drop for StridedFftPlan<T> {
     }
 }
 
+/// Creates and commits a real-domain CCE descriptor (`COMPLEX_COMPLEX`
+/// storage) with the given input / output strides (`[offset, s0, s1, ..]`).
+fn real_descriptor<T: FftScalar>(
+    dims_l: &[c_long],
+    in_s: &[c_long],
+    out_s: &[c_long],
+    placement: sys::DFTI_CONFIG_VALUE::Type,
+    scales: Option<(T, T)>,
+) -> Result<DFTI_DESCRIPTOR_HANDLE> {
+    let ndim = c_long::try_from(dims_l.len()).map_err(|_| Error::DimensionOverflow)?;
+    let mut handle: DFTI_DESCRIPTOR_HANDLE = ptr::null_mut();
+    check_dfti(unsafe {
+        if dims_l.len() == 1 {
+            sys::DftiCreateDescriptor(
+                &mut handle,
+                T::PRECISION.as_dfti(),
+                sys::DFTI_CONFIG_VALUE::DFTI_REAL,
+                ndim,
+                dims_l[0],
+            )
+        } else {
+            sys::DftiCreateDescriptor(
+                &mut handle,
+                T::PRECISION.as_dfti(),
+                sys::DFTI_CONFIG_VALUE::DFTI_REAL,
+                ndim,
+                dims_l.as_ptr(),
+            )
+        }
+    })?;
+    let configure = |handle: DFTI_DESCRIPTOR_HANDLE| -> Result<()> {
+        use sys::DFTI_CONFIG_PARAM as P;
+        check_dfti(unsafe {
+            sys::DftiSetValue(
+                handle,
+                P::DFTI_CONJUGATE_EVEN_STORAGE,
+                sys::DFTI_CONFIG_VALUE::DFTI_COMPLEX_COMPLEX,
+            )
+        })?;
+        check_dfti(unsafe { sys::DftiSetValue(handle, P::DFTI_PLACEMENT, placement) })?;
+        check_dfti(unsafe { sys::DftiSetValue(handle, P::DFTI_INPUT_STRIDES, in_s.as_ptr()) })?;
+        check_dfti(unsafe { sys::DftiSetValue(handle, P::DFTI_OUTPUT_STRIDES, out_s.as_ptr()) })?;
+        apply_scales(handle, scales)?;
+        check_dfti(unsafe { sys::DftiCommitDescriptor(handle) })
+    };
+    if let Err(e) = configure(handle) {
+        unsafe {
+            let mut h = handle;
+            let _ = sys::DftiFreeDescriptor(&mut h);
+        }
+        return Err(e);
+    }
+    Ok(handle)
+}
+
 // =====================================================================
 // StridedRealFftPlan — N-D out-of-place real FFT over explicit strides
 // =====================================================================
@@ -960,65 +1015,18 @@ impl<T: FftScalar> StridedRealFftPlan<T> {
         };
         let in_l = with_offset(real_strides)?;
         let out_l = with_offset(complex_strides)?;
-        let ndim = to_long(dims.len())?;
 
         // MKL reads INPUT_STRIDES / OUTPUT_STRIDES as the strides of the
         // input / output of the transform being computed, so the backward
         // direction gets its own descriptor with the roles swapped.
-        let make = |in_s: &[c_long], out_s: &[c_long]| -> Result<DFTI_DESCRIPTOR_HANDLE> {
-            let mut handle: DFTI_DESCRIPTOR_HANDLE = ptr::null_mut();
-            check_dfti(unsafe {
-                if dims.len() == 1 {
-                    sys::DftiCreateDescriptor(
-                        &mut handle,
-                        T::PRECISION.as_dfti(),
-                        sys::DFTI_CONFIG_VALUE::DFTI_REAL,
-                        ndim,
-                        dims_l[0],
-                    )
-                } else {
-                    sys::DftiCreateDescriptor(
-                        &mut handle,
-                        T::PRECISION.as_dfti(),
-                        sys::DFTI_CONFIG_VALUE::DFTI_REAL,
-                        ndim,
-                        dims_l.as_ptr(),
-                    )
-                }
-            })?;
-            let configure = |handle: DFTI_DESCRIPTOR_HANDLE| -> Result<()> {
-                use sys::DFTI_CONFIG_PARAM as P;
-                check_dfti(unsafe {
-                    sys::DftiSetValue(
-                        handle,
-                        P::DFTI_CONJUGATE_EVEN_STORAGE,
-                        sys::DFTI_CONFIG_VALUE::DFTI_COMPLEX_COMPLEX,
-                    )
-                })?;
-                check_dfti(unsafe {
-                    sys::DftiSetValue(
-                        handle,
-                        P::DFTI_PLACEMENT,
-                        sys::DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE,
-                    )
-                })?;
-                check_dfti(unsafe {
-                    sys::DftiSetValue(handle, P::DFTI_INPUT_STRIDES, in_s.as_ptr())
-                })?;
-                check_dfti(unsafe {
-                    sys::DftiSetValue(handle, P::DFTI_OUTPUT_STRIDES, out_s.as_ptr())
-                })?;
-                apply_scales(handle, scales)?;
-                check_dfti(unsafe { sys::DftiCommitDescriptor(handle) })
-            };
-            if let Err(e) = configure(handle) {
-                unsafe {
-                    let mut h = handle;
-                    let _ = sys::DftiFreeDescriptor(&mut h);
-                }
-                return Err(e);
-            }
-            Ok(handle)
+        let make = |in_s: &[c_long], out_s: &[c_long]| {
+            real_descriptor::<T>(
+                &dims_l,
+                in_s,
+                out_s,
+                sys::DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE,
+                scales,
+            )
         };
         let handle = make(&in_l, &out_l)?;
         let back_handle = match make(&out_l, &in_l) {
@@ -1100,6 +1108,146 @@ impl<T: FftScalar> StridedRealFftPlan<T> {
 }
 
 impl<T: FftScalar> Drop for StridedRealFftPlan<T> {
+    fn drop(&mut self) {
+        for h in [&mut self.handle, &mut self.back_handle] {
+            if !h.is_null() {
+                unsafe {
+                    let _ = sys::DftiFreeDescriptor(h);
+                }
+            }
+        }
+    }
+}
+
+// =====================================================================
+// InPlaceRealFftPlan — N-D in-place real FFT (padded buffer, CCE spectrum)
+// =====================================================================
+
+/// N-D in-place real FFT: the CCE spectrum overwrites the real signal.
+///
+/// MKL has no N-D packed (CCS / PACK / PERM) real formats, so N-D in-place
+/// uses the CCE layout with a padded real array: the last dimension is
+/// padded to `2 * (dims[last] / 2 + 1)` reals so each row can hold its
+/// `dims[last] / 2 + 1` complex bins. With `cdims` = `dims` but with the
+/// last entry replaced by `dims[last] / 2 + 1`, the real array is
+/// row-major over `cdims` with every row-stride doubled: element
+/// `(j0, .., jl)` of the signal lives at
+/// `sum(ji * 2 * cs[i]) + jl` where `cs` are the row-major strides of
+/// `cdims`, and bin `(k0, .., kl)` is the pair at
+/// `2 * sum(ki * cs[i])` (re, then im). The buffer has
+/// [`buffer_len`](Self::buffer_len) = `2 * prod(cdims)` reals.
+pub struct InPlaceRealFftPlan<T: FftScalar> {
+    handle: DFTI_DESCRIPTOR_HANDLE,
+    back_handle: DFTI_DESCRIPTOR_HANDLE,
+    buffer_len: usize,
+    _marker: PhantomData<T>,
+}
+
+unsafe impl<T: FftScalar> Send for InPlaceRealFftPlan<T> {}
+
+impl<T: FftScalar> InPlaceRealFftPlan<T> {
+    /// Unscaled plan over `dims`.
+    pub fn new(dims: &[usize]) -> Result<Self> {
+        Self::build(dims, None)
+    }
+
+    /// Plan with explicit forward / backward scales.
+    pub fn with_scales(dims: &[usize], forward_scale: T, backward_scale: T) -> Result<Self> {
+        Self::build(dims, Some((forward_scale, backward_scale)))
+    }
+
+    fn build(dims: &[usize], scales: Option<(T, T)>) -> Result<Self> {
+        if dims.is_empty() {
+            return Err(Error::InvalidArgument(
+                "FFT plan needs at least one dimension",
+            ));
+        }
+        if dims.contains(&0) {
+            return Err(Error::InvalidArgument("dimensions must be positive"));
+        }
+        let to_long = |v: usize| c_long::try_from(v).map_err(|_| Error::DimensionOverflow);
+        let last = dims.len() - 1;
+        let mut cdims = dims.to_vec();
+        cdims[last] = cce_complex_len(dims[last]);
+        // Row-major complex strides over cdims; real strides are doubled
+        // except along the (contiguous) last dimension.
+        let mut cs = vec![1usize; dims.len()];
+        for i in (0..last).rev() {
+            cs[i] = cs[i + 1]
+                .checked_mul(cdims[i + 1])
+                .ok_or(Error::DimensionOverflow)?;
+        }
+        let total_c = cs[0]
+            .checked_mul(cdims[0])
+            .ok_or(Error::DimensionOverflow)?;
+        let buffer_len = total_c.checked_mul(2).ok_or(Error::DimensionOverflow)?;
+        let dims_l: Vec<c_long> = dims.iter().map(|&d| to_long(d)).collect::<Result<_>>()?;
+        let mut real_s: Vec<c_long> = vec![0];
+        let mut cplx_s: Vec<c_long> = vec![0];
+        for (i, &c) in cs.iter().enumerate() {
+            cplx_s.push(to_long(c)?);
+            real_s.push(if i == last { 1 } else { to_long(2 * c)? });
+        }
+        let inplace = sys::DFTI_CONFIG_VALUE::DFTI_INPLACE;
+        let handle = real_descriptor::<T>(&dims_l, &real_s, &cplx_s, inplace, scales)?;
+        // The backward transform reads the complex layout and writes the
+        // real one, so its descriptor has the stride roles swapped.
+        let back_handle = match real_descriptor::<T>(&dims_l, &cplx_s, &real_s, inplace, scales) {
+            Ok(h) => h,
+            Err(e) => {
+                unsafe {
+                    let mut h = handle;
+                    let _ = sys::DftiFreeDescriptor(&mut h);
+                }
+                return Err(e);
+            }
+        };
+        Ok(Self {
+            handle,
+            back_handle,
+            buffer_len,
+            _marker: PhantomData,
+        })
+    }
+
+    /// Buffer length in reals: `2 * prod(cdims)`.
+    #[inline]
+    #[must_use]
+    pub fn buffer_len(&self) -> usize {
+        self.buffer_len
+    }
+
+    /// Forward transform: padded real signal in, interleaved CCE spectrum out.
+    pub fn forward_in_place(&mut self, buf: &mut [T]) -> Result<()> {
+        self.check_len(buf.len())?;
+        check_dfti(unsafe {
+            sys::DftiComputeForward(self.handle, buf.as_mut_ptr().cast::<core::ffi::c_void>())
+        })
+    }
+
+    /// Backward transform: CCE spectrum in, padded real signal out
+    /// (un-normalized unless scaled). The spectrum must be Hermitian.
+    pub fn backward_in_place(&mut self, buf: &mut [T]) -> Result<()> {
+        self.check_len(buf.len())?;
+        check_dfti(unsafe {
+            sys::DftiComputeBackward(
+                self.back_handle,
+                buf.as_mut_ptr().cast::<core::ffi::c_void>(),
+            )
+        })
+    }
+
+    fn check_len(&self, len: usize) -> Result<()> {
+        if len < self.buffer_len {
+            return Err(Error::InvalidArgument(
+                "in-place real FFT buffer shorter than buffer_len()",
+            ));
+        }
+        Ok(())
+    }
+}
+
+impl<T: FftScalar> Drop for InPlaceRealFftPlan<T> {
     fn drop(&mut self) {
         for h in [&mut self.handle, &mut self.back_handle] {
             if !h.is_null() {

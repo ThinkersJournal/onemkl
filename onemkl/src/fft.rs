@@ -1981,3 +1981,88 @@ impl<T: FftScalar> Drop for StridedBatchedRealFftPlan<T> {
         }
     }
 }
+
+// =====================================================================
+// DFTI_THREAD_LIMIT — per-plan cap on the threads one transform may use
+// =====================================================================
+
+/// Applies `DFTI_THREAD_LIMIT` to an already committed descriptor and
+/// recommits it; frees the descriptor if either step fails.
+fn limit_threads_or_free(handle: DFTI_DESCRIPTOR_HANDLE, limit: usize) -> Result<()> {
+    let apply = || -> Result<()> {
+        let limit_l = c_long::try_from(limit).map_err(|_| Error::DimensionOverflow)?;
+        check_dfti(unsafe {
+            sys::DftiSetValue(handle, sys::DFTI_CONFIG_PARAM::DFTI_THREAD_LIMIT, limit_l)
+        })?;
+        check_dfti(unsafe { sys::DftiCommitDescriptor(handle) })
+    };
+    let r = apply();
+    if r.is_err() {
+        unsafe {
+            let mut h = handle;
+            let _ = sys::DftiFreeDescriptor(&mut h);
+        }
+    }
+    r
+}
+
+/// Reads back `DFTI_THREAD_LIMIT`.
+fn read_thread_limit(handle: DFTI_DESCRIPTOR_HANDLE) -> Result<usize> {
+    let mut v: c_long = 0;
+    check_dfti(unsafe {
+        sys::DftiGetValue(
+            handle,
+            sys::DFTI_CONFIG_PARAM::DFTI_THREAD_LIMIT,
+            &mut v as *mut c_long,
+        )
+    })?;
+    usize::try_from(v).map_err(|_| Error::DimensionOverflow)
+}
+
+impl<T: FftScalar> FftPlan<T> {
+    /// N-D in-place plan whose transforms use at most `limit` threads
+    /// (`0` lets oneMKL decide). oneMKL may clamp the request to what the
+    /// linked threading layer supports; read it back with
+    /// [`thread_limit`](Self::thread_limit).
+    pub fn complex_nd_with_thread_limit(dims: &[usize], limit: usize) -> Result<Self> {
+        let handle =
+            create_complex_descriptor::<T>(dims, sys::DFTI_CONFIG_VALUE::DFTI_INPLACE, None)?;
+        limit_threads_or_free(handle, limit)?;
+        Ok(Self {
+            handle,
+            total_complex_len: dims.iter().product(),
+            _marker: PhantomData,
+        })
+    }
+
+    /// The thread limit oneMKL holds for this plan.
+    pub fn thread_limit(&self) -> Result<usize> {
+        read_thread_limit(self.handle)
+    }
+}
+
+impl<T: FftScalar> RealFftPlan<T> {
+    /// N-D out-of-place real plan (CCE) whose transforms use at most
+    /// `limit` threads (`0` lets oneMKL decide); see
+    /// [`FftPlan::complex_nd_with_thread_limit`].
+    pub fn real_nd_with_thread_limit(dims: &[usize], limit: usize) -> Result<Self> {
+        let handle =
+            create_real_descriptor::<T>(dims, sys::DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE, None)?;
+        limit_threads_or_free(handle, limit)?;
+        let real_total: usize = dims.iter().product();
+        let mut complex_dims = dims.to_vec();
+        let last = complex_dims.len() - 1;
+        complex_dims[last] = cce_complex_len(complex_dims[last]);
+        Ok(Self {
+            handle,
+            real_total_len: real_total,
+            complex_total_len: complex_dims.iter().product(),
+            _marker: PhantomData,
+        })
+    }
+
+    /// The thread limit oneMKL holds for this plan.
+    pub fn thread_limit(&self) -> Result<usize> {
+        read_thread_limit(self.handle)
+    }
+}

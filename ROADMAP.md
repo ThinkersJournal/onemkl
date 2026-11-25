@@ -229,6 +229,12 @@ Every non-MPI domain at Comprehensive:
   smaller groups. `cargo fmt --all --check` also reports 1008 diff hunks
   (the same run).
 
+- **Adopt the coderipper portfolio job.** Call
+  `ciresnave/coderipper/.github/workflows/portfolio.yml@467fd259d6d062cba4c5683d310f1a6f2b66e763`
+  (CODERIPPER_VERSION 0.48.1, confirmed by pm-platform 2026-11-25). Reason:
+  CireSnave's CI-everywhere rule (2026-09-17); this repo has no such call, so
+  its PRs carry no portfolio advisory counts.
+
 ### 0.6.0 — MPI domains
 
 Wrap the MPI-gated domains behind their existing opt-in features:

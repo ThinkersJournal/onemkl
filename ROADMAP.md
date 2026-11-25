@@ -57,7 +57,7 @@ that the named test files pass (`cargo test -p onemkl --test <name>`):
 
 | Domain | Test files (`--test`) |
 | --- | --- |
-| BLAS, extensions | `blas_level1` `blas_level2_3` `blas_level2_extended` `blas_level3_extended` `blas_packed` `blas_batched` `blas_gemm_batch` `blas_gemv_trsm_batch` `blas_extensions` `blas_compact` `blas_jit` `blas_mixed_precision` |
+| BLAS, extensions | `blas_level1` `blas_level2_3` `blas_level2_extended` `blas_level3_extended` `blas_packed` `blas_batched` `blas_gemm_batch` `blas_gemv_trsm_batch` `blas_extensions` `blas_compact` `blas_jit` `blas_mixed_precision` `blas_f16_typed` (needs `--features half`) |
 | LAPACK | `lapack` `lapack_auxiliary` `lapack_banded` `lapack_generalized` `lapack_iter_refine` `lapack_packed` `lapack_rrr` |
 | Sparse BLAS | `sparse` `sparse_arithmetic` `sparse_convert` `sparse_formats` `sparse_iterative` `sparse_qr` |
 | PARDISO / DSS | `pardiso` / `dss` |
@@ -208,6 +208,26 @@ Every non-MPI domain at Comprehensive:
   but take raw `u16` bits (`hgemm` needs `cols * ld` elements per operand:
   document it). Reason: Fuel lost its f16 hgemm when its old oneMKL code
   was removed. Source: CireSnave 2026-11-22.
+
+### CI lint gates (unscheduled; rows, not builds)
+
+- **CI has no fmt / clippy job.** Reason: `cargo fmt --all --check` and
+  `cargo clippy` both fail on `main` today and nothing notices, so new code
+  can add findings unseen. Wanted: a hosted job running
+  `cargo fmt --all --check` and
+  `cargo clippy --workspace --all-targets -- -D warnings`, made required
+  after the cleanup below lands.
+- **Clippy reports 303 findings: schedule the cleanup.** Reason: it gates the
+  row above. Measured on lane/f16 at df1d17c (none is located in #13's added
+  lines; `main` itself was not measured), WSL Ubuntu-24.04, rustc / clippy 1.99.1 (clippy
+  0.1.99), command `cargo clippy --workspace --all-targets -- -D warnings`:
+  303 errors, which stop the build at the `onemkl` lib, so `--all-targets`
+  test and example code is **not yet linted** and the true count is higher.
+  266 are `missing_safety_doc` (mostly `vm/scalar.rs` 90, `lapack/scalar.rs`
+  57, `blas/scalar.rs` 45); the other 37 are `too_many_arguments` 8,
+  `neg_cmp_op_on_partial_ord` 7, `manual_*` 9, `unnecessary_cast` 4, and
+  smaller groups. `cargo fmt --all --check` also reports 1008 diff hunks
+  (the same run).
 
 ### 0.6.0 — MPI domains
 

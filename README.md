@@ -42,6 +42,7 @@ export MKLROOT=/opt/intel/oneapi/mkl/latest
 | Claim | Command |
 | --- | --- |
 | Builds and tests pass with default features | `cargo test --workspace --no-fail-fast` |
+| f16 typed GEMM (`half` feature, not default, so not covered by the first row) | `cargo test -p onemkl --features half --test blas_f16_typed` and `cargo test -p onemkl --features half --lib f16_scalar_identities` |
 | Docs build without warnings | `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps` |
 | Dependencies clear advisories, licences, bans and sources | `cargo deny check` (config: `deny.toml`) |
 | A downstream crate that depends on `onemkl-sys` links and runs on Linux | add `onemkl-sys` to a fresh crate, call any routine (e.g. `cblas_dgemm`) from a `#[test]`, `cargo test`; needs no extra `RUSTFLAGS` |

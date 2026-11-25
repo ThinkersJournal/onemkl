@@ -1772,3 +1772,212 @@ impl<T: FftScalar> Drop for BatchedRealFftPlan<T> {
         }
     }
 }
+
+// =====================================================================
+// StridedBatchedRealFftPlan — batched 1-D real FFT with strides
+// =====================================================================
+
+/// Batched 1-D real FFT (out of place, CCE spectra) with an element stride
+/// inside each transform as well as a distance between transforms, in both
+/// domains. Element `j` of transform `t` is at `t * distance + j * stride`,
+/// so interleaved batches (`stride = howmany`, `distance = 1`) work.
+///
+/// The real layout is `howmany x n` and the complex one is
+/// `howmany x (n / 2 + 1)`; each must be positive and must not overlap
+/// itself. Gaps between the addressed positions are never touched.
+pub struct StridedBatchedRealFftPlan<T: FftScalar> {
+    fwd: DFTI_DESCRIPTOR_HANDLE,
+    bwd: DFTI_DESCRIPTOR_HANDLE,
+    real_len: usize,
+    complex_len: usize,
+    _marker: PhantomData<T>,
+}
+
+unsafe impl<T: FftScalar> Send for StridedBatchedRealFftPlan<T> {}
+
+impl<T: FftScalar> StridedBatchedRealFftPlan<T> {
+    /// Batch with unit scaling. Layouts are
+    /// `(real_stride, real_distance, complex_stride, complex_distance)`.
+    pub fn new(
+        n: usize,
+        howmany: usize,
+        real_stride: usize,
+        real_distance: usize,
+        complex_stride: usize,
+        complex_distance: usize,
+    ) -> Result<Self> {
+        Self::build(
+            n,
+            howmany,
+            [real_stride, real_distance, complex_stride, complex_distance],
+            None,
+        )
+    }
+
+    /// Batch with explicit forward / backward scales (per transform).
+    #[allow(clippy::too_many_arguments)]
+    pub fn with_scales(
+        n: usize,
+        howmany: usize,
+        real_stride: usize,
+        real_distance: usize,
+        complex_stride: usize,
+        complex_distance: usize,
+        forward_scale: T,
+        backward_scale: T,
+    ) -> Result<Self> {
+        Self::build(
+            n,
+            howmany,
+            [real_stride, real_distance, complex_stride, complex_distance],
+            Some((forward_scale, backward_scale)),
+        )
+    }
+
+    fn build(
+        n: usize,
+        howmany: usize,
+        [rs, rd, cs, cd]: [usize; 4],
+        scales: Option<(T, T)>,
+    ) -> Result<Self> {
+        let h = cce_complex_len(n);
+        let real_len = strided_layout_len(&[howmany, n], &[rd, rs])?;
+        let complex_len = strided_layout_len(&[howmany, h], &[cd, cs])?;
+        let to_long = |v: usize| c_long::try_from(v).map_err(|_| Error::DimensionOverflow);
+        let (n_l, b_l) = (to_long(n)?, to_long(howmany)?);
+        let (rs_l, rd_l, cs_l, cd_l) = (to_long(rs)?, to_long(rd)?, to_long(cs)?, to_long(cd)?);
+
+        // Input / output strides and distances describe the transform being
+        // computed, so backward gets its own descriptor with them swapped.
+        let make = |in_s: c_long, in_d: c_long, out_s: c_long, out_d: c_long| {
+            let mut handle: DFTI_DESCRIPTOR_HANDLE = ptr::null_mut();
+            check_dfti(unsafe {
+                sys::DftiCreateDescriptor(
+                    &mut handle,
+                    T::PRECISION.as_dfti(),
+                    sys::DFTI_CONFIG_VALUE::DFTI_REAL,
+                    1 as c_long,
+                    n_l,
+                )
+            })?;
+            let in_strides: [c_long; 2] = [0, in_s];
+            let out_strides: [c_long; 2] = [0, out_s];
+            let configure = |handle: DFTI_DESCRIPTOR_HANDLE| -> Result<()> {
+                use sys::DFTI_CONFIG_PARAM as P;
+                check_dfti(unsafe {
+                    sys::DftiSetValue(
+                        handle,
+                        P::DFTI_PLACEMENT,
+                        sys::DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE,
+                    )
+                })?;
+                check_dfti(unsafe {
+                    sys::DftiSetValue(
+                        handle,
+                        P::DFTI_CONJUGATE_EVEN_STORAGE,
+                        sys::DFTI_CONFIG_VALUE::DFTI_COMPLEX_COMPLEX,
+                    )
+                })?;
+                check_dfti(unsafe {
+                    sys::DftiSetValue(handle, P::DFTI_NUMBER_OF_TRANSFORMS, b_l)
+                })?;
+                check_dfti(unsafe { sys::DftiSetValue(handle, P::DFTI_INPUT_DISTANCE, in_d) })?;
+                check_dfti(unsafe { sys::DftiSetValue(handle, P::DFTI_OUTPUT_DISTANCE, out_d) })?;
+                check_dfti(unsafe {
+                    sys::DftiSetValue(handle, P::DFTI_INPUT_STRIDES, in_strides.as_ptr())
+                })?;
+                check_dfti(unsafe {
+                    sys::DftiSetValue(handle, P::DFTI_OUTPUT_STRIDES, out_strides.as_ptr())
+                })?;
+                apply_scales(handle, scales)?;
+                check_dfti(unsafe { sys::DftiCommitDescriptor(handle) })
+            };
+            if let Err(e) = configure(handle) {
+                unsafe {
+                    let mut hh = handle;
+                    let _ = sys::DftiFreeDescriptor(&mut hh);
+                }
+                return Err(e);
+            }
+            Ok::<DFTI_DESCRIPTOR_HANDLE, Error>(handle)
+        };
+        let fwd = make(rs_l, rd_l, cs_l, cd_l)?;
+        let bwd = match make(cs_l, cd_l, rs_l, rd_l) {
+            Ok(h) => h,
+            Err(e) => {
+                unsafe {
+                    let mut hh = fwd;
+                    let _ = sys::DftiFreeDescriptor(&mut hh);
+                }
+                return Err(e);
+            }
+        };
+        Ok(Self {
+            fwd,
+            bwd,
+            real_len,
+            complex_len,
+            _marker: PhantomData,
+        })
+    }
+
+    /// Minimum real buffer length: `(howmany - 1) * distance + (n - 1) * stride + 1`.
+    #[inline]
+    #[must_use]
+    pub fn real_buffer_len(&self) -> usize {
+        self.real_len
+    }
+
+    /// Minimum complex buffer length, with `n / 2 + 1` bins per transform.
+    #[inline]
+    #[must_use]
+    pub fn complex_buffer_len(&self) -> usize {
+        self.complex_len
+    }
+
+    /// Forward: real signals in, CCE spectra out.
+    pub fn forward(&mut self, input: &[T], out: &mut [Complex<T>]) -> Result<()> {
+        self.check_len(input.len(), out.len())?;
+        check_dfti(unsafe {
+            sys::DftiComputeForward(
+                self.fwd,
+                input.as_ptr() as *mut core::ffi::c_void,
+                out.as_mut_ptr().cast::<core::ffi::c_void>(),
+            )
+        })
+    }
+
+    /// Backward: CCE spectra in, real signals out (un-normalized unless
+    /// scaled). The spectra must be conjugate-even.
+    pub fn backward(&mut self, input: &[Complex<T>], out: &mut [T]) -> Result<()> {
+        self.check_len(out.len(), input.len())?;
+        check_dfti(unsafe {
+            sys::DftiComputeBackward(
+                self.bwd,
+                input.as_ptr() as *mut core::ffi::c_void,
+                out.as_mut_ptr().cast::<core::ffi::c_void>(),
+            )
+        })
+    }
+
+    fn check_len(&self, real: usize, complex: usize) -> Result<()> {
+        if real < self.real_len || complex < self.complex_len {
+            return Err(Error::InvalidArgument(
+                "strided batched real FFT buffer shorter than real_buffer_len() / complex_buffer_len()",
+            ));
+        }
+        Ok(())
+    }
+}
+
+impl<T: FftScalar> Drop for StridedBatchedRealFftPlan<T> {
+    fn drop(&mut self) {
+        for h in [&mut self.fwd, &mut self.bwd] {
+            if !h.is_null() {
+                unsafe {
+                    let _ = sys::DftiFreeDescriptor(h);
+                }
+            }
+        }
+    }
+}

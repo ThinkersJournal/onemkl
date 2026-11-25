@@ -746,13 +746,19 @@ impl<T: FftScalar> StridedFftPlan<T> {
 
     fn build(dims: &[usize], strides: &[usize], scales: Option<(T, T)>) -> Result<Self> {
         if dims.is_empty() {
-            return Err(Error::InvalidArgument("FFT plan needs at least one dimension"));
+            return Err(Error::InvalidArgument(
+                "FFT plan needs at least one dimension",
+            ));
         }
         if dims.len() != strides.len() {
-            return Err(Error::InvalidArgument("dims and strides must have the same length"));
+            return Err(Error::InvalidArgument(
+                "dims and strides must have the same length",
+            ));
         }
-        if dims.iter().any(|&d| d == 0) || strides.iter().any(|&s| s == 0) {
-            return Err(Error::InvalidArgument("dimensions and strides must be positive"));
+        if dims.contains(&0) || strides.contains(&0) {
+            return Err(Error::InvalidArgument(
+                "dimensions and strides must be positive",
+            ));
         }
         // Non-overlap: ordered by stride, each stride must clear the
         // extent spanned by the next-faster dimension.
@@ -760,7 +766,9 @@ impl<T: FftScalar> StridedFftPlan<T> {
         order.sort_by_key(|&i| strides[i]);
         for w in order.windows(2) {
             let (a, b) = (w[0], w[1]);
-            let span = strides[a].checked_mul(dims[a]).ok_or(Error::DimensionOverflow)?;
+            let span = strides[a]
+                .checked_mul(dims[a])
+                .ok_or(Error::DimensionOverflow)?;
             if dims[a] > 1 && strides[b] < span {
                 return Err(Error::InvalidArgument(
                     "strides overlap: a stride is smaller than the extent of a faster dimension",
@@ -807,7 +815,11 @@ impl<T: FftScalar> StridedFftPlan<T> {
         let configure = |handle: DFTI_DESCRIPTOR_HANDLE| -> Result<()> {
             use sys::DFTI_CONFIG_PARAM as P;
             check_dfti(unsafe {
-                sys::DftiSetValue(handle, P::DFTI_PLACEMENT, sys::DFTI_CONFIG_VALUE::DFTI_INPLACE)
+                sys::DftiSetValue(
+                    handle,
+                    P::DFTI_PLACEMENT,
+                    sys::DFTI_CONFIG_VALUE::DFTI_INPLACE,
+                )
             })?;
             check_dfti(unsafe {
                 sys::DftiSetValue(handle, P::DFTI_INPUT_STRIDES, strides_l.as_ptr())
@@ -825,7 +837,11 @@ impl<T: FftScalar> StridedFftPlan<T> {
             }
             return Err(e);
         }
-        Ok(Self { handle, buffer_len, _marker: PhantomData })
+        Ok(Self {
+            handle,
+            buffer_len,
+            _marker: PhantomData,
+        })
     }
 
     /// Minimum buffer length: `1 + sum((dims[i] - 1) * strides[i])`.
@@ -838,7 +854,9 @@ impl<T: FftScalar> StridedFftPlan<T> {
     /// Forward transform in place.
     pub fn forward_in_place(&mut self, x: &mut [Complex<T>]) -> Result<()> {
         if x.len() < self.buffer_len {
-            return Err(Error::InvalidArgument("buffer too small for strided FFT plan"));
+            return Err(Error::InvalidArgument(
+                "buffer too small for strided FFT plan",
+            ));
         }
         check_dfti(unsafe { sys::DftiComputeForward(self.handle, x.as_mut_ptr().cast()) })
     }
@@ -846,7 +864,9 @@ impl<T: FftScalar> StridedFftPlan<T> {
     /// Backward transform in place (un-normalized unless scaled).
     pub fn backward_in_place(&mut self, x: &mut [Complex<T>]) -> Result<()> {
         if x.len() < self.buffer_len {
-            return Err(Error::InvalidArgument("buffer too small for strided FFT plan"));
+            return Err(Error::InvalidArgument(
+                "buffer too small for strided FFT plan",
+            ));
         }
         check_dfti(unsafe { sys::DftiComputeBackward(self.handle, x.as_mut_ptr().cast()) })
     }

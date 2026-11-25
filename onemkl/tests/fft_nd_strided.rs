@@ -83,9 +83,15 @@ fn round_trip_with_backward() {
 
 #[test]
 fn rejects_bad_arguments() {
-    assert!(StridedFftPlan::<f64>::new(&[4, 5], &[1]).is_err(), "rank mismatch");
+    assert!(
+        StridedFftPlan::<f64>::new(&[4, 5], &[1]).is_err(),
+        "rank mismatch"
+    );
     assert!(StridedFftPlan::<f64>::new(&[], &[]).is_err(), "empty");
-    assert!(StridedFftPlan::<f64>::new(&[4, 5], &[1, 2]).is_err(), "overlapping strides");
+    assert!(
+        StridedFftPlan::<f64>::new(&[4, 5], &[1, 2]).is_err(),
+        "overlapping strides"
+    );
     let mut p = StridedFftPlan::<f64>::new(&[4, 5], &[5, 1]).unwrap();
     let mut small = vec![Complex::new(0.0, 0.0); 3];
     assert!(p.forward_in_place(&mut small).is_err());

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Direct Sparse Solver (DSS) — alternative interface to oneMKL PARDISO
 //! with a slightly more verbose but cleaner API.
 //!

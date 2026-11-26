@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "vm")]
 
 //! f32 (`vs*`) paths of the VM wrappers, plus `fmax` / `fmin` (both types).

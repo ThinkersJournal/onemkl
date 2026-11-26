@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Build script for the `onemkl` crate.
 //!
 //! The only job is to thread a `--no-as-needed` linker wrapper around the

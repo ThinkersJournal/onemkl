@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "vm")]
 
 //! onemkl never calls `vmlSetMode`, so every `onemkl::vm` function runs in

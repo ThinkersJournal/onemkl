@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Solve `A * x = b` with Conjugate Gradient, where `A` is a sparse
 //! SPD matrix. Uses the closure-driven `solve_cg` from `iss` and the
 //! `SparseMatrix::mv` for the matrix-vector product.

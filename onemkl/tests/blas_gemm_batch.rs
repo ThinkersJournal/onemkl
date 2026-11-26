@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "blas")]
 
 //! Verify pointer-array batched GEMM (cblas_*gemm_batch).

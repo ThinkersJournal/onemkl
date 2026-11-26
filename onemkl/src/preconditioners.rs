@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Preconditioners for iterative sparse solvers — Incomplete LU
 //! factorization (`ILU0` and `ILUT`).
 //!

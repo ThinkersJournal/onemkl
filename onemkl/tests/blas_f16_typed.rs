@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(all(feature = "blas", feature = "half"))]
 
 //! Typed `half::f16` GEMM wrappers vs a naive f32 reference. Operands are

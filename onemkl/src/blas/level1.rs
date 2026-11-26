@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! BLAS Level 1: vector-vector operations.
 //!
 //! All routines accept slice inputs and validate dimensions before

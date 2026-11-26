@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Generate a sinusoid, run a real-input FFT, find the peak frequency
 //! bin. Demonstrates `RealFftPlan` with backward-scaling normalization.
 //!

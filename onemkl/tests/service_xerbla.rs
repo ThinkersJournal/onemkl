@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! `set_xerbla_handler`: process-global, so one test in its own process.
 //! Triggers `xerbla` through the Fortran-style `dpotrf` with `n = -1`.
 

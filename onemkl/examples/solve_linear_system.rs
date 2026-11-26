@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Solve a 3×3 linear system `A * x = b` using LAPACK's `gesv`
 //! (LU factorization + forward / backward substitution).
 //!

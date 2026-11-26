@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Safe, idiomatic Rust wrapper over Intel oneAPI Math Kernel Library
 //! (oneMKL).
 //!

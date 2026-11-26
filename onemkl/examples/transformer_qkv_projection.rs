@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Transformer-style projection: 32 input tokens × 64 hidden dims
 //! projected to query / key / value matrices via three GEMMs against
 //! shared weight matrices. Demonstrates the JIT GEMM API for

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Mixed-precision GEMM kernels.
 //!
 //! Modern ML workloads run GEMMs at reduced precision for memory

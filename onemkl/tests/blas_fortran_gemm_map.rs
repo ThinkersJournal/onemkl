@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "blas")]
 
 //! The mapping from a Fortran-style `?gemm_` call (column-major, `transa` /

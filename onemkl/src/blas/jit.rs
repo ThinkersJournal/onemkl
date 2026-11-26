@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! JIT GEMM — runtime-specialized small-matrix kernels.
 //!
 //! For small fixed-shape GEMMs called many times (transformer

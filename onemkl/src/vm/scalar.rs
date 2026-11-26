@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Scalar dispatch traits for the Vector Math (VM) module.
 //!
 //! Each trait method is `unsafe` and forwards directly to the matching

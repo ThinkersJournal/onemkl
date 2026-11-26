@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Pack / Compute GEMM API.
 //!
 //! When the same operand is used in many GEMMs (e.g. a fixed weight

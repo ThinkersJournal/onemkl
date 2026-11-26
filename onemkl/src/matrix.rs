@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Strided matrix views.
 //!
 //! These types are the primary input / output for Level 2 and Level 3

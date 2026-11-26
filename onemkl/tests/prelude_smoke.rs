@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Smoke-test the `prelude` exports — make sure each common type is
 //! reachable through `use onemkl::prelude::*;`.
 

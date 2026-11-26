@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Intel oneMKL PARDISO direct sparse solver.
 //!
 //! PARDISO solves `A * X = B` for symmetric, structurally symmetric, or

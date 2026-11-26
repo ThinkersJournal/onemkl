@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! `set_progress_handler`: process-global, so one test in its own process.
 //! Records whether MKL calls the handler during a LAPACK factorization.
 

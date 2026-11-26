@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "blas")]
 
 //! `sgemm` (f32) through `blas::level3::gemm`: both layouts, transposes, beta,

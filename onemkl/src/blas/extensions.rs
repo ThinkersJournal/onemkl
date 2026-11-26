@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! BLAS-like extensions provided by oneMKL.
 //!
 //! This module covers Intel-specific routines beyond the standard BLAS:

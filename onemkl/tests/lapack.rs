@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "lapack")]
 
 //! Verify LAPACK wrappers against hand-computed reference values.

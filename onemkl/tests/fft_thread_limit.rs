@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "fft")]
 
 //! `DFTI_THREAD_LIMIT` on complex and real plans: the limit is applied at

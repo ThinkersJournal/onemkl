@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Internal helpers shared across the public modules.
 
 use onemkl_sys::MKL_INT;

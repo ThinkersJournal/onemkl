@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Data fitting — 1-D spline interpolation and integration.
 //!
 //! Wraps oneMKL's Data Fitting `df*` task interface in an owned

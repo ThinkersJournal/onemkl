@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "lapack")]
 
 //! Verify RRR and divide-and-conquer eigensolvers.

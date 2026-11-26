@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Compact BLAS — batched dense kernels packed for SIMD.
 //!
 //! When you need to apply the same small dense kernel (a 4×4 GEMM, a

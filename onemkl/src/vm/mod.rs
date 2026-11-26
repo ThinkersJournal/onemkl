@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Vector Mathematical Functions (VM).
 //!
 //! Element-wise mathematical functions on slices of real or complex values.

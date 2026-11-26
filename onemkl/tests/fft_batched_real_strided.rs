@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "fft")]
 
 //! Batched 1-D real FFT with strides within each transform as well as

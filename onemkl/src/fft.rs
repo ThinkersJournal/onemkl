@@ -2080,3 +2080,118 @@ impl<T: FftScalar> RealFftPlan<T> {
         read_thread_limit(self.handle)
     }
 }
+
+// =====================================================================
+// DFTI_WORKSPACE — may oneMKL allocate scratch space during a transform
+// =====================================================================
+
+/// `DFTI_WORKSPACE`: whether a transform may allocate internal scratch
+/// space.
+///
+/// Measured on oneMKL 2026.2 (`tools/size-probes/fft_flags.c`): both
+/// settings were accepted for 1-D and 2-D complex descriptors, in place
+/// and out of place, and gave results identical to the default. The
+/// setting is a request; oneMKL may ignore it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FftWorkspace {
+    /// `DFTI_ALLOW` (oneMKL's default): scratch allocation is permitted.
+    Allow,
+    /// `DFTI_AVOID`: avoid allocating scratch space where possible.
+    Avoid,
+}
+
+impl FftWorkspace {
+    fn to_sys(self) -> sys::DFTI_CONFIG_VALUE::Type {
+        match self {
+            Self::Allow => sys::DFTI_CONFIG_VALUE::DFTI_ALLOW,
+            Self::Avoid => sys::DFTI_CONFIG_VALUE::DFTI_AVOID,
+        }
+    }
+}
+
+/// Applies `DFTI_WORKSPACE` to an already committed descriptor and
+/// recommits it; frees the descriptor if either step fails.
+fn set_workspace_or_free(handle: DFTI_DESCRIPTOR_HANDLE, mode: FftWorkspace) -> Result<()> {
+    let apply = || -> Result<()> {
+        check_dfti(unsafe {
+            sys::DftiSetValue(
+                handle,
+                sys::DFTI_CONFIG_PARAM::DFTI_WORKSPACE,
+                mode.to_sys(),
+            )
+        })?;
+        check_dfti(unsafe { sys::DftiCommitDescriptor(handle) })
+    };
+    let r = apply();
+    if r.is_err() {
+        unsafe {
+            let mut h = handle;
+            let _ = sys::DftiFreeDescriptor(&mut h);
+        }
+    }
+    r
+}
+
+/// Reads back `DFTI_WORKSPACE`.
+fn read_workspace(handle: DFTI_DESCRIPTOR_HANDLE) -> Result<FftWorkspace> {
+    let mut v: sys::DFTI_CONFIG_VALUE::Type = 0;
+    check_dfti(unsafe {
+        sys::DftiGetValue(
+            handle,
+            sys::DFTI_CONFIG_PARAM::DFTI_WORKSPACE,
+            &mut v as *mut sys::DFTI_CONFIG_VALUE::Type,
+        )
+    })?;
+    if v == sys::DFTI_CONFIG_VALUE::DFTI_AVOID {
+        Ok(FftWorkspace::Avoid)
+    } else if v == sys::DFTI_CONFIG_VALUE::DFTI_ALLOW {
+        Ok(FftWorkspace::Allow)
+    } else {
+        Err(Error::InvalidArgument("unexpected DFTI_WORKSPACE value"))
+    }
+}
+
+impl<T: FftScalar> FftPlan<T> {
+    /// N-D in-place plan with the given `DFTI_WORKSPACE` mode; read it back
+    /// with [`workspace`](Self::workspace).
+    pub fn complex_nd_with_workspace(dims: &[usize], mode: FftWorkspace) -> Result<Self> {
+        let handle =
+            create_complex_descriptor::<T>(dims, sys::DFTI_CONFIG_VALUE::DFTI_INPLACE, None)?;
+        set_workspace_or_free(handle, mode)?;
+        Ok(Self {
+            handle,
+            total_complex_len: dims.iter().product(),
+            _marker: PhantomData,
+        })
+    }
+
+    /// The workspace mode oneMKL holds for this plan.
+    pub fn workspace(&self) -> Result<FftWorkspace> {
+        read_workspace(self.handle)
+    }
+}
+
+impl<T: FftScalar> RealFftPlan<T> {
+    /// N-D out-of-place real plan (CCE) with the given `DFTI_WORKSPACE`
+    /// mode; see [`FftPlan::complex_nd_with_workspace`].
+    pub fn real_nd_with_workspace(dims: &[usize], mode: FftWorkspace) -> Result<Self> {
+        let handle =
+            create_real_descriptor::<T>(dims, sys::DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE, None)?;
+        set_workspace_or_free(handle, mode)?;
+        let real_total: usize = dims.iter().product();
+        let mut complex_dims = dims.to_vec();
+        let last = complex_dims.len() - 1;
+        complex_dims[last] = cce_complex_len(complex_dims[last]);
+        Ok(Self {
+            handle,
+            real_total_len: real_total,
+            complex_total_len: complex_dims.iter().product(),
+            _marker: PhantomData,
+        })
+    }
+
+    /// The workspace mode oneMKL holds for this plan.
+    pub fn workspace(&self) -> Result<FftWorkspace> {
+        read_workspace(self.handle)
+    }
+}

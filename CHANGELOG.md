@@ -80,6 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `fft::FftWorkspace` and `FftPlan::complex_nd_with_workspace` / `RealFftPlan::real_nd_with_workspace` / `workspace()` (`DFTI_WORKSPACE`); additive.
 - CI: `cargo fmt --check` job, a report-only `cargo clippy` job (6 `too_many_arguments` findings remain pending a decision on allows) and the advisory coderipper portfolio job.
 
 ## 0.3.11 - 2026-11-26 (allocated by pm-assist)

@@ -84,3 +84,39 @@ right). The reference says exactly that. It matches.
 - The two earlier quadratic failures (-1012, -1014, "wrong arguments") are
   consistent with a missing `DF_BC_Q_VAL` value or missing end conditions:
   probe those before concluding anything.
+
+## Measured on oneMKL 2026.2 (tools/size-probes/df_probe3.c)
+
+One partition note first: when `x` is declared with `DF_UNIFORM_PARTITION`, MKL
+reads only the first two entries of `x` as the end points. Declare a general
+partition as `DF_NON_UNIFORM_PARTITION` (an early run of the probe tripped on
+this and misreported the call-back regions).
+
+Integration call-backs, linear spline on `[0, 7]`, call-backs that return
+`100 + (rlim - llim)`:
+
+- Regions match the reference: `[1,3]` gives one `i_cb` call with `(1,3)`;
+  `[-2,9]` gives `le_cb(-2,0)`, `i_cb(0,7)`, `re_cb(7,9)`; `[8,9]` gives only
+  `re_cb(8,9)`. Each call has `n = 1`; the result is the sum of the pieces.
+- Cell arguments are 1-based (`[1,3]` arrives as `lcell = 2, rcell = 4`), `0`
+  left of `a`, and `nx` (8) for a limit at or right of `b`; a call-back must
+  not treat them as 0-based indices.
+- A reversed pair `[3,1]` reaches the call-back as `(1,3)` and the library
+  negates the sum (`-102`).
+- A positive call-back status is returned as the routine's status (5) and the
+  result is still produced. A negative status is returned as the routine's
+  status (-3) and `r` is left untouched.
+
+Spline construction (8 knots of monotone plateau data):
+
+- Hyman: `DF_NO_BC` fails with -1014 (the reference's listing is wrong for
+  this build); `DF_BC_NOT_A_KNOT` constructs, and the derivative over
+  `[0, 7]` stayed at or above 0 on this data, where a natural cubic dipped to
+  -0.04. The earlier "not monotone" result came from a different dataset and
+  needs re-running with the same data before Hyman is called broken or fine.
+- Default quadratic: needs `DF_BC_Q_VAL` with one value (`DF_NO_BC` gives
+  -1014).
+- Subbotin: constructs only with `DF_BC_FREE_END` plus a `DF_IC_Q_KNOT` array
+  of `n + 1` knots; without the knots, or with `DF_NO_BC`, `DF_BC_NOT_A_KNOT`,
+  free-end or end derivatives alone, it returns -1012; `DF_NO_BC` with the
+  knots returns -1014.

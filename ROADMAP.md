@@ -229,6 +229,39 @@ Every non-MPI domain at Comprehensive:
   smaller groups. `cargo fmt --all --check` also reports 1008 diff hunks
   (the same run).
 
+- **W1: pre-existing lint allows need a reason each (counted, item-level).**
+  Measured 2026-11-26 on `origin/main` at 3b18f67f (rustc / clippy 1.99.1,
+  WSL), by `git grep` and by `cargo clippy -p onemkl -- --force-warn
+  clippy::too_many_arguments` (force-warn overrides the source allows):
+  - **238 bare `#[allow(clippy::too_many_arguments)]`** (plus one combined
+    `allow(missing_docs, clippy::missing_safety_doc, clippy::too_many_arguments)`),
+    none with a `reason`. All are hand-written: 236 in `onemkl/src`
+    (`blas/scalar.rs` 47, `lapack/scalar.rs` 44, `lapack/mod.rs` 27, `feast.rs`
+    16, `blas/level2.rs` 14, `blas/compact.rs` 12, `blas/level3.rs` 11,
+    `blas/extensions.rs` 11, `blas/mixed_precision.rs` 9, `sparse/scalar.rs` 8,
+    `blas/packed.rs` 7, `rng/summary_stats.rs` 6, `sparse/mod.rs` 5,
+    `rng/convolution.rs` 4, `data_fitting.rs` 4, `rng/mod.rs` 3, `pardiso.rs`
+    2, `blas/jit.rs` 2, and 1 each in `vm/scalar.rs`, `vm/mod.rs`, `pde.rs`,
+    `fft.rs`), 2 in `onemkl/tests/blas_fortran_gemm_map.rs`, 0 in `onemkl-sys`
+    (no generated file carries one).
+  - **Hidden warnings:** with the allows overridden, clippy flags 198
+    functions (192 pre-existing plus the 6 added by `lane/allows`), so the
+    "303 findings" row above never included them: they were already silenced.
+    The allows are more than the flagged functions because trait impl methods
+    are not linted and carry allows that do nothing.
+  - **Wanted:** per item, either a `reason = "mirrors the oneMKL C signature
+    <name> argument for argument"` (C mirrors: most of the trait declarations
+    and wrappers above), or a restructure (a parameter struct) for the rest;
+    delete the allows that do nothing (trait impl methods). No mass edit
+    without reading what each item is.
+- **W1b: crate-level allows in `onemkl-sys/src/lib.rs` (4, pre-existing).**
+  `non_upper_case_globals`, `non_camel_case_types` and `non_snake_case` are
+  the standard bindgen-output allows (generated file; that is the reason).
+  `dead_code`: removing it on this tree produced 0 warnings from
+  `cargo check -p onemkl-sys` (the bindings are `pub`, which `dead_code` does
+  not flag), so it does nothing and can be deleted; this stands as a cleanup
+  row, not yet done.
+
 - **Adopt the coderipper portfolio job.** Call
   `ciresnave/coderipper/.github/workflows/portfolio.yml@467fd259d6d062cba4c5683d310f1a6f2b66e763`
   (CODERIPPER_VERSION 0.48.1, confirmed by pm-platform 2026-11-25). Reason:

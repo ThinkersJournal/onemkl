@@ -4,9 +4,7 @@
 
 use approx::assert_abs_diff_eq;
 
-use onemkl::sparse::{
-    BlockLayout, IndexBase, MatrixType, Operation, SparseMatrix,
-};
+use onemkl::sparse::{BlockLayout, IndexBase, MatrixType, Operation, SparseMatrix};
 
 #[test]
 fn coo_diagonal_mv() {
@@ -14,13 +12,19 @@ fn coo_diagonal_mv() {
     let row_indx = vec![0, 1, 2];
     let col_indx = vec![0, 1, 2];
     let values = vec![1.0_f64, 2.0, 3.0];
-    let a = SparseMatrix::from_coo(3, 3, IndexBase::Zero, row_indx, col_indx, values)
-        .unwrap();
+    let a = SparseMatrix::from_coo(3, 3, IndexBase::Zero, row_indx, col_indx, values).unwrap();
 
     let x = [1.0_f64; 3];
     let mut y = [0.0_f64; 3];
-    a.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y)
-        .unwrap();
+    a.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     assert_abs_diff_eq!(y[0], 1.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[1], 2.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[2], 3.0, epsilon = 1e-12);
@@ -35,13 +39,19 @@ fn coo_unordered_entries() {
     let row_indx = vec![1, 0, 0];
     let col_indx = vec![1, 2, 0];
     let values = vec![3.0_f64, 2.0, 1.0];
-    let a = SparseMatrix::from_coo(2, 3, IndexBase::Zero, row_indx, col_indx, values)
-        .unwrap();
+    let a = SparseMatrix::from_coo(2, 3, IndexBase::Zero, row_indx, col_indx, values).unwrap();
 
     let x = [1.0_f64; 3];
     let mut y = [0.0_f64; 2];
-    a.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y)
-        .unwrap();
+    a.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     assert_abs_diff_eq!(y[0], 3.0, epsilon = 1e-12); // 1 + 2
     assert_abs_diff_eq!(y[1], 3.0, epsilon = 1e-12);
 }
@@ -56,13 +66,19 @@ fn csc_dense_2x3() {
     let col_ptr = vec![0, 1, 2, 3];
     let row_indx = vec![0, 1, 0];
     let values = vec![1.0_f64, 3.0, 2.0];
-    let a = SparseMatrix::from_csc(2, 3, IndexBase::Zero, col_ptr, row_indx, values)
-        .unwrap();
+    let a = SparseMatrix::from_csc(2, 3, IndexBase::Zero, col_ptr, row_indx, values).unwrap();
 
     let x = [1.0_f64; 3];
     let mut y = [0.0_f64; 2];
-    a.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y)
-        .unwrap();
+    a.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     assert_abs_diff_eq!(y[0], 3.0, epsilon = 1e-12); // 1 + 2
     assert_abs_diff_eq!(y[1], 3.0, epsilon = 1e-12);
 }
@@ -73,8 +89,7 @@ fn csc_transposed_mv() {
     let col_ptr = vec![0, 1, 2, 3];
     let row_indx = vec![0, 1, 0];
     let values = vec![1.0_f64, 3.0, 2.0];
-    let a = SparseMatrix::from_csc(2, 3, IndexBase::Zero, col_ptr, row_indx, values)
-        .unwrap();
+    let a = SparseMatrix::from_csc(2, 3, IndexBase::Zero, col_ptr, row_indx, values).unwrap();
 
     let x = [1.0_f64, 1.0];
     let mut y = [0.0_f64; 3];
@@ -109,8 +124,15 @@ fn bsr_block_diagonal_mv() {
     // A * [1, 1, 1, 1] = [1+2, 3+4, 5+6, 7+8] = [3, 7, 11, 15]
     let x = [1.0_f64; 4];
     let mut y = [0.0_f64; 4];
-    a.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y)
-        .unwrap();
+    a.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     assert_abs_diff_eq!(y[0], 3.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[1], 7.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[2], 11.0, epsilon = 1e-12);

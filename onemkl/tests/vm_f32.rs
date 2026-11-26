@@ -11,7 +11,10 @@ const POS: [f32; 5] = [0.25, 0.5, 1.0, 2.0, 10.0];
 fn close(got: &[f32], want: impl Fn(usize) -> f32, rel: f32, what: &str) {
     for (i, &g) in got.iter().enumerate() {
         let w = want(i);
-        assert!((g - w).abs() <= rel * w.abs().max(1e-30) + 1e-30, "{what}[{i}]: got {g}, want {w}");
+        assert!(
+            (g - w).abs() <= rel * w.abs().max(1e-30) + 1e-30,
+            "{what}[{i}]: got {g}, want {w}"
+        );
     }
 }
 

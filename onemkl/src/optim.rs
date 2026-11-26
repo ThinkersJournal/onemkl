@@ -18,7 +18,7 @@ use core::ffi::{c_int, c_void};
 use core::ptr;
 use core::slice;
 use std::any::Any;
-use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 use std::sync::Mutex;
 
 use onemkl_sys as sys;
@@ -95,9 +95,7 @@ where
     J: FnMut(&[f64], &mut [f64]),
 {
     if x.len() != n {
-        return Err(Error::InvalidArgument(
-            "x must have length n",
-        ));
+        return Err(Error::InvalidArgument("x must have length n"));
     }
     let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
@@ -126,12 +124,7 @@ where
     let result = (|| -> Result<TrnlsResult> {
         loop {
             let status = unsafe {
-                sys::dtrnlsp_solve(
-                    &mut handle,
-                    fvec.as_mut_ptr(),
-                    fjac.as_mut_ptr(),
-                    &mut rci,
-                )
+                sys::dtrnlsp_solve(&mut handle, fvec.as_mut_ptr(), fjac.as_mut_ptr(), &mut rci)
             };
             if status != sys::TR_SUCCESS as c_int {
                 return Err(Error::LapackComputationFailure { info: status });
@@ -151,9 +144,8 @@ where
         let mut st_cr: c_int = 0;
         let mut r1: f64 = 0.0;
         let mut r2: f64 = 0.0;
-        let status = unsafe {
-            sys::dtrnlsp_get(&mut handle, &mut iters, &mut st_cr, &mut r1, &mut r2)
-        };
+        let status =
+            unsafe { sys::dtrnlsp_get(&mut handle, &mut iters, &mut st_cr, &mut r1, &mut r2) };
         if status != sys::TR_SUCCESS as c_int {
             return Err(Error::LapackComputationFailure { info: status });
         }
@@ -221,12 +213,7 @@ where
     let result = (|| -> Result<TrnlsResult> {
         loop {
             let status = unsafe {
-                sys::dtrnlspbc_solve(
-                    &mut handle,
-                    fvec.as_mut_ptr(),
-                    fjac.as_mut_ptr(),
-                    &mut rci,
-                )
+                sys::dtrnlspbc_solve(&mut handle, fvec.as_mut_ptr(), fjac.as_mut_ptr(), &mut rci)
             };
             if status != sys::TR_SUCCESS as c_int {
                 return Err(Error::LapackComputationFailure { info: status });
@@ -246,9 +233,8 @@ where
         let mut st_cr: c_int = 0;
         let mut r1: f64 = 0.0;
         let mut r2: f64 = 0.0;
-        let status = unsafe {
-            sys::dtrnlspbc_get(&mut handle, &mut iters, &mut st_cr, &mut r1, &mut r2)
-        };
+        let status =
+            unsafe { sys::dtrnlspbc_get(&mut handle, &mut iters, &mut st_cr, &mut r1, &mut r2) };
         if status != sys::TR_SUCCESS as c_int {
             return Err(Error::LapackComputationFailure { info: status });
         }
@@ -284,14 +270,10 @@ where
     R: FnMut(&[f64], &mut [f64]),
 {
     if x.len() != n {
-        return Err(Error::InvalidArgument(
-            "x must have length n",
-        ));
+        return Err(Error::InvalidArgument("x must have length n"));
     }
     if jac.len() < checked_len(m, n)? {
-        return Err(Error::InvalidArgument(
-            "jac buffer is smaller than m * n",
-        ));
+        return Err(Error::InvalidArgument("jac buffer is smaller than m * n"));
     }
     let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
@@ -303,8 +285,12 @@ where
     let mut handle = JacobiHandle(ptr::null_mut());
     let status = unsafe {
         sys::djacobi_init(
-            &mut handle.0, &n_i, &m_i,
-            xv.as_mut_ptr(), jac.as_mut_ptr(), &step,
+            &mut handle.0,
+            &n_i,
+            &m_i,
+            xv.as_mut_ptr(),
+            jac.as_mut_ptr(),
+            &step,
         )
     };
     if status != sys::TR_SUCCESS as c_int {
@@ -401,9 +387,7 @@ pub unsafe fn djacobi_with_callback(
         return Err(Error::InvalidArgument("x must have length n"));
     }
     if jac.len() < checked_len(m, n)? {
-        return Err(Error::InvalidArgument(
-            "jac buffer is smaller than m * n",
-        ));
+        return Err(Error::InvalidArgument("jac buffer is smaller than m * n"));
     }
     let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
@@ -501,7 +485,12 @@ where
     // MKL perturbs and restores `x` in place, so give it an owned copy.
     let mut xv = x.to_vec();
     let mut eps_mut = eps;
-    let state = Mutex::new(JacobixState { n, m, f: &mut residual, panic: None });
+    let state = Mutex::new(JacobixState {
+        n,
+        m,
+        f: &mut residual,
+        panic: None,
+    });
     let status = unsafe {
         sys::djacobix(
             Some(jacobix_trampoline),
@@ -513,7 +502,11 @@ where
             &state as *const Mutex<JacobixState<'_>> as *mut c_void,
         )
     };
-    let panic = state.into_inner().unwrap_or_else(|e| e.into_inner()).panic.take();
+    let panic = state
+        .into_inner()
+        .unwrap_or_else(|e| e.into_inner())
+        .panic
+        .take();
     if let Some(p) = panic {
         resume_unwind(p);
     }
@@ -522,7 +515,6 @@ where
     }
     Ok(())
 }
-
 
 /// Next action requested by a [`TrnlsSession`].
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -657,7 +649,12 @@ impl TrnlsSession {
             return Ok(TrnlsStep::Done(r));
         }
         let status = unsafe {
-            sys::dtrnlsp_solve(&mut *self.handle, self.fvec.as_mut_ptr(), self.fjac.as_mut_ptr(), &mut self.rci)
+            sys::dtrnlsp_solve(
+                &mut *self.handle,
+                self.fvec.as_mut_ptr(),
+                self.fjac.as_mut_ptr(),
+                &mut self.rci,
+            )
         };
         if status != sys::TR_SUCCESS as c_int {
             return Err(Error::LapackComputationFailure { info: status });
@@ -666,8 +663,11 @@ impl TrnlsSession {
             1 => Ok(TrnlsStep::NeedResidual),
             2 => Ok(TrnlsStep::NeedJacobian),
             -6..=0 => {
-                let (mut iters, mut st_cr, mut r1, mut r2) = (0 as c_int, 0 as c_int, 0.0_f64, 0.0_f64);
-                let status = unsafe { sys::dtrnlsp_get(&mut *self.handle, &mut iters, &mut st_cr, &mut r1, &mut r2) };
+                let (mut iters, mut st_cr, mut r1, mut r2) =
+                    (0 as c_int, 0 as c_int, 0.0_f64, 0.0_f64);
+                let status = unsafe {
+                    sys::dtrnlsp_get(&mut *self.handle, &mut iters, &mut st_cr, &mut r1, &mut r2)
+                };
                 if status != sys::TR_SUCCESS as c_int {
                     return Err(Error::LapackComputationFailure { info: status });
                 }
@@ -813,7 +813,12 @@ impl TrnlsBoundedSession {
             return Ok(TrnlsStep::Done(r));
         }
         let status = unsafe {
-            sys::dtrnlspbc_solve(&mut *self.handle, self.fvec.as_mut_ptr(), self.fjac.as_mut_ptr(), &mut self.rci)
+            sys::dtrnlspbc_solve(
+                &mut *self.handle,
+                self.fvec.as_mut_ptr(),
+                self.fjac.as_mut_ptr(),
+                &mut self.rci,
+            )
         };
         if status != sys::TR_SUCCESS as c_int {
             return Err(Error::LapackComputationFailure { info: status });
@@ -822,8 +827,11 @@ impl TrnlsBoundedSession {
             1 => Ok(TrnlsStep::NeedResidual),
             2 => Ok(TrnlsStep::NeedJacobian),
             -6..=0 => {
-                let (mut iters, mut st_cr, mut r1, mut r2) = (0 as c_int, 0 as c_int, 0.0_f64, 0.0_f64);
-                let status = unsafe { sys::dtrnlspbc_get(&mut *self.handle, &mut iters, &mut st_cr, &mut r1, &mut r2) };
+                let (mut iters, mut st_cr, mut r1, mut r2) =
+                    (0 as c_int, 0 as c_int, 0.0_f64, 0.0_f64);
+                let status = unsafe {
+                    sys::dtrnlspbc_get(&mut *self.handle, &mut iters, &mut st_cr, &mut r1, &mut r2)
+                };
                 if status != sys::TR_SUCCESS as c_int {
                     return Err(Error::LapackComputationFailure { info: status });
                 }

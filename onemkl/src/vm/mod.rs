@@ -277,11 +277,7 @@ pub fn sincospi<T: RealVmScalar>(x: &[T], s: &mut [T], c: &mut [T]) -> Result<()
 
 /// Element-wise integer / fractional split: writes `trunc(x[i])` to
 /// `int_part` and the fractional remainder to `frac_part`. Real-only.
-pub fn modf<T: RealVmScalar>(
-    x: &[T],
-    int_part: &mut [T],
-    frac_part: &mut [T],
-) -> Result<()> {
+pub fn modf<T: RealVmScalar>(x: &[T], int_part: &mut [T], frac_part: &mut [T]) -> Result<()> {
     if x.len() != int_part.len() || x.len() != frac_part.len() {
         return Err(Error::InvalidArgument(
             "modf: x, int_part, frac_part must have the same length",

@@ -5,27 +5,17 @@
 
 use approx::assert_abs_diff_eq;
 
-use onemkl::blas::extensions::{
-    gemv_batch, trsm_batch, GemvBatchGroup, TrsmBatchGroup,
-};
+use onemkl::blas::extensions::{GemvBatchGroup, TrsmBatchGroup, gemv_batch, trsm_batch};
 use onemkl::{Diag, Layout, Side, Transpose, UpLo};
 
 #[test]
 fn gemv_batch_two_uniform_3x3() {
     // Two 3×3 matrices, each times a length-3 vector.
-    let a0 = [
-        1.0_f64, 0.0, 0.0,
-        0.0, 2.0, 0.0,
-        0.0, 0.0, 3.0,
-    ];
+    let a0 = [1.0_f64, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 3.0];
     let x0 = [1.0_f64, 1.0, 1.0];
     let mut y0 = [0.0_f64; 3];
 
-    let a1 = [
-        2.0_f64, 0.0, 0.0,
-        0.0, 4.0, 0.0,
-        0.0, 0.0, 6.0,
-    ];
+    let a1 = [2.0_f64, 0.0, 0.0, 0.0, 4.0, 0.0, 0.0, 0.0, 6.0];
     let x1 = [1.0_f64, 1.0, 1.0];
     let mut y1 = [0.0_f64; 3];
 
@@ -121,10 +111,17 @@ fn gemv_batch_length_mismatch() {
     let y_ptrs: [*mut f64; 1] = [y.as_mut_ptr()];
     let mut groups = [GemvBatchGroup::<f64> {
         trans: Transpose::NoTrans,
-        m: 2, n: 2,
-        alpha: 1.0, lda: 2, incx: 1, beta: 0.0, incy: 1,
+        m: 2,
+        n: 2,
+        alpha: 1.0,
+        lda: 2,
+        incx: 1,
+        beta: 0.0,
+        incy: 1,
         group_size: 2, // mismatch
-        a_array: &a_ptrs, x_array: &x_ptrs, y_array: &y_ptrs,
+        a_array: &a_ptrs,
+        x_array: &x_ptrs,
+        y_array: &y_ptrs,
     }];
     assert!(gemv_batch(Layout::RowMajor, &mut groups).is_err());
 }

@@ -141,7 +141,18 @@ pub fn gemm_bf16_f32(
     ldc: usize,
 ) -> Result<()> {
     validate_gemm_dims(
-        transa, transb, m, n, k, a.len(), lda, b.len(), ldb, c.len(), ldc, layout,
+        transa,
+        transb,
+        m,
+        n,
+        k,
+        a.len(),
+        lda,
+        b.len(),
+        ldb,
+        c.len(),
+        ldc,
+        layout,
     )?;
     unsafe {
         sys::cblas_gemm_bf16bf16f32(
@@ -184,7 +195,18 @@ pub fn gemm_f16_f32(
     ldc: usize,
 ) -> Result<()> {
     validate_gemm_dims(
-        transa, transb, m, n, k, a.len(), lda, b.len(), ldb, c.len(), ldc, layout,
+        transa,
+        transb,
+        m,
+        n,
+        k,
+        a.len(),
+        lda,
+        b.len(),
+        ldb,
+        c.len(),
+        ldc,
+        layout,
     )?;
     unsafe {
         sys::cblas_gemm_f16f16f32(
@@ -231,7 +253,18 @@ pub fn gemm_e5m2_f32(
     ldc: usize,
 ) -> Result<()> {
     validate_gemm_dims(
-        transa, transb, m, n, k, a.len(), lda, b.len(), ldb, c.len(), ldc, layout,
+        transa,
+        transb,
+        m,
+        n,
+        k,
+        a.len(),
+        lda,
+        b.len(),
+        ldb,
+        c.len(),
+        ldc,
+        layout,
     )?;
     unsafe {
         sys::cblas_gemm_e5m2e5m2f32(
@@ -278,7 +311,18 @@ pub fn gemm_e4m3_f32(
     ldc: usize,
 ) -> Result<()> {
     validate_gemm_dims(
-        transa, transb, m, n, k, a.len(), lda, b.len(), ldb, c.len(), ldc, layout,
+        transa,
+        transb,
+        m,
+        n,
+        k,
+        a.len(),
+        lda,
+        b.len(),
+        ldb,
+        c.len(),
+        ldc,
+        layout,
     )?;
     unsafe {
         sys::cblas_gemm_e4m3e4m3f32(
@@ -331,7 +375,18 @@ pub fn gemm_s8u8_s32(
     cb: &[i32],
 ) -> Result<()> {
     validate_gemm_dims(
-        transa, transb, m, n, k, a.len(), lda, b.len(), ldb, c.len(), ldc, layout,
+        transa,
+        transb,
+        m,
+        n,
+        k,
+        a.len(),
+        lda,
+        b.len(),
+        ldb,
+        c.len(),
+        ldc,
+        layout,
     )?;
     let needed_cb = match offset_c {
         CblasOffset::Row => n,
@@ -392,7 +447,18 @@ pub fn gemm_s16_s32(
     cb: &[i32],
 ) -> Result<()> {
     validate_gemm_dims(
-        transa, transb, m, n, k, a.len(), lda, b.len(), ldb, c.len(), ldc, layout,
+        transa,
+        transb,
+        m,
+        n,
+        k,
+        a.len(),
+        lda,
+        b.len(),
+        ldb,
+        c.len(),
+        ldc,
+        layout,
     )?;
     let needed_cb = match offset_c {
         CblasOffset::Row => n,
@@ -453,7 +519,18 @@ pub fn hgemm(
     ldc: usize,
 ) -> Result<()> {
     validate_gemm_dims(
-        transa, transb, m, n, k, a.len(), lda, b.len(), ldb, c.len(), ldc, layout,
+        transa,
+        transb,
+        m,
+        n,
+        k,
+        a.len(),
+        lda,
+        b.len(),
+        ldb,
+        c.len(),
+        ldc,
+        layout,
     )?;
     unsafe {
         sys::cblas_hgemm(
@@ -513,7 +590,20 @@ pub mod f16 {
         ldc: usize,
     ) -> Result<()> {
         super::gemm_f16_f32(
-            layout, transa, transb, m, n, k, alpha, bits(a), lda, bits(b), ldb, beta, c, ldc,
+            layout,
+            transa,
+            transb,
+            m,
+            n,
+            k,
+            alpha,
+            bits(a),
+            lda,
+            bits(b),
+            ldb,
+            beta,
+            c,
+            ldc,
         )
     }
 

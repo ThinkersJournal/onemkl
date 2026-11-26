@@ -6,8 +6,8 @@ use approx::assert_abs_diff_eq;
 use num_complex::Complex64;
 
 use onemkl::lapack::{
-    geev_complex, geev_real, gels, gelsd, gesdd, gesvd, geqrf, gesv, getrf,
-    getri, getrs, heev, orgqr, posv, potrf, potrs, syev, sysv, Job,
+    Job, geev_complex, geev_real, gels, gelsd, geqrf, gesdd, gesv, gesvd, getrf, getri, getrs,
+    heev, orgqr, posv, potrf, potrs, syev, sysv,
 };
 use onemkl::matrix::{MatrixMut, MatrixRef};
 use onemkl::{Layout, Transpose, UpLo};
@@ -129,11 +129,7 @@ fn syev_eigenvalues() {
 #[test]
 fn syev_with_eigenvectors() {
     // 3x3 diagonal — eigenvalues are the diagonal entries.
-    let mut a = [
-        5.0_f64, 0.0, 0.0,
-        0.0, 2.0, 0.0,
-        0.0, 0.0, 1.0,
-    ];
+    let mut a = [5.0_f64, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 1.0];
     let mut w = vec![0.0_f64; 3];
     let mut a_view = MatrixMut::new(&mut a, 3, 3, Layout::RowMajor).unwrap();
     syev(Job::Compute, UpLo::Upper, &mut a_view, &mut w).unwrap();
@@ -151,8 +147,10 @@ fn heev_hermitian() {
     // Eigenvalues: trace = 5, det = 6 - |1+i|^2 = 6 - 2 = 4
     // λ² - 5λ + 4 = 0 → λ = 1, 4
     let mut a = [
-        Complex64::new(2.0, 0.0), Complex64::new(1.0, 1.0),
-        Complex64::new(99.0, 99.0), Complex64::new(3.0, 0.0),
+        Complex64::new(2.0, 0.0),
+        Complex64::new(1.0, 1.0),
+        Complex64::new(99.0, 99.0),
+        Complex64::new(3.0, 0.0),
     ];
     let mut w = vec![0.0_f64; 2];
     let mut a_view = MatrixMut::new(&mut a, 2, 2, Layout::RowMajor).unwrap();
@@ -164,14 +162,20 @@ fn heev_hermitian() {
 #[test]
 fn geev_real_general() {
     // Diagonal A — eigenvalues are the diagonal entries (no imaginary part).
-    let mut a = [
-        5.0_f64, 0.0,
-        0.0, 2.0,
-    ];
+    let mut a = [5.0_f64, 0.0, 0.0, 2.0];
     let mut wr = vec![0.0_f64; 2];
     let mut wi = vec![0.0_f64; 2];
     let mut a_view = MatrixMut::new(&mut a, 2, 2, Layout::RowMajor).unwrap();
-    geev_real(Job::None, Job::None, &mut a_view, &mut wr, &mut wi, None, None).unwrap();
+    geev_real(
+        Job::None,
+        Job::None,
+        &mut a_view,
+        &mut wr,
+        &mut wi,
+        None,
+        None,
+    )
+    .unwrap();
     // The order isn't guaranteed for geev. Sort.
     let mut eigs = wr.clone();
     eigs.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -186,15 +190,21 @@ fn geev_real_general() {
 fn geev_complex_general() {
     // Diagonal complex A.
     let mut a = [
-        Complex64::new(2.0, 1.0), Complex64::new(0.0, 0.0),
-        Complex64::new(0.0, 0.0), Complex64::new(3.0, -1.0),
+        Complex64::new(2.0, 1.0),
+        Complex64::new(0.0, 0.0),
+        Complex64::new(0.0, 0.0),
+        Complex64::new(3.0, -1.0),
     ];
     let mut w = vec![Complex64::new(0.0, 0.0); 2];
     let mut a_view = MatrixMut::new(&mut a, 2, 2, Layout::RowMajor).unwrap();
     geev_complex(Job::None, Job::None, &mut a_view, &mut w, None, None).unwrap();
     // Should contain both diagonal values, in some order.
-    let has_first = w.iter().any(|z| (z.re - 2.0).abs() < 1e-12 && (z.im - 1.0).abs() < 1e-12);
-    let has_second = w.iter().any(|z| (z.re - 3.0).abs() < 1e-12 && (z.im + 1.0).abs() < 1e-12);
+    let has_first = w
+        .iter()
+        .any(|z| (z.re - 2.0).abs() < 1e-12 && (z.im - 1.0).abs() < 1e-12);
+    let has_second = w
+        .iter()
+        .any(|z| (z.re - 3.0).abs() < 1e-12 && (z.im + 1.0).abs() < 1e-12);
     assert!(has_first && has_second);
 }
 
@@ -202,11 +212,7 @@ fn geev_complex_general() {
 fn geqrf_then_orgqr_reconstructs_q() {
     // 3x2 matrix; QR factor then reconstruct Q.
     // We then check QᵀQ = I (Q should have orthonormal columns).
-    let mut a = [
-        1.0_f64, 0.0,
-        1.0, 1.0,
-        1.0, 2.0,
-    ];
+    let mut a = [1.0_f64, 0.0, 1.0, 1.0, 1.0, 2.0];
     let mut tau = vec![0.0_f64; 2];
     {
         let mut a_view = MatrixMut::new(&mut a, 3, 2, Layout::RowMajor).unwrap();
@@ -221,9 +227,9 @@ fn geqrf_then_orgqr_reconstructs_q() {
     // Q[0] = [a[0], a[1]], Q[1] = [a[2], a[3]], Q[2] = [a[4], a[5]]
     // (QᵀQ)[i][j] = Σ_k Q[k][i] * Q[k][j]
     let q = a;
-    let dot00 = q[0]*q[0] + q[2]*q[2] + q[4]*q[4];
-    let dot11 = q[1]*q[1] + q[3]*q[3] + q[5]*q[5];
-    let dot01 = q[0]*q[1] + q[2]*q[3] + q[4]*q[5];
+    let dot00 = q[0] * q[0] + q[2] * q[2] + q[4] * q[4];
+    let dot11 = q[1] * q[1] + q[3] * q[3] + q[5] * q[5];
+    let dot01 = q[0] * q[1] + q[2] * q[3] + q[4] * q[5];
     assert_abs_diff_eq!(dot00, 1.0, epsilon = 1e-10);
     assert_abs_diff_eq!(dot11, 1.0, epsilon = 1e-10);
     assert_abs_diff_eq!(dot01, 0.0, epsilon = 1e-10);
@@ -268,8 +274,7 @@ fn gesdd_returns_singular_values() {
         let mut a_view = MatrixMut::new(&mut a, 2, 2, Layout::RowMajor).unwrap();
         let mut u = MatrixMut::new(&mut u_buf, 2, 2, Layout::RowMajor).unwrap();
         let mut vt = MatrixMut::new(&mut vt_buf, 2, 2, Layout::RowMajor).unwrap();
-        gesdd(Job::All, &mut a_view, &mut s, Some(&mut u), Some(&mut vt))
-            .unwrap();
+        gesdd(Job::All, &mut a_view, &mut s, Some(&mut u), Some(&mut vt)).unwrap();
     }
     // Singular values are 4 and 3 (descending order).
     assert_abs_diff_eq!(s[0], 4.0, epsilon = 1e-12);
@@ -282,7 +287,16 @@ fn gesvd_returns_singular_values() {
     let mut s = vec![0.0_f64; 2];
     let mut superb = vec![0.0_f64; 1];
     let mut a_view = MatrixMut::new(&mut a, 2, 2, Layout::RowMajor).unwrap();
-    gesvd(Job::None, Job::None, &mut a_view, &mut s, None, None, &mut superb).unwrap();
+    gesvd(
+        Job::None,
+        Job::None,
+        &mut a_view,
+        &mut s,
+        None,
+        None,
+        &mut superb,
+    )
+    .unwrap();
     assert_abs_diff_eq!(s[0], 4.0, epsilon = 1e-12);
     assert_abs_diff_eq!(s[1], 3.0, epsilon = 1e-12);
 }

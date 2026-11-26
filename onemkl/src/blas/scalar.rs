@@ -86,26 +86,14 @@ pub trait BlasScalar: Scalar {
     ///
     /// # Safety
     /// As [`cblas_axpy`](Self::cblas_axpy).
-    unsafe fn cblas_copy(
-        n: MKL_INT,
-        x: *const Self,
-        incx: MKL_INT,
-        y: *mut Self,
-        incy: MKL_INT,
-    );
+    unsafe fn cblas_copy(n: MKL_INT, x: *const Self, incx: MKL_INT, y: *mut Self, incy: MKL_INT);
 
     /// `cblas_*swap` — exchange `x` and `y`.
     ///
     /// # Safety
     /// Both `x` and `y` must be uniquely accessible and non-overlapping,
     /// each addressing at least `(n - 1) * |inc?| + 1` elements.
-    unsafe fn cblas_swap(
-        n: MKL_INT,
-        x: *mut Self,
-        incx: MKL_INT,
-        y: *mut Self,
-        incy: MKL_INT,
-    );
+    unsafe fn cblas_swap(n: MKL_INT, x: *mut Self, incx: MKL_INT, y: *mut Self, incy: MKL_INT);
 
     // ----- Level 2 (universal) -----
 
@@ -857,12 +845,7 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
 
     /// `cblas_csscal` / `cblas_zdscal` — scale a complex vector by a real
     /// scalar.
-    unsafe fn cblas_scal_real(
-        n: MKL_INT,
-        alpha: Self::Real,
-        x: *mut Self,
-        incx: MKL_INT,
-    );
+    unsafe fn cblas_scal_real(n: MKL_INT, alpha: Self::Real, x: *mut Self, incx: MKL_INT);
 
     /// `cblas_*gerc` — conjugated rank-1 update
     /// `A ← α * x * yᴴ + A`.
@@ -1173,44 +1156,68 @@ macro_rules! impl_real_blas {
             }
             #[inline]
             unsafe fn cblas_axpy(
-                n: MKL_INT, alpha: Self, x: *const Self, incx: MKL_INT,
-                y: *mut Self, incy: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                x: *const Self,
+                incx: MKL_INT,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
                 unsafe { sys::$axpy(n, alpha, x, incx, y, incy) }
             }
             #[inline]
             unsafe fn cblas_copy(
-                n: MKL_INT, x: *const Self, incx: MKL_INT,
-                y: *mut Self, incy: MKL_INT,
+                n: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
                 unsafe { sys::$copy(n, x, incx, y, incy) }
             }
             #[inline]
             unsafe fn cblas_swap(
-                n: MKL_INT, x: *mut Self, incx: MKL_INT,
-                y: *mut Self, incy: MKL_INT,
+                n: MKL_INT,
+                x: *mut Self,
+                incx: MKL_INT,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
                 unsafe { sys::$swap(n, x, incx, y, incy) }
             }
             #[inline]
             unsafe fn cblas_gemv(
-                layout: sys::CBLAS_LAYOUT::Type, trans: sys::CBLAS_TRANSPOSE::Type,
-                m: MKL_INT, n: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                x: *const Self, incx: MKL_INT,
-                beta: Self, y: *mut Self, incy: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                beta: Self,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
-                unsafe {
-                    sys::$gemv(layout, trans, m, n, alpha, a, lda, x, incx, beta, y, incy)
-                }
+                unsafe { sys::$gemv(layout, trans, m, n, alpha, a, lda, x, incx, beta, y, incy) }
             }
             #[inline]
             unsafe fn cblas_gbmv(
-                layout: sys::CBLAS_LAYOUT::Type, trans: sys::CBLAS_TRANSPOSE::Type,
-                m: MKL_INT, n: MKL_INT, kl: MKL_INT, ku: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                x: *const Self, incx: MKL_INT,
-                beta: Self, y: *mut Self, incy: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                kl: MKL_INT,
+                ku: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                beta: Self,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
                 unsafe {
                     sys::$gbmv(
@@ -1220,57 +1227,85 @@ macro_rules! impl_real_blas {
             }
             #[inline]
             unsafe fn cblas_trmv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, diag: sys::CBLAS_DIAG::Type,
-                n: MKL_INT, a: *const Self, lda: MKL_INT,
-                x: *mut Self, incx: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                n: MKL_INT,
+                a: *const Self,
+                lda: MKL_INT,
+                x: *mut Self,
+                incx: MKL_INT,
             ) {
                 unsafe { sys::$trmv(layout, uplo, trans, diag, n, a, lda, x, incx) }
             }
             #[inline]
             unsafe fn cblas_trsv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, diag: sys::CBLAS_DIAG::Type,
-                n: MKL_INT, a: *const Self, lda: MKL_INT,
-                x: *mut Self, incx: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                n: MKL_INT,
+                a: *const Self,
+                lda: MKL_INT,
+                x: *mut Self,
+                incx: MKL_INT,
             ) {
                 unsafe { sys::$trsv(layout, uplo, trans, diag, n, a, lda, x, incx) }
             }
             #[inline]
             unsafe fn cblas_tbmv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, diag: sys::CBLAS_DIAG::Type,
-                n: MKL_INT, k: MKL_INT,
-                a: *const Self, lda: MKL_INT,
-                x: *mut Self, incx: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                n: MKL_INT,
+                k: MKL_INT,
+                a: *const Self,
+                lda: MKL_INT,
+                x: *mut Self,
+                incx: MKL_INT,
             ) {
                 unsafe { sys::$tbmv(layout, uplo, trans, diag, n, k, a, lda, x, incx) }
             }
             #[inline]
             unsafe fn cblas_tbsv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, diag: sys::CBLAS_DIAG::Type,
-                n: MKL_INT, k: MKL_INT,
-                a: *const Self, lda: MKL_INT,
-                x: *mut Self, incx: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                n: MKL_INT,
+                k: MKL_INT,
+                a: *const Self,
+                lda: MKL_INT,
+                x: *mut Self,
+                incx: MKL_INT,
             ) {
                 unsafe { sys::$tbsv(layout, uplo, trans, diag, n, k, a, lda, x, incx) }
             }
             #[inline]
             unsafe fn cblas_tpmv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, diag: sys::CBLAS_DIAG::Type,
-                n: MKL_INT, ap: *const Self,
-                x: *mut Self, incx: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                n: MKL_INT,
+                ap: *const Self,
+                x: *mut Self,
+                incx: MKL_INT,
             ) {
                 unsafe { sys::$tpmv(layout, uplo, trans, diag, n, ap, x, incx) }
             }
             #[inline]
             unsafe fn cblas_tpsv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, diag: sys::CBLAS_DIAG::Type,
-                n: MKL_INT, ap: *const Self,
-                x: *mut Self, incx: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                n: MKL_INT,
+                ap: *const Self,
+                x: *mut Self,
+                incx: MKL_INT,
             ) {
                 unsafe { sys::$tpsv(layout, uplo, trans, diag, n, ap, x, incx) }
             }
@@ -1279,25 +1314,39 @@ macro_rules! impl_real_blas {
                 layout: sys::CBLAS_LAYOUT::Type,
                 transa: sys::CBLAS_TRANSPOSE::Type,
                 transb: sys::CBLAS_TRANSPOSE::Type,
-                m: MKL_INT, n: MKL_INT, k: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                b: *const Self, ldb: MKL_INT,
-                beta: Self, c: *mut Self, ldc: MKL_INT,
+                m: MKL_INT,
+                n: MKL_INT,
+                k: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                b: *const Self,
+                ldb: MKL_INT,
+                beta: Self,
+                c: *mut Self,
+                ldc: MKL_INT,
             ) {
                 unsafe {
                     sys::$gemm(
-                        layout, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c,
-                        ldc,
+                        layout, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_symm(
-                layout: sys::CBLAS_LAYOUT::Type, side: sys::CBLAS_SIDE::Type,
-                uplo: sys::CBLAS_UPLO::Type, m: MKL_INT, n: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                b: *const Self, ldb: MKL_INT,
-                beta: Self, c: *mut Self, ldc: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                side: sys::CBLAS_SIDE::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                b: *const Self,
+                ldb: MKL_INT,
+                beta: Self,
+                c: *mut Self,
+                ldc: MKL_INT,
             ) {
                 unsafe {
                     sys::$symm(
@@ -1307,22 +1356,35 @@ macro_rules! impl_real_blas {
             }
             #[inline]
             unsafe fn cblas_syrk(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, n: MKL_INT, k: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                beta: Self, c: *mut Self, ldc: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                n: MKL_INT,
+                k: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                beta: Self,
+                c: *mut Self,
+                ldc: MKL_INT,
             ) {
-                unsafe {
-                    sys::$syrk(layout, uplo, trans, n, k, alpha, a, lda, beta, c, ldc)
-                }
+                unsafe { sys::$syrk(layout, uplo, trans, n, k, alpha, a, lda, beta, c, ldc) }
             }
             #[inline]
             unsafe fn cblas_syr2k(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, n: MKL_INT, k: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                b: *const Self, ldb: MKL_INT,
-                beta: Self, c: *mut Self, ldc: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                n: MKL_INT,
+                k: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                b: *const Self,
+                ldb: MKL_INT,
+                beta: Self,
+                c: *mut Self,
+                ldc: MKL_INT,
             ) {
                 unsafe {
                     sys::$syr2k(
@@ -1332,144 +1394,194 @@ macro_rules! impl_real_blas {
             }
             #[inline]
             unsafe fn cblas_trmm(
-                layout: sys::CBLAS_LAYOUT::Type, side: sys::CBLAS_SIDE::Type,
-                uplo: sys::CBLAS_UPLO::Type, trans: sys::CBLAS_TRANSPOSE::Type,
-                diag: sys::CBLAS_DIAG::Type, m: MKL_INT, n: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                b: *mut Self, ldb: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                side: sys::CBLAS_SIDE::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                b: *mut Self,
+                ldb: MKL_INT,
             ) {
-                unsafe {
-                    sys::$trmm(
-                        layout, side, uplo, trans, diag, m, n, alpha, a, lda, b, ldb,
-                    )
-                }
+                unsafe { sys::$trmm(layout, side, uplo, trans, diag, m, n, alpha, a, lda, b, ldb) }
             }
             #[inline]
             unsafe fn cblas_trsm(
-                layout: sys::CBLAS_LAYOUT::Type, side: sys::CBLAS_SIDE::Type,
-                uplo: sys::CBLAS_UPLO::Type, trans: sys::CBLAS_TRANSPOSE::Type,
-                diag: sys::CBLAS_DIAG::Type, m: MKL_INT, n: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                b: *mut Self, ldb: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                side: sys::CBLAS_SIDE::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                b: *mut Self,
+                ldb: MKL_INT,
             ) {
-                unsafe {
-                    sys::$trsm(
-                        layout, side, uplo, trans, diag, m, n, alpha, a, lda, b, ldb,
-                    )
-                }
+                unsafe { sys::$trsm(layout, side, uplo, trans, diag, m, n, alpha, a, lda, b, ldb) }
             }
             #[inline]
             unsafe fn cblas_gemmt(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                transa: sys::CBLAS_TRANSPOSE::Type, transb: sys::CBLAS_TRANSPOSE::Type,
-                n: MKL_INT, k: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                b: *const Self, ldb: MKL_INT,
-                beta: Self, c: *mut Self, ldc: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                transa: sys::CBLAS_TRANSPOSE::Type,
+                transb: sys::CBLAS_TRANSPOSE::Type,
+                n: MKL_INT,
+                k: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                b: *const Self,
+                ldb: MKL_INT,
+                beta: Self,
+                c: *mut Self,
+                ldc: MKL_INT,
             ) {
                 unsafe {
                     sys::$gemmt(
-                        layout, uplo, transa, transb, n, k, alpha, a, lda, b, ldb, beta,
-                        c, ldc,
+                        layout, uplo, transa, transb, n, k, alpha, a, lda, b, ldb, beta, c, ldc,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_axpby(
-                n: MKL_INT, alpha: Self, x: *const Self, incx: MKL_INT,
-                beta: Self, y: *mut Self, incy: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                x: *const Self,
+                incx: MKL_INT,
+                beta: Self,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
                 unsafe { sys::$axpby(n, alpha, x, incx, beta, y, incy) }
             }
             #[inline]
             unsafe fn mkl_imatcopy(
-                ordering: c_char, trans: c_char,
-                rows: usize, cols: usize, alpha: Self,
-                ab: *mut Self, lda: usize, ldb: usize,
+                ordering: c_char,
+                trans: c_char,
+                rows: usize,
+                cols: usize,
+                alpha: Self,
+                ab: *mut Self,
+                lda: usize,
+                ldb: usize,
             ) {
                 unsafe { sys::$imatcopy(ordering, trans, rows, cols, alpha, ab, lda, ldb) }
             }
             #[inline]
             unsafe fn mkl_omatcopy(
-                ordering: c_char, trans: c_char,
-                rows: usize, cols: usize, alpha: Self,
-                a: *const Self, lda: usize,
-                b: *mut Self, ldb: usize,
+                ordering: c_char,
+                trans: c_char,
+                rows: usize,
+                cols: usize,
+                alpha: Self,
+                a: *const Self,
+                lda: usize,
+                b: *mut Self,
+                ldb: usize,
             ) {
-                unsafe {
-                    sys::$omatcopy(ordering, trans, rows, cols, alpha, a, lda, b, ldb)
-                }
+                unsafe { sys::$omatcopy(ordering, trans, rows, cols, alpha, a, lda, b, ldb) }
             }
             #[inline]
             unsafe fn mkl_omatcopy2(
-                ordering: c_char, trans: c_char,
-                rows: usize, cols: usize, alpha: Self,
-                a: *const Self, lda: usize, stridea: usize,
-                b: *mut Self, ldb: usize, strideb: usize,
+                ordering: c_char,
+                trans: c_char,
+                rows: usize,
+                cols: usize,
+                alpha: Self,
+                a: *const Self,
+                lda: usize,
+                stridea: usize,
+                b: *mut Self,
+                ldb: usize,
+                strideb: usize,
             ) {
                 unsafe {
                     sys::$omatcopy2(
-                        ordering, trans, rows, cols, alpha,
-                        a, lda, stridea, b, ldb, strideb,
+                        ordering, trans, rows, cols, alpha, a, lda, stridea, b, ldb, strideb,
                     )
                 }
             }
             #[inline]
             unsafe fn mkl_omatadd(
-                ordering: c_char, transa: c_char, transb: c_char,
-                rows: usize, cols: usize, alpha: Self,
-                a: *const Self, lda: usize,
-                beta: Self, b: *const Self, ldb: usize,
-                c: *mut Self, ldc: usize,
+                ordering: c_char,
+                transa: c_char,
+                transb: c_char,
+                rows: usize,
+                cols: usize,
+                alpha: Self,
+                a: *const Self,
+                lda: usize,
+                beta: Self,
+                b: *const Self,
+                ldb: usize,
+                c: *mut Self,
+                ldc: usize,
             ) {
                 unsafe {
                     sys::$omatadd(
-                        ordering, transa, transb, rows, cols, alpha,
-                        a, lda, beta, b, ldb, c, ldc,
+                        ordering, transa, transb, rows, cols, alpha, a, lda, beta, b, ldb, c, ldc,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_axpy_batch_strided(
-                n: MKL_INT, alpha: Self,
-                x: *const Self, incx: MKL_INT, stridex: MKL_INT,
-                y: *mut Self, incy: MKL_INT, stridey: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                x: *const Self,
+                incx: MKL_INT,
+                stridex: MKL_INT,
+                y: *mut Self,
+                incy: MKL_INT,
+                stridey: MKL_INT,
                 batch_size: MKL_INT,
             ) {
                 unsafe {
-                    sys::$axpy_batch(
-                        n, alpha, x, incx, stridex, y, incy, stridey, batch_size,
-                    )
+                    sys::$axpy_batch(n, alpha, x, incx, stridex, y, incy, stridey, batch_size)
                 }
             }
             #[inline]
             unsafe fn cblas_copy_batch_strided(
                 n: MKL_INT,
-                x: *const Self, incx: MKL_INT, stridex: MKL_INT,
-                y: *mut Self, incy: MKL_INT, stridey: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                stridex: MKL_INT,
+                y: *mut Self,
+                incy: MKL_INT,
+                stridey: MKL_INT,
                 batch_size: MKL_INT,
             ) {
-                unsafe {
-                    sys::$copy_batch(
-                        n, x, incx, stridex, y, incy, stridey, batch_size,
-                    )
-                }
+                unsafe { sys::$copy_batch(n, x, incx, stridex, y, incy, stridey, batch_size) }
             }
             #[inline]
             unsafe fn cblas_gemv_batch_strided(
-                layout: sys::CBLAS_LAYOUT::Type, trans: sys::CBLAS_TRANSPOSE::Type,
-                m: MKL_INT, n: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT, stridea: MKL_INT,
-                x: *const Self, incx: MKL_INT, stridex: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                stridea: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                stridex: MKL_INT,
                 beta: Self,
-                y: *mut Self, incy: MKL_INT, stridey: MKL_INT,
+                y: *mut Self,
+                incy: MKL_INT,
+                stridey: MKL_INT,
                 batch_size: MKL_INT,
             ) {
                 unsafe {
                     sys::$gemv_batch(
-                        layout, trans, m, n, alpha,
-                        a, lda, stridea, x, incx, stridex,
-                        beta, y, incy, stridey, batch_size,
+                        layout, trans, m, n, alpha, a, lda, stridea, x, incx, stridex, beta, y,
+                        incy, stridey, batch_size,
                     )
                 }
             }
@@ -1478,17 +1590,25 @@ macro_rules! impl_real_blas {
                 layout: sys::CBLAS_LAYOUT::Type,
                 transa: sys::CBLAS_TRANSPOSE::Type,
                 transb: sys::CBLAS_TRANSPOSE::Type,
-                m: MKL_INT, n: MKL_INT, k: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT, stridea: MKL_INT,
-                b: *const Self, ldb: MKL_INT, strideb: MKL_INT,
+                m: MKL_INT,
+                n: MKL_INT,
+                k: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                stridea: MKL_INT,
+                b: *const Self,
+                ldb: MKL_INT,
+                strideb: MKL_INT,
                 beta: Self,
-                c: *mut Self, ldc: MKL_INT, stridec: MKL_INT,
+                c: *mut Self,
+                ldc: MKL_INT,
+                stridec: MKL_INT,
                 batch_size: MKL_INT,
             ) {
                 unsafe {
                     sys::$gemm_batch(
-                        layout, transa, transb, m, n, k, alpha,
-                        a, lda, stridea, b, ldb, strideb,
+                        layout, transa, transb, m, n, k, alpha, a, lda, stridea, b, ldb, strideb,
                         beta, c, ldc, stridec, batch_size,
                     )
                 }
@@ -1514,14 +1634,22 @@ macro_rules! impl_real_blas {
             ) {
                 unsafe {
                     sys::$gemm_batch_ptr(
-                        layout, transa_array, transb_array,
-                        m_array, n_array, k_array,
+                        layout,
+                        transa_array,
+                        transb_array,
+                        m_array,
+                        n_array,
+                        k_array,
                         alpha_array,
-                        a_array, lda_array,
-                        b_array, ldb_array,
+                        a_array,
+                        lda_array,
+                        b_array,
+                        ldb_array,
                         beta_array,
-                        c_array, ldc_array,
-                        group_count, group_size,
+                        c_array,
+                        ldc_array,
+                        group_count,
+                        group_size,
                     )
                 }
             }
@@ -1544,13 +1672,20 @@ macro_rules! impl_real_blas {
             ) {
                 unsafe {
                     sys::$gemv_batch_ptr(
-                        layout, trans_array, m_array, n_array,
+                        layout,
+                        trans_array,
+                        m_array,
+                        n_array,
                         alpha_array,
-                        a_array, lda_array,
-                        x_array, incx_array,
+                        a_array,
+                        lda_array,
+                        x_array,
+                        incx_array,
                         beta_array,
-                        y_array, incy_array,
-                        group_count, group_size,
+                        y_array,
+                        incy_array,
+                        group_count,
+                        group_size,
                     )
                 }
             }
@@ -1573,46 +1708,69 @@ macro_rules! impl_real_blas {
             ) {
                 unsafe {
                     sys::$trsm_batch_ptr(
-                        layout, side_array, uplo_array,
-                        transa_array, diag_array,
-                        m_array, n_array,
+                        layout,
+                        side_array,
+                        uplo_array,
+                        transa_array,
+                        diag_array,
+                        m_array,
+                        n_array,
                         alpha_array,
-                        a_array, lda_array,
-                        b_array, ldb_array,
-                        group_count, group_size,
+                        a_array,
+                        lda_array,
+                        b_array,
+                        ldb_array,
+                        group_count,
+                        group_size,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_trsm_batch_strided(
-                layout: sys::CBLAS_LAYOUT::Type, side: sys::CBLAS_SIDE::Type,
-                uplo: sys::CBLAS_UPLO::Type, trans: sys::CBLAS_TRANSPOSE::Type,
-                diag: sys::CBLAS_DIAG::Type, m: MKL_INT, n: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT, stridea: MKL_INT,
-                b: *mut Self, ldb: MKL_INT, strideb: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                side: sys::CBLAS_SIDE::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                stridea: MKL_INT,
+                b: *mut Self,
+                ldb: MKL_INT,
+                strideb: MKL_INT,
                 batch_size: MKL_INT,
             ) {
                 unsafe {
                     sys::$trsm_batch(
-                        layout, side, uplo, trans, diag, m, n, alpha,
-                        a, lda, stridea, b, ldb, strideb, batch_size,
+                        layout, side, uplo, trans, diag, m, n, alpha, a, lda, stridea, b, ldb,
+                        strideb, batch_size,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_dgmm_batch_strided(
-                layout: sys::CBLAS_LAYOUT::Type, side: sys::CBLAS_SIDE::Type,
-                m: MKL_INT, n: MKL_INT,
-                a: *const Self, lda: MKL_INT, stridea: MKL_INT,
-                x: *const Self, incx: MKL_INT, stridex: MKL_INT,
-                c: *mut Self, ldc: MKL_INT, stridec: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                side: sys::CBLAS_SIDE::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                a: *const Self,
+                lda: MKL_INT,
+                stridea: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                stridex: MKL_INT,
+                c: *mut Self,
+                ldc: MKL_INT,
+                stridec: MKL_INT,
                 batch_size: MKL_INT,
             ) {
                 unsafe {
                     sys::$dgmm_batch(
-                        layout, side, m, n,
-                        a, lda, stridea, x, incx, stridex,
-                        c, ldc, stridec, batch_size,
+                        layout, side, m, n, a, lda, stridea, x, incx, stridex, c, ldc, stridec,
+                        batch_size,
                     )
                 }
             }
@@ -1621,112 +1779,146 @@ macro_rules! impl_real_blas {
         impl RealBlasScalar for $ty {
             #[inline]
             unsafe fn cblas_dot(
-                n: MKL_INT, x: *const Self, incx: MKL_INT,
-                y: *const Self, incy: MKL_INT,
+                n: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                y: *const Self,
+                incy: MKL_INT,
             ) -> Self {
                 unsafe { sys::$dot(n, x, incx, y, incy) }
             }
             #[inline]
             unsafe fn cblas_rot(
-                n: MKL_INT, x: *mut Self, incx: MKL_INT,
-                y: *mut Self, incy: MKL_INT, c: Self, s: Self,
+                n: MKL_INT,
+                x: *mut Self,
+                incx: MKL_INT,
+                y: *mut Self,
+                incy: MKL_INT,
+                c: Self,
+                s: Self,
             ) {
                 unsafe { sys::$rot(n, x, incx, y, incy, c, s) }
             }
             #[inline]
-            unsafe fn cblas_rotg(
-                a: *mut Self, b: *mut Self, c: *mut Self, s: *mut Self,
-            ) {
+            unsafe fn cblas_rotg(a: *mut Self, b: *mut Self, c: *mut Self, s: *mut Self) {
                 unsafe { sys::$rotg(a, b, c, s) }
             }
             #[inline]
             unsafe fn cblas_ger(
-                layout: sys::CBLAS_LAYOUT::Type, m: MKL_INT, n: MKL_INT, alpha: Self,
-                x: *const Self, incx: MKL_INT,
-                y: *const Self, incy: MKL_INT,
-                a: *mut Self, lda: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                x: *const Self,
+                incx: MKL_INT,
+                y: *const Self,
+                incy: MKL_INT,
+                a: *mut Self,
+                lda: MKL_INT,
             ) {
-                unsafe {
-                    sys::$ger(layout, m, n, alpha, x, incx, y, incy, a, lda)
-                }
+                unsafe { sys::$ger(layout, m, n, alpha, x, incx, y, incy, a, lda) }
             }
             #[inline]
             unsafe fn cblas_symv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                n: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                x: *const Self, incx: MKL_INT,
-                beta: Self, y: *mut Self, incy: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                n: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                beta: Self,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
-                unsafe {
-                    sys::$symv(layout, uplo, n, alpha, a, lda, x, incx, beta, y, incy)
-                }
+                unsafe { sys::$symv(layout, uplo, n, alpha, a, lda, x, incx, beta, y, incy) }
             }
             #[inline]
             unsafe fn cblas_syr(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                n: MKL_INT, alpha: Self,
-                x: *const Self, incx: MKL_INT,
-                a: *mut Self, lda: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                n: MKL_INT,
+                alpha: Self,
+                x: *const Self,
+                incx: MKL_INT,
+                a: *mut Self,
+                lda: MKL_INT,
             ) {
                 unsafe { sys::$syr(layout, uplo, n, alpha, x, incx, a, lda) }
             }
             #[inline]
             unsafe fn cblas_syr2(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                n: MKL_INT, alpha: Self,
-                x: *const Self, incx: MKL_INT,
-                y: *const Self, incy: MKL_INT,
-                a: *mut Self, lda: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                n: MKL_INT,
+                alpha: Self,
+                x: *const Self,
+                incx: MKL_INT,
+                y: *const Self,
+                incy: MKL_INT,
+                a: *mut Self,
+                lda: MKL_INT,
             ) {
-                unsafe {
-                    sys::$syr2(layout, uplo, n, alpha, x, incx, y, incy, a, lda)
-                }
+                unsafe { sys::$syr2(layout, uplo, n, alpha, x, incx, y, incy, a, lda) }
             }
             #[inline]
             unsafe fn cblas_sbmv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                n: MKL_INT, k: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                x: *const Self, incx: MKL_INT,
-                beta: Self, y: *mut Self, incy: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                n: MKL_INT,
+                k: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                beta: Self,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
-                unsafe {
-                    sys::$sbmv(layout, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy)
-                }
+                unsafe { sys::$sbmv(layout, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy) }
             }
             #[inline]
             unsafe fn cblas_spmv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                n: MKL_INT, alpha: Self,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                n: MKL_INT,
+                alpha: Self,
                 ap: *const Self,
-                x: *const Self, incx: MKL_INT,
-                beta: Self, y: *mut Self, incy: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                beta: Self,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
-                unsafe {
-                    sys::$spmv(layout, uplo, n, alpha, ap, x, incx, beta, y, incy)
-                }
+                unsafe { sys::$spmv(layout, uplo, n, alpha, ap, x, incx, beta, y, incy) }
             }
             #[inline]
             unsafe fn cblas_spr(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                n: MKL_INT, alpha: Self,
-                x: *const Self, incx: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                n: MKL_INT,
+                alpha: Self,
+                x: *const Self,
+                incx: MKL_INT,
                 ap: *mut Self,
             ) {
                 unsafe { sys::$spr(layout, uplo, n, alpha, x, incx, ap) }
             }
             #[inline]
             unsafe fn cblas_spr2(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                n: MKL_INT, alpha: Self,
-                x: *const Self, incx: MKL_INT,
-                y: *const Self, incy: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                n: MKL_INT,
+                alpha: Self,
+                x: *const Self,
+                incx: MKL_INT,
+                y: *const Self,
+                incy: MKL_INT,
                 ap: *mut Self,
             ) {
-                unsafe {
-                    sys::$spr2(layout, uplo, n, alpha, x, incx, y, incy, ap)
-                }
+                unsafe { sys::$spr2(layout, uplo, n, alpha, x, incx, y, incy, ap) }
             }
         }
     };
@@ -1734,25 +1926,45 @@ macro_rules! impl_real_blas {
 
 impl_real_blas!(
     f32,
-    asum = cblas_sasum, nrm2 = cblas_snrm2,
-    iamax = cblas_isamax, iamin = cblas_isamin,
-    scal = cblas_sscal, axpy = cblas_saxpy,
-    copy = cblas_scopy, swap = cblas_sswap,
-    dot = cblas_sdot, rot = cblas_srot, rotg = cblas_srotg,
-    gemv = cblas_sgemv, gbmv = cblas_sgbmv,
-    trmv = cblas_strmv, trsv = cblas_strsv,
-    tbmv = cblas_stbmv, tbsv = cblas_stbsv,
-    tpmv = cblas_stpmv, tpsv = cblas_stpsv,
-    ger = cblas_sger, symv = cblas_ssymv,
-    syr = cblas_ssyr, syr2 = cblas_ssyr2,
-    sbmv = cblas_ssbmv, spmv = cblas_sspmv,
-    spr = cblas_sspr, spr2 = cblas_sspr2,
+    asum = cblas_sasum,
+    nrm2 = cblas_snrm2,
+    iamax = cblas_isamax,
+    iamin = cblas_isamin,
+    scal = cblas_sscal,
+    axpy = cblas_saxpy,
+    copy = cblas_scopy,
+    swap = cblas_sswap,
+    dot = cblas_sdot,
+    rot = cblas_srot,
+    rotg = cblas_srotg,
+    gemv = cblas_sgemv,
+    gbmv = cblas_sgbmv,
+    trmv = cblas_strmv,
+    trsv = cblas_strsv,
+    tbmv = cblas_stbmv,
+    tbsv = cblas_stbsv,
+    tpmv = cblas_stpmv,
+    tpsv = cblas_stpsv,
+    ger = cblas_sger,
+    symv = cblas_ssymv,
+    syr = cblas_ssyr,
+    syr2 = cblas_ssyr2,
+    sbmv = cblas_ssbmv,
+    spmv = cblas_sspmv,
+    spr = cblas_sspr,
+    spr2 = cblas_sspr2,
     gemm = cblas_sgemm,
-    symm = cblas_ssymm, syrk = cblas_ssyrk, syr2k = cblas_ssyr2k,
-    trmm = cblas_strmm, trsm = cblas_strsm, gemmt = cblas_sgemmt,
+    symm = cblas_ssymm,
+    syrk = cblas_ssyrk,
+    syr2k = cblas_ssyr2k,
+    trmm = cblas_strmm,
+    trsm = cblas_strsm,
+    gemmt = cblas_sgemmt,
     axpby = cblas_saxpby,
-    imatcopy = MKL_Simatcopy, omatcopy = MKL_Somatcopy,
-    omatcopy2 = MKL_Somatcopy2, omatadd = MKL_Somatadd,
+    imatcopy = MKL_Simatcopy,
+    omatcopy = MKL_Somatcopy,
+    omatcopy2 = MKL_Somatcopy2,
+    omatadd = MKL_Somatadd,
     axpy_batch_strided = cblas_saxpy_batch_strided,
     copy_batch_strided = cblas_scopy_batch_strided,
     gemv_batch_strided = cblas_sgemv_batch_strided,
@@ -1766,25 +1978,45 @@ impl_real_blas!(
 
 impl_real_blas!(
     f64,
-    asum = cblas_dasum, nrm2 = cblas_dnrm2,
-    iamax = cblas_idamax, iamin = cblas_idamin,
-    scal = cblas_dscal, axpy = cblas_daxpy,
-    copy = cblas_dcopy, swap = cblas_dswap,
-    dot = cblas_ddot, rot = cblas_drot, rotg = cblas_drotg,
-    gemv = cblas_dgemv, gbmv = cblas_dgbmv,
-    trmv = cblas_dtrmv, trsv = cblas_dtrsv,
-    tbmv = cblas_dtbmv, tbsv = cblas_dtbsv,
-    tpmv = cblas_dtpmv, tpsv = cblas_dtpsv,
-    ger = cblas_dger, symv = cblas_dsymv,
-    syr = cblas_dsyr, syr2 = cblas_dsyr2,
-    sbmv = cblas_dsbmv, spmv = cblas_dspmv,
-    spr = cblas_dspr, spr2 = cblas_dspr2,
+    asum = cblas_dasum,
+    nrm2 = cblas_dnrm2,
+    iamax = cblas_idamax,
+    iamin = cblas_idamin,
+    scal = cblas_dscal,
+    axpy = cblas_daxpy,
+    copy = cblas_dcopy,
+    swap = cblas_dswap,
+    dot = cblas_ddot,
+    rot = cblas_drot,
+    rotg = cblas_drotg,
+    gemv = cblas_dgemv,
+    gbmv = cblas_dgbmv,
+    trmv = cblas_dtrmv,
+    trsv = cblas_dtrsv,
+    tbmv = cblas_dtbmv,
+    tbsv = cblas_dtbsv,
+    tpmv = cblas_dtpmv,
+    tpsv = cblas_dtpsv,
+    ger = cblas_dger,
+    symv = cblas_dsymv,
+    syr = cblas_dsyr,
+    syr2 = cblas_dsyr2,
+    sbmv = cblas_dsbmv,
+    spmv = cblas_dspmv,
+    spr = cblas_dspr,
+    spr2 = cblas_dspr2,
     gemm = cblas_dgemm,
-    symm = cblas_dsymm, syrk = cblas_dsyrk, syr2k = cblas_dsyr2k,
-    trmm = cblas_dtrmm, trsm = cblas_dtrsm, gemmt = cblas_dgemmt,
+    symm = cblas_dsymm,
+    syrk = cblas_dsyrk,
+    syr2k = cblas_dsyr2k,
+    trmm = cblas_dtrmm,
+    trsm = cblas_dtrsm,
+    gemmt = cblas_dgemmt,
     axpby = cblas_daxpby,
-    imatcopy = MKL_Dimatcopy, omatcopy = MKL_Domatcopy,
-    omatcopy2 = MKL_Domatcopy2, omatadd = MKL_Domatadd,
+    imatcopy = MKL_Dimatcopy,
+    omatcopy = MKL_Domatcopy,
+    omatcopy2 = MKL_Domatcopy2,
+    omatadd = MKL_Domatadd,
     axpy_batch_strided = cblas_daxpy_batch_strided,
     copy_batch_strided = cblas_dcopy_batch_strided,
     gemv_batch_strided = cblas_dgemv_batch_strided,
@@ -1859,354 +2091,618 @@ macro_rules! impl_complex_blas {
             }
             #[inline]
             unsafe fn cblas_scal(n: MKL_INT, alpha: Self, x: *mut Self, incx: MKL_INT) {
-                unsafe {
-                    sys::$scal(n, (&alpha as *const Self).cast(), x.cast(), incx)
-                }
+                unsafe { sys::$scal(n, (&alpha as *const Self).cast(), x.cast(), incx) }
             }
             #[inline]
             unsafe fn cblas_axpy(
-                n: MKL_INT, alpha: Self, x: *const Self, incx: MKL_INT,
-                y: *mut Self, incy: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                x: *const Self,
+                incx: MKL_INT,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
                 unsafe {
                     sys::$axpy(
-                        n, (&alpha as *const Self).cast(), x.cast(), incx, y.cast(), incy,
+                        n,
+                        (&alpha as *const Self).cast(),
+                        x.cast(),
+                        incx,
+                        y.cast(),
+                        incy,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_copy(
-                n: MKL_INT, x: *const Self, incx: MKL_INT,
-                y: *mut Self, incy: MKL_INT,
+                n: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
                 unsafe { sys::$copy(n, x.cast(), incx, y.cast(), incy) }
             }
             #[inline]
             unsafe fn cblas_swap(
-                n: MKL_INT, x: *mut Self, incx: MKL_INT,
-                y: *mut Self, incy: MKL_INT,
+                n: MKL_INT,
+                x: *mut Self,
+                incx: MKL_INT,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
                 unsafe { sys::$swap(n, x.cast(), incx, y.cast(), incy) }
             }
             #[inline]
             unsafe fn cblas_gemv(
-                layout: sys::CBLAS_LAYOUT::Type, trans: sys::CBLAS_TRANSPOSE::Type,
-                m: MKL_INT, n: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                x: *const Self, incx: MKL_INT,
-                beta: Self, y: *mut Self, incy: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                beta: Self,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
                 unsafe {
                     sys::$gemv(
-                        layout, trans, m, n, (&alpha as *const Self).cast(),
-                        a.cast(), lda, x.cast(), incx, (&beta as *const Self).cast(),
-                        y.cast(), incy,
+                        layout,
+                        trans,
+                        m,
+                        n,
+                        (&alpha as *const Self).cast(),
+                        a.cast(),
+                        lda,
+                        x.cast(),
+                        incx,
+                        (&beta as *const Self).cast(),
+                        y.cast(),
+                        incy,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_gbmv(
-                layout: sys::CBLAS_LAYOUT::Type, trans: sys::CBLAS_TRANSPOSE::Type,
-                m: MKL_INT, n: MKL_INT, kl: MKL_INT, ku: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                x: *const Self, incx: MKL_INT,
-                beta: Self, y: *mut Self, incy: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                kl: MKL_INT,
+                ku: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                beta: Self,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
                 unsafe {
                     sys::$gbmv(
-                        layout, trans, m, n, kl, ku, (&alpha as *const Self).cast(),
-                        a.cast(), lda, x.cast(), incx, (&beta as *const Self).cast(),
-                        y.cast(), incy,
+                        layout,
+                        trans,
+                        m,
+                        n,
+                        kl,
+                        ku,
+                        (&alpha as *const Self).cast(),
+                        a.cast(),
+                        lda,
+                        x.cast(),
+                        incx,
+                        (&beta as *const Self).cast(),
+                        y.cast(),
+                        incy,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_trmv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, diag: sys::CBLAS_DIAG::Type,
-                n: MKL_INT, a: *const Self, lda: MKL_INT,
-                x: *mut Self, incx: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                n: MKL_INT,
+                a: *const Self,
+                lda: MKL_INT,
+                x: *mut Self,
+                incx: MKL_INT,
             ) {
-                unsafe {
-                    sys::$trmv(layout, uplo, trans, diag, n, a.cast(), lda, x.cast(), incx)
-                }
+                unsafe { sys::$trmv(layout, uplo, trans, diag, n, a.cast(), lda, x.cast(), incx) }
             }
             #[inline]
             unsafe fn cblas_trsv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, diag: sys::CBLAS_DIAG::Type,
-                n: MKL_INT, a: *const Self, lda: MKL_INT,
-                x: *mut Self, incx: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                n: MKL_INT,
+                a: *const Self,
+                lda: MKL_INT,
+                x: *mut Self,
+                incx: MKL_INT,
             ) {
-                unsafe {
-                    sys::$trsv(layout, uplo, trans, diag, n, a.cast(), lda, x.cast(), incx)
-                }
+                unsafe { sys::$trsv(layout, uplo, trans, diag, n, a.cast(), lda, x.cast(), incx) }
             }
             #[inline]
             unsafe fn cblas_tbmv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, diag: sys::CBLAS_DIAG::Type,
-                n: MKL_INT, k: MKL_INT,
-                a: *const Self, lda: MKL_INT,
-                x: *mut Self, incx: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                n: MKL_INT,
+                k: MKL_INT,
+                a: *const Self,
+                lda: MKL_INT,
+                x: *mut Self,
+                incx: MKL_INT,
             ) {
                 unsafe {
                     sys::$tbmv(
-                        layout, uplo, trans, diag, n, k, a.cast(), lda, x.cast(), incx,
+                        layout,
+                        uplo,
+                        trans,
+                        diag,
+                        n,
+                        k,
+                        a.cast(),
+                        lda,
+                        x.cast(),
+                        incx,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_tbsv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, diag: sys::CBLAS_DIAG::Type,
-                n: MKL_INT, k: MKL_INT,
-                a: *const Self, lda: MKL_INT,
-                x: *mut Self, incx: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                n: MKL_INT,
+                k: MKL_INT,
+                a: *const Self,
+                lda: MKL_INT,
+                x: *mut Self,
+                incx: MKL_INT,
             ) {
                 unsafe {
                     sys::$tbsv(
-                        layout, uplo, trans, diag, n, k, a.cast(), lda, x.cast(), incx,
+                        layout,
+                        uplo,
+                        trans,
+                        diag,
+                        n,
+                        k,
+                        a.cast(),
+                        lda,
+                        x.cast(),
+                        incx,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_tpmv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, diag: sys::CBLAS_DIAG::Type,
-                n: MKL_INT, ap: *const Self,
-                x: *mut Self, incx: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                n: MKL_INT,
+                ap: *const Self,
+                x: *mut Self,
+                incx: MKL_INT,
             ) {
-                unsafe {
-                    sys::$tpmv(layout, uplo, trans, diag, n, ap.cast(), x.cast(), incx)
-                }
+                unsafe { sys::$tpmv(layout, uplo, trans, diag, n, ap.cast(), x.cast(), incx) }
             }
             #[inline]
             unsafe fn cblas_tpsv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, diag: sys::CBLAS_DIAG::Type,
-                n: MKL_INT, ap: *const Self,
-                x: *mut Self, incx: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                n: MKL_INT,
+                ap: *const Self,
+                x: *mut Self,
+                incx: MKL_INT,
             ) {
-                unsafe {
-                    sys::$tpsv(layout, uplo, trans, diag, n, ap.cast(), x.cast(), incx)
-                }
+                unsafe { sys::$tpsv(layout, uplo, trans, diag, n, ap.cast(), x.cast(), incx) }
             }
             #[inline]
             unsafe fn cblas_gemm(
                 layout: sys::CBLAS_LAYOUT::Type,
                 transa: sys::CBLAS_TRANSPOSE::Type,
                 transb: sys::CBLAS_TRANSPOSE::Type,
-                m: MKL_INT, n: MKL_INT, k: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                b: *const Self, ldb: MKL_INT,
-                beta: Self, c: *mut Self, ldc: MKL_INT,
+                m: MKL_INT,
+                n: MKL_INT,
+                k: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                b: *const Self,
+                ldb: MKL_INT,
+                beta: Self,
+                c: *mut Self,
+                ldc: MKL_INT,
             ) {
                 unsafe {
                     sys::$gemm(
-                        layout, transa, transb, m, n, k,
+                        layout,
+                        transa,
+                        transb,
+                        m,
+                        n,
+                        k,
                         (&alpha as *const Self).cast(),
-                        a.cast(), lda, b.cast(), ldb,
+                        a.cast(),
+                        lda,
+                        b.cast(),
+                        ldb,
                         (&beta as *const Self).cast(),
-                        c.cast(), ldc,
+                        c.cast(),
+                        ldc,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_symm(
-                layout: sys::CBLAS_LAYOUT::Type, side: sys::CBLAS_SIDE::Type,
-                uplo: sys::CBLAS_UPLO::Type, m: MKL_INT, n: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                b: *const Self, ldb: MKL_INT,
-                beta: Self, c: *mut Self, ldc: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                side: sys::CBLAS_SIDE::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                b: *const Self,
+                ldb: MKL_INT,
+                beta: Self,
+                c: *mut Self,
+                ldc: MKL_INT,
             ) {
                 unsafe {
                     sys::$symm(
-                        layout, side, uplo, m, n,
+                        layout,
+                        side,
+                        uplo,
+                        m,
+                        n,
                         (&alpha as *const Self).cast(),
-                        a.cast(), lda, b.cast(), ldb,
+                        a.cast(),
+                        lda,
+                        b.cast(),
+                        ldb,
                         (&beta as *const Self).cast(),
-                        c.cast(), ldc,
+                        c.cast(),
+                        ldc,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_syrk(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, n: MKL_INT, k: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                beta: Self, c: *mut Self, ldc: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                n: MKL_INT,
+                k: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                beta: Self,
+                c: *mut Self,
+                ldc: MKL_INT,
             ) {
                 unsafe {
                     sys::$syrk(
-                        layout, uplo, trans, n, k,
+                        layout,
+                        uplo,
+                        trans,
+                        n,
+                        k,
                         (&alpha as *const Self).cast(),
-                        a.cast(), lda,
+                        a.cast(),
+                        lda,
                         (&beta as *const Self).cast(),
-                        c.cast(), ldc,
+                        c.cast(),
+                        ldc,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_syr2k(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, n: MKL_INT, k: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                b: *const Self, ldb: MKL_INT,
-                beta: Self, c: *mut Self, ldc: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                n: MKL_INT,
+                k: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                b: *const Self,
+                ldb: MKL_INT,
+                beta: Self,
+                c: *mut Self,
+                ldc: MKL_INT,
             ) {
                 unsafe {
                     sys::$syr2k(
-                        layout, uplo, trans, n, k,
+                        layout,
+                        uplo,
+                        trans,
+                        n,
+                        k,
                         (&alpha as *const Self).cast(),
-                        a.cast(), lda, b.cast(), ldb,
+                        a.cast(),
+                        lda,
+                        b.cast(),
+                        ldb,
                         (&beta as *const Self).cast(),
-                        c.cast(), ldc,
+                        c.cast(),
+                        ldc,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_trmm(
-                layout: sys::CBLAS_LAYOUT::Type, side: sys::CBLAS_SIDE::Type,
-                uplo: sys::CBLAS_UPLO::Type, trans: sys::CBLAS_TRANSPOSE::Type,
-                diag: sys::CBLAS_DIAG::Type, m: MKL_INT, n: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                b: *mut Self, ldb: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                side: sys::CBLAS_SIDE::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                b: *mut Self,
+                ldb: MKL_INT,
             ) {
                 unsafe {
                     sys::$trmm(
-                        layout, side, uplo, trans, diag, m, n,
+                        layout,
+                        side,
+                        uplo,
+                        trans,
+                        diag,
+                        m,
+                        n,
                         (&alpha as *const Self).cast(),
-                        a.cast(), lda, b.cast(), ldb,
+                        a.cast(),
+                        lda,
+                        b.cast(),
+                        ldb,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_trsm(
-                layout: sys::CBLAS_LAYOUT::Type, side: sys::CBLAS_SIDE::Type,
-                uplo: sys::CBLAS_UPLO::Type, trans: sys::CBLAS_TRANSPOSE::Type,
-                diag: sys::CBLAS_DIAG::Type, m: MKL_INT, n: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                b: *mut Self, ldb: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                side: sys::CBLAS_SIDE::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                b: *mut Self,
+                ldb: MKL_INT,
             ) {
                 unsafe {
                     sys::$trsm(
-                        layout, side, uplo, trans, diag, m, n,
+                        layout,
+                        side,
+                        uplo,
+                        trans,
+                        diag,
+                        m,
+                        n,
                         (&alpha as *const Self).cast(),
-                        a.cast(), lda, b.cast(), ldb,
+                        a.cast(),
+                        lda,
+                        b.cast(),
+                        ldb,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_gemmt(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                transa: sys::CBLAS_TRANSPOSE::Type, transb: sys::CBLAS_TRANSPOSE::Type,
-                n: MKL_INT, k: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                b: *const Self, ldb: MKL_INT,
-                beta: Self, c: *mut Self, ldc: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                transa: sys::CBLAS_TRANSPOSE::Type,
+                transb: sys::CBLAS_TRANSPOSE::Type,
+                n: MKL_INT,
+                k: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                b: *const Self,
+                ldb: MKL_INT,
+                beta: Self,
+                c: *mut Self,
+                ldc: MKL_INT,
             ) {
                 unsafe {
                     sys::$gemmt(
-                        layout, uplo, transa, transb, n, k,
+                        layout,
+                        uplo,
+                        transa,
+                        transb,
+                        n,
+                        k,
                         (&alpha as *const Self).cast(),
-                        a.cast(), lda, b.cast(), ldb,
+                        a.cast(),
+                        lda,
+                        b.cast(),
+                        ldb,
                         (&beta as *const Self).cast(),
-                        c.cast(), ldc,
+                        c.cast(),
+                        ldc,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_axpby(
-                n: MKL_INT, alpha: Self, x: *const Self, incx: MKL_INT,
-                beta: Self, y: *mut Self, incy: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                x: *const Self,
+                incx: MKL_INT,
+                beta: Self,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
                 unsafe {
                     sys::$axpby(
                         n,
                         (&alpha as *const Self).cast(),
-                        x.cast(), incx,
+                        x.cast(),
+                        incx,
                         (&beta as *const Self).cast(),
-                        y.cast(), incy,
+                        y.cast(),
+                        incy,
                     )
                 }
             }
             #[inline]
             unsafe fn mkl_imatcopy(
-                ordering: c_char, trans: c_char,
-                rows: usize, cols: usize, alpha: Self,
-                ab: *mut Self, lda: usize, ldb: usize,
+                ordering: c_char,
+                trans: c_char,
+                rows: usize,
+                cols: usize,
+                alpha: Self,
+                ab: *mut Self,
+                lda: usize,
+                ldb: usize,
             ) {
                 unsafe {
                     sys::$imatcopy(
-                        ordering, trans, rows, cols,
+                        ordering,
+                        trans,
+                        rows,
+                        cols,
                         core::mem::transmute_copy(&alpha),
-                        ab.cast(), lda, ldb,
+                        ab.cast(),
+                        lda,
+                        ldb,
                     )
                 }
             }
             #[inline]
             unsafe fn mkl_omatcopy(
-                ordering: c_char, trans: c_char,
-                rows: usize, cols: usize, alpha: Self,
-                a: *const Self, lda: usize,
-                b: *mut Self, ldb: usize,
+                ordering: c_char,
+                trans: c_char,
+                rows: usize,
+                cols: usize,
+                alpha: Self,
+                a: *const Self,
+                lda: usize,
+                b: *mut Self,
+                ldb: usize,
             ) {
                 unsafe {
                     sys::$omatcopy(
-                        ordering, trans, rows, cols,
+                        ordering,
+                        trans,
+                        rows,
+                        cols,
                         core::mem::transmute_copy(&alpha),
-                        a.cast(), lda, b.cast(), ldb,
+                        a.cast(),
+                        lda,
+                        b.cast(),
+                        ldb,
                     )
                 }
             }
             #[inline]
             unsafe fn mkl_omatcopy2(
-                ordering: c_char, trans: c_char,
-                rows: usize, cols: usize, alpha: Self,
-                a: *const Self, lda: usize, stridea: usize,
-                b: *mut Self, ldb: usize, strideb: usize,
+                ordering: c_char,
+                trans: c_char,
+                rows: usize,
+                cols: usize,
+                alpha: Self,
+                a: *const Self,
+                lda: usize,
+                stridea: usize,
+                b: *mut Self,
+                ldb: usize,
+                strideb: usize,
             ) {
                 unsafe {
                     sys::$omatcopy2(
-                        ordering, trans, rows, cols,
+                        ordering,
+                        trans,
+                        rows,
+                        cols,
                         core::mem::transmute_copy(&alpha),
-                        a.cast(), lda, stridea, b.cast(), ldb, strideb,
+                        a.cast(),
+                        lda,
+                        stridea,
+                        b.cast(),
+                        ldb,
+                        strideb,
                     )
                 }
             }
             #[inline]
             unsafe fn mkl_omatadd(
-                ordering: c_char, transa: c_char, transb: c_char,
-                rows: usize, cols: usize, alpha: Self,
-                a: *const Self, lda: usize,
-                beta: Self, b: *const Self, ldb: usize,
-                c: *mut Self, ldc: usize,
+                ordering: c_char,
+                transa: c_char,
+                transb: c_char,
+                rows: usize,
+                cols: usize,
+                alpha: Self,
+                a: *const Self,
+                lda: usize,
+                beta: Self,
+                b: *const Self,
+                ldb: usize,
+                c: *mut Self,
+                ldc: usize,
             ) {
                 unsafe {
                     sys::$omatadd(
-                        ordering, transa, transb, rows, cols,
+                        ordering,
+                        transa,
+                        transb,
+                        rows,
+                        cols,
                         core::mem::transmute_copy(&alpha),
-                        a.cast(), lda,
+                        a.cast(),
+                        lda,
                         core::mem::transmute_copy(&beta),
-                        b.cast(), ldb,
-                        c.cast(), ldc,
+                        b.cast(),
+                        ldb,
+                        c.cast(),
+                        ldc,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_axpy_batch_strided(
-                n: MKL_INT, alpha: Self,
-                x: *const Self, incx: MKL_INT, stridex: MKL_INT,
-                y: *mut Self, incy: MKL_INT, stridey: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                x: *const Self,
+                incx: MKL_INT,
+                stridex: MKL_INT,
+                y: *mut Self,
+                incy: MKL_INT,
+                stridey: MKL_INT,
                 batch_size: MKL_INT,
             ) {
                 unsafe {
                     sys::$axpy_batch(
                         n,
                         (&alpha as *const Self).cast(),
-                        x.cast(), incx, stridex,
-                        y.cast(), incy, stridey,
+                        x.cast(),
+                        incx,
+                        stridex,
+                        y.cast(),
+                        incy,
+                        stridey,
                         batch_size,
                     )
                 }
@@ -2214,37 +2710,63 @@ macro_rules! impl_complex_blas {
             #[inline]
             unsafe fn cblas_copy_batch_strided(
                 n: MKL_INT,
-                x: *const Self, incx: MKL_INT, stridex: MKL_INT,
-                y: *mut Self, incy: MKL_INT, stridey: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                stridex: MKL_INT,
+                y: *mut Self,
+                incy: MKL_INT,
+                stridey: MKL_INT,
                 batch_size: MKL_INT,
             ) {
                 unsafe {
                     sys::$copy_batch(
                         n,
-                        x.cast(), incx, stridex,
-                        y.cast(), incy, stridey,
+                        x.cast(),
+                        incx,
+                        stridex,
+                        y.cast(),
+                        incy,
+                        stridey,
                         batch_size,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_gemv_batch_strided(
-                layout: sys::CBLAS_LAYOUT::Type, trans: sys::CBLAS_TRANSPOSE::Type,
-                m: MKL_INT, n: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT, stridea: MKL_INT,
-                x: *const Self, incx: MKL_INT, stridex: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                stridea: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                stridex: MKL_INT,
                 beta: Self,
-                y: *mut Self, incy: MKL_INT, stridey: MKL_INT,
+                y: *mut Self,
+                incy: MKL_INT,
+                stridey: MKL_INT,
                 batch_size: MKL_INT,
             ) {
                 unsafe {
                     sys::$gemv_batch(
-                        layout, trans, m, n,
+                        layout,
+                        trans,
+                        m,
+                        n,
                         (&alpha as *const Self).cast(),
-                        a.cast(), lda, stridea,
-                        x.cast(), incx, stridex,
+                        a.cast(),
+                        lda,
+                        stridea,
+                        x.cast(),
+                        incx,
+                        stridex,
                         (&beta as *const Self).cast(),
-                        y.cast(), incy, stridey,
+                        y.cast(),
+                        incy,
+                        stridey,
                         batch_size,
                     )
                 }
@@ -2254,21 +2776,41 @@ macro_rules! impl_complex_blas {
                 layout: sys::CBLAS_LAYOUT::Type,
                 transa: sys::CBLAS_TRANSPOSE::Type,
                 transb: sys::CBLAS_TRANSPOSE::Type,
-                m: MKL_INT, n: MKL_INT, k: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT, stridea: MKL_INT,
-                b: *const Self, ldb: MKL_INT, strideb: MKL_INT,
+                m: MKL_INT,
+                n: MKL_INT,
+                k: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                stridea: MKL_INT,
+                b: *const Self,
+                ldb: MKL_INT,
+                strideb: MKL_INT,
                 beta: Self,
-                c: *mut Self, ldc: MKL_INT, stridec: MKL_INT,
+                c: *mut Self,
+                ldc: MKL_INT,
+                stridec: MKL_INT,
                 batch_size: MKL_INT,
             ) {
                 unsafe {
                     sys::$gemm_batch(
-                        layout, transa, transb, m, n, k,
+                        layout,
+                        transa,
+                        transb,
+                        m,
+                        n,
+                        k,
                         (&alpha as *const Self).cast(),
-                        a.cast(), lda, stridea,
-                        b.cast(), ldb, strideb,
+                        a.cast(),
+                        lda,
+                        stridea,
+                        b.cast(),
+                        ldb,
+                        strideb,
                         (&beta as *const Self).cast(),
-                        c.cast(), ldc, stridec,
+                        c.cast(),
+                        ldc,
+                        stridec,
                         batch_size,
                     )
                 }
@@ -2294,14 +2836,22 @@ macro_rules! impl_complex_blas {
             ) {
                 unsafe {
                     sys::$gemm_batch_ptr(
-                        layout, transa_array, transb_array,
-                        m_array, n_array, k_array,
+                        layout,
+                        transa_array,
+                        transb_array,
+                        m_array,
+                        n_array,
+                        k_array,
                         alpha_array.cast(),
-                        a_array.cast(), lda_array,
-                        b_array.cast(), ldb_array,
+                        a_array.cast(),
+                        lda_array,
+                        b_array.cast(),
+                        ldb_array,
                         beta_array.cast(),
-                        c_array.cast(), ldc_array,
-                        group_count, group_size,
+                        c_array.cast(),
+                        ldc_array,
+                        group_count,
+                        group_size,
                     )
                 }
             }
@@ -2324,13 +2874,20 @@ macro_rules! impl_complex_blas {
             ) {
                 unsafe {
                     sys::$gemv_batch_ptr(
-                        layout, trans_array, m_array, n_array,
+                        layout,
+                        trans_array,
+                        m_array,
+                        n_array,
                         alpha_array.cast(),
-                        a_array.cast(), lda_array,
-                        x_array.cast(), incx_array,
+                        a_array.cast(),
+                        lda_array,
+                        x_array.cast(),
+                        incx_array,
                         beta_array.cast(),
-                        y_array.cast(), incy_array,
-                        group_count, group_size,
+                        y_array.cast(),
+                        incy_array,
+                        group_count,
+                        group_size,
                     )
                 }
             }
@@ -2353,50 +2910,93 @@ macro_rules! impl_complex_blas {
             ) {
                 unsafe {
                     sys::$trsm_batch_ptr(
-                        layout, side_array, uplo_array,
-                        transa_array, diag_array,
-                        m_array, n_array,
+                        layout,
+                        side_array,
+                        uplo_array,
+                        transa_array,
+                        diag_array,
+                        m_array,
+                        n_array,
                         alpha_array.cast(),
-                        a_array.cast(), lda_array,
-                        b_array.cast(), ldb_array,
-                        group_count, group_size,
+                        a_array.cast(),
+                        lda_array,
+                        b_array.cast(),
+                        ldb_array,
+                        group_count,
+                        group_size,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_trsm_batch_strided(
-                layout: sys::CBLAS_LAYOUT::Type, side: sys::CBLAS_SIDE::Type,
-                uplo: sys::CBLAS_UPLO::Type, trans: sys::CBLAS_TRANSPOSE::Type,
-                diag: sys::CBLAS_DIAG::Type, m: MKL_INT, n: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT, stridea: MKL_INT,
-                b: *mut Self, ldb: MKL_INT, strideb: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                side: sys::CBLAS_SIDE::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                diag: sys::CBLAS_DIAG::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                stridea: MKL_INT,
+                b: *mut Self,
+                ldb: MKL_INT,
+                strideb: MKL_INT,
                 batch_size: MKL_INT,
             ) {
                 unsafe {
                     sys::$trsm_batch(
-                        layout, side, uplo, trans, diag, m, n,
+                        layout,
+                        side,
+                        uplo,
+                        trans,
+                        diag,
+                        m,
+                        n,
                         (&alpha as *const Self).cast(),
-                        a.cast(), lda, stridea,
-                        b.cast(), ldb, strideb,
+                        a.cast(),
+                        lda,
+                        stridea,
+                        b.cast(),
+                        ldb,
+                        strideb,
                         batch_size,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_dgmm_batch_strided(
-                layout: sys::CBLAS_LAYOUT::Type, side: sys::CBLAS_SIDE::Type,
-                m: MKL_INT, n: MKL_INT,
-                a: *const Self, lda: MKL_INT, stridea: MKL_INT,
-                x: *const Self, incx: MKL_INT, stridex: MKL_INT,
-                c: *mut Self, ldc: MKL_INT, stridec: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                side: sys::CBLAS_SIDE::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                a: *const Self,
+                lda: MKL_INT,
+                stridea: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                stridex: MKL_INT,
+                c: *mut Self,
+                ldc: MKL_INT,
+                stridec: MKL_INT,
                 batch_size: MKL_INT,
             ) {
                 unsafe {
                     sys::$dgmm_batch(
-                        layout, side, m, n,
-                        a.cast(), lda, stridea,
-                        x.cast(), incx, stridex,
-                        c.cast(), ldc, stridec,
+                        layout,
+                        side,
+                        m,
+                        n,
+                        a.cast(),
+                        lda,
+                        stridea,
+                        x.cast(),
+                        incx,
+                        stridex,
+                        c.cast(),
+                        ldc,
+                        stridec,
                         batch_size,
                     )
                 }
@@ -2406,13 +3006,20 @@ macro_rules! impl_complex_blas {
         impl ComplexBlasScalar for $ty {
             #[inline]
             unsafe fn cblas_dotc(
-                n: MKL_INT, x: *const Self, incx: MKL_INT,
-                y: *const Self, incy: MKL_INT,
+                n: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                y: *const Self,
+                incy: MKL_INT,
             ) -> Self {
                 let mut out = <Self as Scalar>::zero();
                 unsafe {
                     sys::$dotc(
-                        n, x.cast(), incx, y.cast(), incy,
+                        n,
+                        x.cast(),
+                        incx,
+                        y.cast(),
+                        incy,
                         (&mut out as *mut Self).cast(),
                     );
                 }
@@ -2420,199 +3027,349 @@ macro_rules! impl_complex_blas {
             }
             #[inline]
             unsafe fn cblas_dotu(
-                n: MKL_INT, x: *const Self, incx: MKL_INT,
-                y: *const Self, incy: MKL_INT,
+                n: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                y: *const Self,
+                incy: MKL_INT,
             ) -> Self {
                 let mut out = <Self as Scalar>::zero();
                 unsafe {
                     sys::$dotu(
-                        n, x.cast(), incx, y.cast(), incy,
+                        n,
+                        x.cast(),
+                        incx,
+                        y.cast(),
+                        incy,
                         (&mut out as *mut Self).cast(),
                     );
                 }
                 out
             }
             #[inline]
-            unsafe fn cblas_scal_real(
-                n: MKL_INT, alpha: Self::Real, x: *mut Self, incx: MKL_INT,
-            ) {
+            unsafe fn cblas_scal_real(n: MKL_INT, alpha: Self::Real, x: *mut Self, incx: MKL_INT) {
                 unsafe { sys::$scal_real(n, alpha, x.cast(), incx) }
             }
             #[inline]
             unsafe fn cblas_gerc(
-                layout: sys::CBLAS_LAYOUT::Type, m: MKL_INT, n: MKL_INT, alpha: Self,
-                x: *const Self, incx: MKL_INT,
-                y: *const Self, incy: MKL_INT,
-                a: *mut Self, lda: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                x: *const Self,
+                incx: MKL_INT,
+                y: *const Self,
+                incy: MKL_INT,
+                a: *mut Self,
+                lda: MKL_INT,
             ) {
                 unsafe {
                     sys::$gerc(
-                        layout, m, n, (&alpha as *const Self).cast(),
-                        x.cast(), incx, y.cast(), incy, a.cast(), lda,
+                        layout,
+                        m,
+                        n,
+                        (&alpha as *const Self).cast(),
+                        x.cast(),
+                        incx,
+                        y.cast(),
+                        incy,
+                        a.cast(),
+                        lda,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_geru(
-                layout: sys::CBLAS_LAYOUT::Type, m: MKL_INT, n: MKL_INT, alpha: Self,
-                x: *const Self, incx: MKL_INT,
-                y: *const Self, incy: MKL_INT,
-                a: *mut Self, lda: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                x: *const Self,
+                incx: MKL_INT,
+                y: *const Self,
+                incy: MKL_INT,
+                a: *mut Self,
+                lda: MKL_INT,
             ) {
                 unsafe {
                     sys::$geru(
-                        layout, m, n, (&alpha as *const Self).cast(),
-                        x.cast(), incx, y.cast(), incy, a.cast(), lda,
+                        layout,
+                        m,
+                        n,
+                        (&alpha as *const Self).cast(),
+                        x.cast(),
+                        incx,
+                        y.cast(),
+                        incy,
+                        a.cast(),
+                        lda,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_hemv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                n: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                x: *const Self, incx: MKL_INT,
-                beta: Self, y: *mut Self, incy: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                n: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                beta: Self,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
                 unsafe {
                     sys::$hemv(
-                        layout, uplo, n, (&alpha as *const Self).cast(),
-                        a.cast(), lda, x.cast(), incx,
-                        (&beta as *const Self).cast(), y.cast(), incy,
+                        layout,
+                        uplo,
+                        n,
+                        (&alpha as *const Self).cast(),
+                        a.cast(),
+                        lda,
+                        x.cast(),
+                        incx,
+                        (&beta as *const Self).cast(),
+                        y.cast(),
+                        incy,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_her(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                n: MKL_INT, alpha: Self::Real,
-                x: *const Self, incx: MKL_INT,
-                a: *mut Self, lda: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                n: MKL_INT,
+                alpha: Self::Real,
+                x: *const Self,
+                incx: MKL_INT,
+                a: *mut Self,
+                lda: MKL_INT,
             ) {
-                unsafe {
-                    sys::$her(layout, uplo, n, alpha, x.cast(), incx, a.cast(), lda)
-                }
+                unsafe { sys::$her(layout, uplo, n, alpha, x.cast(), incx, a.cast(), lda) }
             }
             #[inline]
             unsafe fn cblas_her2(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                n: MKL_INT, alpha: Self,
-                x: *const Self, incx: MKL_INT,
-                y: *const Self, incy: MKL_INT,
-                a: *mut Self, lda: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                n: MKL_INT,
+                alpha: Self,
+                x: *const Self,
+                incx: MKL_INT,
+                y: *const Self,
+                incy: MKL_INT,
+                a: *mut Self,
+                lda: MKL_INT,
             ) {
                 unsafe {
                     sys::$her2(
-                        layout, uplo, n, (&alpha as *const Self).cast(),
-                        x.cast(), incx, y.cast(), incy, a.cast(), lda,
+                        layout,
+                        uplo,
+                        n,
+                        (&alpha as *const Self).cast(),
+                        x.cast(),
+                        incx,
+                        y.cast(),
+                        incy,
+                        a.cast(),
+                        lda,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_hbmv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                n: MKL_INT, k: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                x: *const Self, incx: MKL_INT,
-                beta: Self, y: *mut Self, incy: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                n: MKL_INT,
+                k: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                beta: Self,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
                 unsafe {
                     sys::$hbmv(
-                        layout, uplo, n, k, (&alpha as *const Self).cast(),
-                        a.cast(), lda, x.cast(), incx,
-                        (&beta as *const Self).cast(), y.cast(), incy,
+                        layout,
+                        uplo,
+                        n,
+                        k,
+                        (&alpha as *const Self).cast(),
+                        a.cast(),
+                        lda,
+                        x.cast(),
+                        incx,
+                        (&beta as *const Self).cast(),
+                        y.cast(),
+                        incy,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_hpmv(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                n: MKL_INT, alpha: Self,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                n: MKL_INT,
+                alpha: Self,
                 ap: *const Self,
-                x: *const Self, incx: MKL_INT,
-                beta: Self, y: *mut Self, incy: MKL_INT,
+                x: *const Self,
+                incx: MKL_INT,
+                beta: Self,
+                y: *mut Self,
+                incy: MKL_INT,
             ) {
                 unsafe {
                     sys::$hpmv(
-                        layout, uplo, n, (&alpha as *const Self).cast(),
-                        ap.cast(), x.cast(), incx,
-                        (&beta as *const Self).cast(), y.cast(), incy,
+                        layout,
+                        uplo,
+                        n,
+                        (&alpha as *const Self).cast(),
+                        ap.cast(),
+                        x.cast(),
+                        incx,
+                        (&beta as *const Self).cast(),
+                        y.cast(),
+                        incy,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_hpr(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                n: MKL_INT, alpha: Self::Real,
-                x: *const Self, incx: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                n: MKL_INT,
+                alpha: Self::Real,
+                x: *const Self,
+                incx: MKL_INT,
                 ap: *mut Self,
             ) {
                 unsafe { sys::$hpr(layout, uplo, n, alpha, x.cast(), incx, ap.cast()) }
             }
             #[inline]
             unsafe fn cblas_hpr2(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                n: MKL_INT, alpha: Self,
-                x: *const Self, incx: MKL_INT,
-                y: *const Self, incy: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                n: MKL_INT,
+                alpha: Self,
+                x: *const Self,
+                incx: MKL_INT,
+                y: *const Self,
+                incy: MKL_INT,
                 ap: *mut Self,
             ) {
                 unsafe {
                     sys::$hpr2(
-                        layout, uplo, n, (&alpha as *const Self).cast(),
-                        x.cast(), incx, y.cast(), incy, ap.cast(),
+                        layout,
+                        uplo,
+                        n,
+                        (&alpha as *const Self).cast(),
+                        x.cast(),
+                        incx,
+                        y.cast(),
+                        incy,
+                        ap.cast(),
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_hemm(
-                layout: sys::CBLAS_LAYOUT::Type, side: sys::CBLAS_SIDE::Type,
-                uplo: sys::CBLAS_UPLO::Type, m: MKL_INT, n: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                b: *const Self, ldb: MKL_INT,
-                beta: Self, c: *mut Self, ldc: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                side: sys::CBLAS_SIDE::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                m: MKL_INT,
+                n: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                b: *const Self,
+                ldb: MKL_INT,
+                beta: Self,
+                c: *mut Self,
+                ldc: MKL_INT,
             ) {
                 unsafe {
                     sys::$hemm(
-                        layout, side, uplo, m, n,
+                        layout,
+                        side,
+                        uplo,
+                        m,
+                        n,
                         (&alpha as *const Self).cast(),
-                        a.cast(), lda, b.cast(), ldb,
+                        a.cast(),
+                        lda,
+                        b.cast(),
+                        ldb,
                         (&beta as *const Self).cast(),
-                        c.cast(), ldc,
+                        c.cast(),
+                        ldc,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_herk(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, n: MKL_INT, k: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                n: MKL_INT,
+                k: MKL_INT,
                 alpha: Self::Real,
-                a: *const Self, lda: MKL_INT,
+                a: *const Self,
+                lda: MKL_INT,
                 beta: Self::Real,
-                c: *mut Self, ldc: MKL_INT,
+                c: *mut Self,
+                ldc: MKL_INT,
             ) {
                 unsafe {
                     sys::$herk(
-                        layout, uplo, trans, n, k, alpha, a.cast(), lda, beta,
-                        c.cast(), ldc,
+                        layout,
+                        uplo,
+                        trans,
+                        n,
+                        k,
+                        alpha,
+                        a.cast(),
+                        lda,
+                        beta,
+                        c.cast(),
+                        ldc,
                     )
                 }
             }
             #[inline]
             unsafe fn cblas_her2k(
-                layout: sys::CBLAS_LAYOUT::Type, uplo: sys::CBLAS_UPLO::Type,
-                trans: sys::CBLAS_TRANSPOSE::Type, n: MKL_INT, k: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                b: *const Self, ldb: MKL_INT,
+                layout: sys::CBLAS_LAYOUT::Type,
+                uplo: sys::CBLAS_UPLO::Type,
+                trans: sys::CBLAS_TRANSPOSE::Type,
+                n: MKL_INT,
+                k: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                b: *const Self,
+                ldb: MKL_INT,
                 beta: Self::Real,
-                c: *mut Self, ldc: MKL_INT,
+                c: *mut Self,
+                ldc: MKL_INT,
             ) {
                 unsafe {
                     sys::$her2k(
-                        layout, uplo, trans, n, k,
+                        layout,
+                        uplo,
+                        trans,
+                        n,
+                        k,
                         (&alpha as *const Self).cast(),
-                        a.cast(), lda, b.cast(), ldb,
-                        beta, c.cast(), ldc,
+                        a.cast(),
+                        lda,
+                        b.cast(),
+                        ldb,
+                        beta,
+                        c.cast(),
+                        ldc,
                     )
                 }
             }
@@ -2621,18 +3378,34 @@ macro_rules! impl_complex_blas {
                 layout: sys::CBLAS_LAYOUT::Type,
                 transa: sys::CBLAS_TRANSPOSE::Type,
                 transb: sys::CBLAS_TRANSPOSE::Type,
-                m: MKL_INT, n: MKL_INT, k: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT,
-                b: *const Self, ldb: MKL_INT,
-                beta: Self, c: *mut Self, ldc: MKL_INT,
+                m: MKL_INT,
+                n: MKL_INT,
+                k: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                b: *const Self,
+                ldb: MKL_INT,
+                beta: Self,
+                c: *mut Self,
+                ldc: MKL_INT,
             ) {
                 unsafe {
                     sys::$gemm3m(
-                        layout, transa, transb, m, n, k,
+                        layout,
+                        transa,
+                        transb,
+                        m,
+                        n,
+                        k,
                         (&alpha as *const Self).cast(),
-                        a.cast(), lda, b.cast(), ldb,
+                        a.cast(),
+                        lda,
+                        b.cast(),
+                        ldb,
                         (&beta as *const Self).cast(),
-                        c.cast(), ldc,
+                        c.cast(),
+                        ldc,
                     )
                 }
             }
@@ -2641,21 +3414,41 @@ macro_rules! impl_complex_blas {
                 layout: sys::CBLAS_LAYOUT::Type,
                 transa: sys::CBLAS_TRANSPOSE::Type,
                 transb: sys::CBLAS_TRANSPOSE::Type,
-                m: MKL_INT, n: MKL_INT, k: MKL_INT, alpha: Self,
-                a: *const Self, lda: MKL_INT, stridea: MKL_INT,
-                b: *const Self, ldb: MKL_INT, strideb: MKL_INT,
+                m: MKL_INT,
+                n: MKL_INT,
+                k: MKL_INT,
+                alpha: Self,
+                a: *const Self,
+                lda: MKL_INT,
+                stridea: MKL_INT,
+                b: *const Self,
+                ldb: MKL_INT,
+                strideb: MKL_INT,
                 beta: Self,
-                c: *mut Self, ldc: MKL_INT, stridec: MKL_INT,
+                c: *mut Self,
+                ldc: MKL_INT,
+                stridec: MKL_INT,
                 batch_size: MKL_INT,
             ) {
                 unsafe {
                     sys::$gemm3m_batch(
-                        layout, transa, transb, m, n, k,
+                        layout,
+                        transa,
+                        transb,
+                        m,
+                        n,
+                        k,
                         (&alpha as *const Self).cast(),
-                        a.cast(), lda, stridea,
-                        b.cast(), ldb, strideb,
+                        a.cast(),
+                        lda,
+                        stridea,
+                        b.cast(),
+                        ldb,
+                        strideb,
                         (&beta as *const Self).cast(),
-                        c.cast(), ldc, stridec,
+                        c.cast(),
+                        ldc,
+                        stridec,
                         batch_size,
                     )
                 }
@@ -2666,28 +3459,51 @@ macro_rules! impl_complex_blas {
 
 impl_complex_blas!(
     Complex32,
-    asum = cblas_scasum, nrm2 = cblas_scnrm2,
-    iamax = cblas_icamax, iamin = cblas_icamin,
-    scal = cblas_cscal, scal_real = cblas_csscal,
-    axpy = cblas_caxpy, copy = cblas_ccopy, swap = cblas_cswap,
-    dotc_sub = cblas_cdotc_sub, dotu_sub = cblas_cdotu_sub,
-    gemv = cblas_cgemv, gbmv = cblas_cgbmv,
-    trmv = cblas_ctrmv, trsv = cblas_ctrsv,
-    tbmv = cblas_ctbmv, tbsv = cblas_ctbsv,
-    tpmv = cblas_ctpmv, tpsv = cblas_ctpsv,
-    gerc = cblas_cgerc, geru = cblas_cgeru,
-    hemv = cblas_chemv, her = cblas_cher, her2 = cblas_cher2,
-    hbmv = cblas_chbmv, hpmv = cblas_chpmv,
-    hpr = cblas_chpr, hpr2 = cblas_chpr2,
+    asum = cblas_scasum,
+    nrm2 = cblas_scnrm2,
+    iamax = cblas_icamax,
+    iamin = cblas_icamin,
+    scal = cblas_cscal,
+    scal_real = cblas_csscal,
+    axpy = cblas_caxpy,
+    copy = cblas_ccopy,
+    swap = cblas_cswap,
+    dotc_sub = cblas_cdotc_sub,
+    dotu_sub = cblas_cdotu_sub,
+    gemv = cblas_cgemv,
+    gbmv = cblas_cgbmv,
+    trmv = cblas_ctrmv,
+    trsv = cblas_ctrsv,
+    tbmv = cblas_ctbmv,
+    tbsv = cblas_ctbsv,
+    tpmv = cblas_ctpmv,
+    tpsv = cblas_ctpsv,
+    gerc = cblas_cgerc,
+    geru = cblas_cgeru,
+    hemv = cblas_chemv,
+    her = cblas_cher,
+    her2 = cblas_cher2,
+    hbmv = cblas_chbmv,
+    hpmv = cblas_chpmv,
+    hpr = cblas_chpr,
+    hpr2 = cblas_chpr2,
     gemm = cblas_cgemm,
-    symm = cblas_csymm, syrk = cblas_csyrk, syr2k = cblas_csyr2k,
-    trmm = cblas_ctrmm, trsm = cblas_ctrsm, gemmt = cblas_cgemmt,
-    hemm = cblas_chemm, herk = cblas_cherk, her2k = cblas_cher2k,
+    symm = cblas_csymm,
+    syrk = cblas_csyrk,
+    syr2k = cblas_csyr2k,
+    trmm = cblas_ctrmm,
+    trsm = cblas_ctrsm,
+    gemmt = cblas_cgemmt,
+    hemm = cblas_chemm,
+    herk = cblas_cherk,
+    her2k = cblas_cher2k,
     gemm3m = cblas_cgemm3m,
     gemm3m_batch_strided = cblas_cgemm3m_batch_strided,
     axpby = cblas_caxpby,
-    imatcopy = MKL_Cimatcopy, omatcopy = MKL_Comatcopy,
-    omatcopy2 = MKL_Comatcopy2, omatadd = MKL_Comatadd,
+    imatcopy = MKL_Cimatcopy,
+    omatcopy = MKL_Comatcopy,
+    omatcopy2 = MKL_Comatcopy2,
+    omatadd = MKL_Comatadd,
     axpy_batch_strided = cblas_caxpy_batch_strided,
     copy_batch_strided = cblas_ccopy_batch_strided,
     gemv_batch_strided = cblas_cgemv_batch_strided,
@@ -2701,28 +3517,51 @@ impl_complex_blas!(
 
 impl_complex_blas!(
     Complex64,
-    asum = cblas_dzasum, nrm2 = cblas_dznrm2,
-    iamax = cblas_izamax, iamin = cblas_izamin,
-    scal = cblas_zscal, scal_real = cblas_zdscal,
-    axpy = cblas_zaxpy, copy = cblas_zcopy, swap = cblas_zswap,
-    dotc_sub = cblas_zdotc_sub, dotu_sub = cblas_zdotu_sub,
-    gemv = cblas_zgemv, gbmv = cblas_zgbmv,
-    trmv = cblas_ztrmv, trsv = cblas_ztrsv,
-    tbmv = cblas_ztbmv, tbsv = cblas_ztbsv,
-    tpmv = cblas_ztpmv, tpsv = cblas_ztpsv,
-    gerc = cblas_zgerc, geru = cblas_zgeru,
-    hemv = cblas_zhemv, her = cblas_zher, her2 = cblas_zher2,
-    hbmv = cblas_zhbmv, hpmv = cblas_zhpmv,
-    hpr = cblas_zhpr, hpr2 = cblas_zhpr2,
+    asum = cblas_dzasum,
+    nrm2 = cblas_dznrm2,
+    iamax = cblas_izamax,
+    iamin = cblas_izamin,
+    scal = cblas_zscal,
+    scal_real = cblas_zdscal,
+    axpy = cblas_zaxpy,
+    copy = cblas_zcopy,
+    swap = cblas_zswap,
+    dotc_sub = cblas_zdotc_sub,
+    dotu_sub = cblas_zdotu_sub,
+    gemv = cblas_zgemv,
+    gbmv = cblas_zgbmv,
+    trmv = cblas_ztrmv,
+    trsv = cblas_ztrsv,
+    tbmv = cblas_ztbmv,
+    tbsv = cblas_ztbsv,
+    tpmv = cblas_ztpmv,
+    tpsv = cblas_ztpsv,
+    gerc = cblas_zgerc,
+    geru = cblas_zgeru,
+    hemv = cblas_zhemv,
+    her = cblas_zher,
+    her2 = cblas_zher2,
+    hbmv = cblas_zhbmv,
+    hpmv = cblas_zhpmv,
+    hpr = cblas_zhpr,
+    hpr2 = cblas_zhpr2,
     gemm = cblas_zgemm,
-    symm = cblas_zsymm, syrk = cblas_zsyrk, syr2k = cblas_zsyr2k,
-    trmm = cblas_ztrmm, trsm = cblas_ztrsm, gemmt = cblas_zgemmt,
-    hemm = cblas_zhemm, herk = cblas_zherk, her2k = cblas_zher2k,
+    symm = cblas_zsymm,
+    syrk = cblas_zsyrk,
+    syr2k = cblas_zsyr2k,
+    trmm = cblas_ztrmm,
+    trsm = cblas_ztrsm,
+    gemmt = cblas_zgemmt,
+    hemm = cblas_zhemm,
+    herk = cblas_zherk,
+    her2k = cblas_zher2k,
     gemm3m = cblas_zgemm3m,
     gemm3m_batch_strided = cblas_zgemm3m_batch_strided,
     axpby = cblas_zaxpby,
-    imatcopy = MKL_Zimatcopy, omatcopy = MKL_Zomatcopy,
-    omatcopy2 = MKL_Zomatcopy2, omatadd = MKL_Zomatadd,
+    imatcopy = MKL_Zimatcopy,
+    omatcopy = MKL_Zomatcopy,
+    omatcopy2 = MKL_Zomatcopy2,
+    omatadd = MKL_Zomatadd,
     axpy_batch_strided = cblas_zaxpy_batch_strided,
     copy_batch_strided = cblas_zcopy_batch_strided,
     gemv_batch_strided = cblas_zgemv_batch_strided,

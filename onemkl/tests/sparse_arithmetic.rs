@@ -23,7 +23,15 @@ fn add_two_diagonal_matrices() {
 
     let x = [1.0_f64; 3];
     let mut y = [0.0_f64; 3];
-    c.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y).unwrap();
+    c.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     assert_abs_diff_eq!(y[0], 11.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[1], 22.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[2], 33.0, epsilon = 1e-12);
@@ -37,7 +45,15 @@ fn add_with_alpha_scaling() {
     let c = a.add(Operation::NoTrans, 0.5, &b).unwrap();
     let x = [1.0_f64; 3];
     let mut y = [0.0_f64; 3];
-    c.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y).unwrap();
+    c.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     assert_abs_diff_eq!(y[0], 3.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[1], 6.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[2], 9.0, epsilon = 1e-12);
@@ -54,7 +70,15 @@ fn spmm_diagonal_times_diagonal() {
     // diag(1,2,3) * diag(10,20,30) = diag(10, 40, 90).
     let x = [1.0_f64; 3];
     let mut y = [0.0_f64; 3];
-    c.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y).unwrap();
+    c.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     assert_abs_diff_eq!(y[0], 10.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[1], 40.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[2], 90.0, epsilon = 1e-12);
@@ -68,13 +92,11 @@ fn spmm_general_2x3_times_3x2() {
     let a_row_ptr = vec![0, 2, 3];
     let a_col_idx = vec![0, 2, 1];
     let a_values = vec![1.0_f64, 2.0, 3.0];
-    let a =
-        SparseMatrix::from_csr(2, 3, IndexBase::Zero, a_row_ptr, a_col_idx, a_values).unwrap();
+    let a = SparseMatrix::from_csr(2, 3, IndexBase::Zero, a_row_ptr, a_col_idx, a_values).unwrap();
     let b_row_ptr = vec![0, 1, 2, 3];
     let b_col_idx = vec![0, 1, 0];
     let b_values = vec![1.0_f64, 1.0, 4.0];
-    let b =
-        SparseMatrix::from_csr(3, 2, IndexBase::Zero, b_row_ptr, b_col_idx, b_values).unwrap();
+    let b = SparseMatrix::from_csr(3, 2, IndexBase::Zero, b_row_ptr, b_col_idx, b_values).unwrap();
 
     let c = a.spmm(Operation::NoTrans, &b).unwrap();
     assert_eq!(c.rows(), 2);
@@ -82,7 +104,15 @@ fn spmm_general_2x3_times_3x2() {
 
     let x = [1.0_f64, 1.0];
     let mut y = [0.0_f64; 2];
-    c.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y).unwrap();
+    c.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     assert_abs_diff_eq!(y[0], 9.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[1], 3.0, epsilon = 1e-12);
 }
@@ -92,7 +122,9 @@ fn spmmd_diagonal_times_diagonal_to_dense() {
     let a = diagonal_3x3([1.0_f64, 2.0, 3.0]);
     let b = diagonal_3x3([10.0_f64, 20.0, 30.0]);
     // 3×3 dense output, row-major, ldc = 3.
-    let dense = a.spmmd(Operation::NoTrans, &b, DenseLayout::RowMajor, 3).unwrap();
+    let dense = a
+        .spmmd(Operation::NoTrans, &b, DenseLayout::RowMajor, 3)
+        .unwrap();
     assert_eq!(dense.len(), 9);
     // Diagonal entries 10, 40, 90 at (0,0), (1,1), (2,2); rest zero.
     assert_abs_diff_eq!(dense[0], 10.0, epsilon = 1e-12);
@@ -109,8 +141,7 @@ fn spmm_with_transpose() {
     let a_row_ptr = vec![0, 2, 3];
     let a_col_idx = vec![0, 2, 1];
     let a_values = vec![1.0_f64, 2.0, 3.0];
-    let a =
-        SparseMatrix::from_csr(2, 3, IndexBase::Zero, a_row_ptr, a_col_idx, a_values).unwrap();
+    let a = SparseMatrix::from_csr(2, 3, IndexBase::Zero, a_row_ptr, a_col_idx, a_values).unwrap();
     let c = a.spmm(Operation::Trans, &a).unwrap();
     assert_eq!(c.rows(), 3);
     assert_eq!(c.cols(), 3);
@@ -121,7 +152,15 @@ fn spmm_with_transpose() {
     //   col 2 has [2, 0]    → 4
     let x = [1.0_f64; 3];
     let mut y = [0.0_f64; 3];
-    c.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y).unwrap();
+    c.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     // Sum of row 0 of (AᵀA) = 1 + 0 + 2 = 3 (since col 0 ⋅ col 1 = 0,
     // col 0 ⋅ col 2 = 1*2 = 2).
     assert_abs_diff_eq!(y[0], 1.0 + 0.0 + 2.0, epsilon = 1e-12);
@@ -135,8 +174,7 @@ fn syrk_gram_matrix() {
     let a_row_ptr = vec![0, 2, 3];
     let a_col_idx = vec![0, 2, 1];
     let a_values = vec![1.0_f64, 2.0, 3.0];
-    let a =
-        SparseMatrix::from_csr(2, 3, IndexBase::Zero, a_row_ptr, a_col_idx, a_values).unwrap();
+    let a = SparseMatrix::from_csr(2, 3, IndexBase::Zero, a_row_ptr, a_col_idx, a_values).unwrap();
 
     let c = a.syrk(Operation::NoTrans).unwrap();
     assert_eq!(c.rows(), 2);
@@ -147,8 +185,15 @@ fn syrk_gram_matrix() {
     // matrix to [1, 1] gives row sums [5, 9] (diag + off-diag-once).
     let x = [1.0_f64, 1.0];
     let mut y = [0.0_f64, 0.0];
-    c.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y)
-        .unwrap();
+    c.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     assert_abs_diff_eq!(y[0], 5.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[1], 9.0, epsilon = 1e-12);
 }
@@ -160,8 +205,7 @@ fn syrk_transpose_columns_squared() {
     let a_row_ptr = vec![0, 2, 3];
     let a_col_idx = vec![0, 2, 1];
     let a_values = vec![1.0_f64, 2.0, 3.0];
-    let a =
-        SparseMatrix::from_csr(2, 3, IndexBase::Zero, a_row_ptr, a_col_idx, a_values).unwrap();
+    let a = SparseMatrix::from_csr(2, 3, IndexBase::Zero, a_row_ptr, a_col_idx, a_values).unwrap();
 
     let c = a.syrk(Operation::Trans).unwrap();
     assert_eq!(c.rows(), 3);
@@ -169,8 +213,15 @@ fn syrk_transpose_columns_squared() {
 
     let x = [1.0_f64, 1.0, 1.0];
     let mut y = [0.0_f64, 0.0, 0.0];
-    c.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y)
-        .unwrap();
+    c.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     // Upper-triangular storage: row 0 has (1, 0, 2), row 1 has (9, 0),
     // row 2 has (4). Row sums applied to [1, 1, 1] = [3, 9, 4].
     assert_abs_diff_eq!(y[0], 3.0, epsilon = 1e-12);
@@ -210,8 +261,15 @@ fn sypr_triple_product_with_identity() {
     // gives row sums [2 + 1, 1] = [3, 1].
     let x = [1.0_f64, 1.0];
     let mut y = [0.0_f64, 0.0];
-    c.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y)
-        .unwrap();
+    c.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     assert_abs_diff_eq!(y[0], 3.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[1], 1.0, epsilon = 1e-12);
 }

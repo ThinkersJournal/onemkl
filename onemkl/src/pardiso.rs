@@ -422,9 +422,7 @@ impl<T: PardisoScalar> Pardiso<T> {
         let values_ptr = values
             .map(|v| v.as_mut_ptr().cast::<core::ffi::c_void>())
             .unwrap_or(ptr::null_mut());
-        let ja_ptr = ja
-            .map(|j| j.as_mut_ptr())
-            .unwrap_or(ptr::null_mut());
+        let ja_ptr = ja.map(|j| j.as_mut_ptr()).unwrap_or(ptr::null_mut());
         unsafe {
             sys::pardiso_export(
                 self.pt.as_mut_ptr() as *mut core::ffi::c_void,
@@ -542,11 +540,8 @@ fn path_to_cstring(p: &Path) -> Result<CString> {
 /// (`bii`), and the threshold (`eps`). Return `0` to apply MKL's
 /// default pivot logic, or non-zero to skip MKL's adjustment and use
 /// the values the callback wrote.
-pub type PardisoPivotCallback = unsafe extern "C" fn(
-    aii: *mut f64,
-    bii: *mut f64,
-    eps: *mut f64,
-) -> core::ffi::c_int;
+pub type PardisoPivotCallback =
+    unsafe extern "C" fn(aii: *mut f64, bii: *mut f64, eps: *mut f64) -> core::ffi::c_int;
 
 /// Install a custom pivot-handling callback for subsequent PARDISO
 /// factorizations. Pass `None` to clear the current callback and
@@ -659,11 +654,20 @@ impl<T> Drop for Pardiso<T> {
         unsafe {
             sys::pardiso(
                 self.pt.as_mut_ptr() as sys::_MKL_DSS_HANDLE_t,
-                &maxfct, &mnum, &self.mtype, &phase, &n,
-                ptr::null(), ptr::null(), ptr::null(),
-                ptr::null_mut(), &nrhs,
-                self.iparm.as_mut_ptr(), &msglvl,
-                ptr::null_mut(), ptr::null_mut(),
+                &maxfct,
+                &mnum,
+                &self.mtype,
+                &phase,
+                &n,
+                ptr::null(),
+                ptr::null(),
+                ptr::null(),
+                ptr::null_mut(),
+                &nrhs,
+                self.iparm.as_mut_ptr(),
+                &msglvl,
+                ptr::null_mut(),
+                ptr::null_mut(),
                 &mut error,
             );
         }

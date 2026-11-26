@@ -9,12 +9,20 @@ fn loaded_mkl_dirs() -> Vec<PathBuf> {
     // Touch MKL so a lazily loaded library is mapped before we read the maps.
     let mut v = [0u8; 256];
     unsafe { onemkl_sys::MKL_Get_Version_String(v.as_mut_ptr().cast(), v.len() as i32) };
-    eprintln!("MKL VERSION: {}", String::from_utf8_lossy(&v).trim_end_matches(char::from(0)));
+    eprintln!(
+        "MKL VERSION: {}",
+        String::from_utf8_lossy(&v).trim_end_matches(char::from(0))
+    );
     let maps = std::fs::read_to_string("/proc/self/maps").unwrap();
     let mut dirs: Vec<PathBuf> = maps
         .lines()
         .filter_map(|l| l.split_whitespace().nth(5))
-        .filter(|p| Path::new(p).file_name().and_then(|f| f.to_str()).is_some_and(|f| f.starts_with("libmkl")))
+        .filter(|p| {
+            Path::new(p)
+                .file_name()
+                .and_then(|f| f.to_str())
+                .is_some_and(|f| f.starts_with("libmkl"))
+        })
         .filter_map(|p| Path::new(p).parent().map(Path::to_path_buf))
         .collect();
     dirs.sort();
@@ -24,7 +32,11 @@ fn loaded_mkl_dirs() -> Vec<PathBuf> {
 
 fn check(expected_root: &Path, dirs: &[PathBuf]) -> Result<(), String> {
     match dirs.iter().find(|d| !d.starts_with(expected_root)) {
-        Some(d) => Err(format!("STALE MKL: loaded libs from {} but expected under {}", d.display(), expected_root.display())),
+        Some(d) => Err(format!(
+            "STALE MKL: loaded libs from {} but expected under {}",
+            d.display(),
+            expected_root.display()
+        )),
         None => Ok(()),
     }
 }
@@ -46,9 +58,23 @@ fn loaded_mkl_comes_from_mklroot() {
             let resolved = Path::new(&root).join("lib").canonicalize().ok();
             let lib_real = std::fs::read_dir(Path::new(&root).join("lib"))
                 .ok()
-                .and_then(|mut d| d.find_map(|e| e.ok()?.path().canonicalize().ok()?.parent().map(Path::to_path_buf)));
-            let expected = lib_real.or(resolved).unwrap_or_else(|| PathBuf::from(&root));
-            eprintln!("EXPECTED (resolved from MKLROOT/lib): {}", expected.display());
+                .and_then(|mut d| {
+                    d.find_map(|e| {
+                        e.ok()?
+                            .path()
+                            .canonicalize()
+                            .ok()?
+                            .parent()
+                            .map(Path::to_path_buf)
+                    })
+                });
+            let expected = lib_real
+                .or(resolved)
+                .unwrap_or_else(|| PathBuf::from(&root));
+            eprintln!(
+                "EXPECTED (resolved from MKLROOT/lib): {}",
+                expected.display()
+            );
             check(&expected, &dirs).unwrap()
         }
         None => eprintln!("MKLROOT unset: only the control ran"),

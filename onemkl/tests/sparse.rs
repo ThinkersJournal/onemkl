@@ -6,8 +6,7 @@ use approx::assert_abs_diff_eq;
 use num_complex::Complex64;
 
 use onemkl::sparse::{
-    CsrMatrix, DenseLayout, DiagType, FillMode, IndexBase, MatrixDescr, MatrixType,
-    Operation,
+    CsrMatrix, DenseLayout, DiagType, FillMode, IndexBase, MatrixDescr, MatrixType, Operation,
 };
 
 #[test]
@@ -20,7 +19,15 @@ fn diagonal_csr_mv_real() {
 
     let x = [1.0_f64; 3];
     let mut y = [0.0_f64; 3];
-    a.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y).unwrap();
+    a.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     assert_abs_diff_eq!(y[0], 1.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[1], 2.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[2], 3.0, epsilon = 1e-12);
@@ -41,7 +48,15 @@ fn dense_2x3_csr_mv_with_alpha_beta() {
     //   A * [1,1,1] = [3, 3]; result = 2*[3,3] + 3*[10,20] = [6+30, 6+60] = [36, 66]
     let x = [1.0_f64; 3];
     let mut y = [10.0_f64, 20.0];
-    a.mv(Operation::NoTrans, 2.0, MatrixType::General, &x, 3.0, &mut y).unwrap();
+    a.mv(
+        Operation::NoTrans,
+        2.0,
+        MatrixType::General,
+        &x,
+        3.0,
+        &mut y,
+    )
+    .unwrap();
     assert_abs_diff_eq!(y[0], 36.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[1], 66.0, epsilon = 1e-12);
 }
@@ -57,7 +72,8 @@ fn transposed_mv() {
 
     let x = [1.0_f64, 1.0];
     let mut y = [0.0_f64; 3];
-    a.mv(Operation::Trans, 1.0, MatrixType::General, &x, 0.0, &mut y).unwrap();
+    a.mv(Operation::Trans, 1.0, MatrixType::General, &x, 0.0, &mut y)
+        .unwrap();
     assert_abs_diff_eq!(y[0], 1.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[1], 3.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[2], 2.0, epsilon = 1e-12);
@@ -102,11 +118,11 @@ fn mm_two_columns() {
         MatrixType::General,
         DenseLayout::RowMajor,
         &x,
-        2,    // columns of X/Y
-        2,    // ldx (leading dim of row-major 2x2)
+        2, // columns of X/Y
+        2, // ldx (leading dim of row-major 2x2)
         0.0,
         &mut y,
-        2,    // ldy
+        2, // ldy
     )
     .unwrap();
     assert_eq!(y, x);

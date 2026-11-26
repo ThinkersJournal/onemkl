@@ -6,8 +6,8 @@ use approx::assert_abs_diff_eq;
 use num_complex::{Complex32, Complex64};
 
 use onemkl::blas::level1::{
-    asum, asum_inc, axpy, copy, dot, dot_inc, dotc, dotu, iamax, iamin, nrm2,
-    rot, rotg, scal, scal_real, swap,
+    asum, asum_inc, axpy, copy, dot, dot_inc, dotc, dotu, iamax, iamin, nrm2, rot, rotg, scal,
+    scal_real, swap,
 };
 
 #[test]
@@ -24,7 +24,11 @@ fn asum_real_and_complex() {
         Complex64::new(-2.0, 3.0),
         Complex64::new(0.5, -0.5),
     ];
-    assert_abs_diff_eq!(asum(&xc), 1.0 + 1.0 + 2.0 + 3.0 + 0.5 + 0.5, epsilon = 1e-12);
+    assert_abs_diff_eq!(
+        asum(&xc),
+        1.0 + 1.0 + 2.0 + 3.0 + 0.5 + 0.5,
+        epsilon = 1e-12
+    );
 }
 
 #[test]
@@ -38,10 +42,7 @@ fn nrm2_real() {
 
 #[test]
 fn nrm2_complex() {
-    let x: Vec<Complex64> = vec![
-        Complex64::new(3.0, 4.0),
-        Complex64::new(0.0, 0.0),
-    ];
+    let x: Vec<Complex64> = vec![Complex64::new(3.0, 4.0), Complex64::new(0.0, 0.0)];
     // |3+4i| = 5 → norm = 5.
     assert_abs_diff_eq!(nrm2(&x), 5.0_f64, epsilon = 1e-12);
 }
@@ -56,14 +57,8 @@ fn dot_real() {
 
 #[test]
 fn dotc_and_dotu_complex() {
-    let x: Vec<Complex64> = vec![
-        Complex64::new(1.0, 1.0),
-        Complex64::new(2.0, -1.0),
-    ];
-    let y: Vec<Complex64> = vec![
-        Complex64::new(3.0, 0.0),
-        Complex64::new(0.0, 1.0),
-    ];
+    let x: Vec<Complex64> = vec![Complex64::new(1.0, 1.0), Complex64::new(2.0, -1.0)];
+    let y: Vec<Complex64> = vec![Complex64::new(3.0, 0.0), Complex64::new(0.0, 1.0)];
 
     // dotu = Σ x_i * y_i
     //      = (1+i)(3) + (2-i)(i) = (3+3i) + (1+2i) = 4 + 5i.
@@ -104,10 +99,7 @@ fn scal_real_and_complex() {
 
 #[test]
 fn scal_real_for_complex_uses_csscal() {
-    let mut z: Vec<Complex64> = vec![
-        Complex64::new(1.0, -2.0),
-        Complex64::new(3.0, 4.0),
-    ];
+    let mut z: Vec<Complex64> = vec![Complex64::new(1.0, -2.0), Complex64::new(3.0, 4.0)];
     scal_real(2.0_f64, &mut z);
     assert_abs_diff_eq!(z[0].re, 2.0, epsilon = 1e-12);
     assert_abs_diff_eq!(z[0].im, -4.0, epsilon = 1e-12);

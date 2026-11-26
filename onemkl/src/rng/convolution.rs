@@ -140,17 +140,23 @@ macro_rules! impl_conv_corr {
             }
             unsafe fn conv_exec_1d(
                 task: VSLConvTaskPtr,
-                x: *const Self, xstride: c_int,
-                y: *const Self, ystride: c_int,
-                z: *mut Self, zstride: c_int,
+                x: *const Self,
+                xstride: c_int,
+                y: *const Self,
+                ystride: c_int,
+                z: *mut Self,
+                zstride: c_int,
             ) -> c_int {
                 unsafe { sys::$conv_exec(task, x, xstride, y, ystride, z, zstride) }
             }
             unsafe fn corr_exec_1d(
                 task: VSLCorrTaskPtr,
-                x: *const Self, xstride: c_int,
-                y: *const Self, ystride: c_int,
-                z: *mut Self, zstride: c_int,
+                x: *const Self,
+                xstride: c_int,
+                y: *const Self,
+                ystride: c_int,
+                z: *mut Self,
+                zstride: c_int,
             ) -> c_int {
                 unsafe { sys::$corr_exec(task, x, xstride, y, ystride, z, zstride) }
             }
@@ -158,12 +164,20 @@ macro_rules! impl_conv_corr {
     };
 }
 
-impl_conv_corr!(f32,
-    conv_new=vslsConvNewTask1D, corr_new=vslsCorrNewTask1D,
-    conv_exec=vslsConvExec1D, corr_exec=vslsCorrExec1D);
-impl_conv_corr!(f64,
-    conv_new=vsldConvNewTask1D, corr_new=vsldCorrNewTask1D,
-    conv_exec=vsldConvExec1D, corr_exec=vsldCorrExec1D);
+impl_conv_corr!(
+    f32,
+    conv_new = vslsConvNewTask1D,
+    corr_new = vslsCorrNewTask1D,
+    conv_exec = vslsConvExec1D,
+    corr_exec = vslsCorrExec1D
+);
+impl_conv_corr!(
+    f64,
+    conv_new = vsldConvNewTask1D,
+    corr_new = vsldCorrNewTask1D,
+    conv_exec = vsldConvExec1D,
+    corr_exec = vsldCorrExec1D
+);
 
 /// Owned 1-D convolution task. Can be reused across multiple
 /// [`execute`](Self::execute) calls.
@@ -211,19 +225,33 @@ impl<T: ConvCorrScalar> Conv1d<T> {
         zstride: usize,
     ) -> Result<()> {
         if x.len() < (self.xshape - 1) * xstride + 1 {
-            return Err(Error::InvalidArgument("x is too short for xstride * xshape"));
+            return Err(Error::InvalidArgument(
+                "x is too short for xstride * xshape",
+            ));
         }
         if y.len() < (self.yshape - 1) * ystride + 1 {
-            return Err(Error::InvalidArgument("y is too short for ystride * yshape"));
+            return Err(Error::InvalidArgument(
+                "y is too short for ystride * yshape",
+            ));
         }
         if z.len() < (self.zshape - 1) * zstride + 1 {
-            return Err(Error::InvalidArgument("z is too short for zstride * zshape"));
+            return Err(Error::InvalidArgument(
+                "z is too short for zstride * zshape",
+            ));
         }
         let xs: c_int = xstride.try_into().map_err(|_| Error::DimensionOverflow)?;
         let ys: c_int = ystride.try_into().map_err(|_| Error::DimensionOverflow)?;
         let zs: c_int = zstride.try_into().map_err(|_| Error::DimensionOverflow)?;
         let status = unsafe {
-            T::conv_exec_1d(self.task, x.as_ptr(), xs, y.as_ptr(), ys, z.as_mut_ptr(), zs)
+            T::conv_exec_1d(
+                self.task,
+                x.as_ptr(),
+                xs,
+                y.as_ptr(),
+                ys,
+                z.as_mut_ptr(),
+                zs,
+            )
         };
         check_vsl(status)
     }
@@ -282,19 +310,33 @@ impl<T: ConvCorrScalar> Corr1d<T> {
         zstride: usize,
     ) -> Result<()> {
         if x.len() < (self.xshape - 1) * xstride + 1 {
-            return Err(Error::InvalidArgument("x is too short for xstride * xshape"));
+            return Err(Error::InvalidArgument(
+                "x is too short for xstride * xshape",
+            ));
         }
         if y.len() < (self.yshape - 1) * ystride + 1 {
-            return Err(Error::InvalidArgument("y is too short for ystride * yshape"));
+            return Err(Error::InvalidArgument(
+                "y is too short for ystride * yshape",
+            ));
         }
         if z.len() < (self.zshape - 1) * zstride + 1 {
-            return Err(Error::InvalidArgument("z is too short for zstride * zshape"));
+            return Err(Error::InvalidArgument(
+                "z is too short for zstride * zshape",
+            ));
         }
         let xs: c_int = xstride.try_into().map_err(|_| Error::DimensionOverflow)?;
         let ys: c_int = ystride.try_into().map_err(|_| Error::DimensionOverflow)?;
         let zs: c_int = zstride.try_into().map_err(|_| Error::DimensionOverflow)?;
         let status = unsafe {
-            T::corr_exec_1d(self.task, x.as_ptr(), xs, y.as_ptr(), ys, z.as_mut_ptr(), zs)
+            T::corr_exec_1d(
+                self.task,
+                x.as_ptr(),
+                xs,
+                y.as_ptr(),
+                ys,
+                z.as_mut_ptr(),
+                zs,
+            )
         };
         check_vsl(status)
     }

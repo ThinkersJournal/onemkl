@@ -5,9 +5,7 @@
 use approx::assert_abs_diff_eq;
 use num_complex::Complex64;
 
-use onemkl::blas::level3::{
-    gemm3m, gemmt, hemm, her2k, herk, symm, syr2k, syrk, trmm, trsm,
-};
+use onemkl::blas::level3::{gemm3m, gemmt, hemm, her2k, herk, symm, syr2k, syrk, trmm, trsm};
 use onemkl::matrix::{MatrixMut, MatrixRef};
 use onemkl::{Diag, Layout, Side, Transpose, UpLo};
 
@@ -178,12 +176,16 @@ fn hemm_complex_matches_expanded_full() {
     // 2x2 Hermitian A (upper stored): [[2, 1+i], [_, 3]]
     // B = identity → C = A_full = [[2, 1+i], [1-i, 3]]
     let a_buf = [
-        Complex64::new(2.0, 0.0), Complex64::new(1.0, 1.0),
-        Complex64::new(99.0, 99.0), Complex64::new(3.0, 0.0),
+        Complex64::new(2.0, 0.0),
+        Complex64::new(1.0, 1.0),
+        Complex64::new(99.0, 99.0),
+        Complex64::new(3.0, 0.0),
     ];
     let b_buf = [
-        Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
-        Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0),
+        Complex64::new(1.0, 0.0),
+        Complex64::new(0.0, 0.0),
+        Complex64::new(0.0, 0.0),
+        Complex64::new(1.0, 0.0),
     ];
     let mut c_buf = [Complex64::new(0.0, 0.0); 4];
 
@@ -223,7 +225,15 @@ fn herk_real_alpha_beta() {
     let a = MatrixRef::new(&a_buf, 1, 2, Layout::RowMajor).unwrap();
     let mut c = MatrixMut::new(&mut c_buf, 2, 2, Layout::RowMajor).unwrap();
 
-    herk(UpLo::Upper, Transpose::ConjTrans, 1.0_f64, &a, 0.0_f64, &mut c).unwrap();
+    herk(
+        UpLo::Upper,
+        Transpose::ConjTrans,
+        1.0_f64,
+        &a,
+        0.0_f64,
+        &mut c,
+    )
+    .unwrap();
 
     assert_abs_diff_eq!(c_buf[0].re, 2.0, epsilon = 1e-12);
     assert_abs_diff_eq!(c_buf[0].im, 0.0, epsilon = 1e-12);
@@ -255,16 +265,22 @@ fn her2k_with_real_beta() {
     // op(B) op(A)ᴴ = B * Aᴴ = [[0, 0], [0, 0]]   (similar)
     // So C ← α * 0 + β * C₀.  Pick C₀ that exercises β.
     let a_buf = [
-        Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
-        Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
+        Complex64::new(1.0, 0.0),
+        Complex64::new(0.0, 0.0),
+        Complex64::new(0.0, 0.0),
+        Complex64::new(0.0, 0.0),
     ];
     let b_buf = [
-        Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0),
-        Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
+        Complex64::new(0.0, 0.0),
+        Complex64::new(1.0, 0.0),
+        Complex64::new(0.0, 0.0),
+        Complex64::new(0.0, 0.0),
     ];
     let mut c_buf = [
-        Complex64::new(5.0, 0.0), Complex64::new(7.0, 0.0),
-        Complex64::new(0.0, 0.0), Complex64::new(11.0, 0.0),
+        Complex64::new(5.0, 0.0),
+        Complex64::new(7.0, 0.0),
+        Complex64::new(0.0, 0.0),
+        Complex64::new(11.0, 0.0),
     ];
     let a = MatrixRef::new(&a_buf, 2, 2, Layout::RowMajor).unwrap();
     let b = MatrixRef::new(&b_buf, 2, 2, Layout::RowMajor).unwrap();

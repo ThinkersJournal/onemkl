@@ -72,11 +72,14 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidArgument(msg) => write!(f, "invalid argument: {msg}"),
-            Self::DimensionOverflow => f.write_str(
-                "dimension or stride exceeds the range of MKL_INT for this build",
-            ),
+            Self::DimensionOverflow => {
+                f.write_str("dimension or stride exceeds the range of MKL_INT for this build")
+            }
             Self::LapackIllegalArgument { argument } => {
-                write!(f, "LAPACK reported argument #{argument} had an illegal value")
+                write!(
+                    f,
+                    "LAPACK reported argument #{argument} had an illegal value"
+                )
             }
             Self::LapackComputationFailure { info } => {
                 write!(f, "LAPACK computational failure (info = {info})")
@@ -88,9 +91,7 @@ impl fmt::Display for Error {
                 write!(f, "PARDISO routine failure (error = {code})")
             }
             Self::VmStatus(code) => write!(f, "VM routine failure (status = {code:#x})"),
-            Self::AllocationFailure => {
-                f.write_str("MKL allocator returned null (out of memory?)")
-            }
+            Self::AllocationFailure => f.write_str("MKL allocator returned null (out of memory?)"),
         }
     }
 }

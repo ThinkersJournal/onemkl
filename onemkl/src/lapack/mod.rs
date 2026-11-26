@@ -139,10 +139,7 @@ pub fn gesv<T: LapackScalar>(
 
 /// LU factorization of a general matrix `A = P * L * U`. `a` is
 /// overwritten in place. `ipiv` (length `min(m, n)`) receives the pivots.
-pub fn getrf<T: LapackScalar>(
-    a: &mut MatrixMut<'_, T>,
-    ipiv: &mut [i32],
-) -> Result<()> {
+pub fn getrf<T: LapackScalar>(a: &mut MatrixMut<'_, T>, ipiv: &mut [i32]) -> Result<()> {
     let need = a.rows().min(a.cols());
     if ipiv.len() < need {
         return Err(Error::InvalidArgument(
@@ -196,10 +193,7 @@ pub fn getrs<T: LapackScalar>(
 }
 
 /// Compute `A⁻¹` from the LU factorization produced by [`getrf`].
-pub fn getri<T: LapackScalar>(
-    a: &mut MatrixMut<'_, T>,
-    ipiv: &[i32],
-) -> Result<()> {
+pub fn getri<T: LapackScalar>(a: &mut MatrixMut<'_, T>, ipiv: &[i32]) -> Result<()> {
     let n = ensure_square(a)?;
     if ipiv.len() < n {
         return Err(Error::InvalidArgument("ipiv must have at least n entries"));
@@ -365,10 +359,7 @@ pub fn hesv<T: ComplexLapackScalar>(
 /// QR factorization `A = Q * R`. `a` is overwritten with `R` above the
 /// diagonal and Householder reflectors on/below. `tau` (length
 /// `min(m, n)`) receives reflector scalars.
-pub fn geqrf<T: LapackScalar>(
-    a: &mut MatrixMut<'_, T>,
-    tau: &mut [T],
-) -> Result<()> {
+pub fn geqrf<T: LapackScalar>(a: &mut MatrixMut<'_, T>, tau: &mut [T]) -> Result<()> {
     let need = a.rows().min(a.cols());
     if tau.len() < need {
         return Err(Error::InvalidArgument(
@@ -389,10 +380,7 @@ pub fn geqrf<T: LapackScalar>(
 }
 
 /// LQ factorization `A = L * Q`.
-pub fn gelqf<T: LapackScalar>(
-    a: &mut MatrixMut<'_, T>,
-    tau: &mut [T],
-) -> Result<()> {
+pub fn gelqf<T: LapackScalar>(a: &mut MatrixMut<'_, T>, tau: &mut [T]) -> Result<()> {
     let need = a.rows().min(a.cols());
     if tau.len() < need {
         return Err(Error::InvalidArgument(
@@ -414,15 +402,9 @@ pub fn gelqf<T: LapackScalar>(
 
 /// Form the explicit `Q` from a QR factorization (real types: `?orgqr`,
 /// complex types: `?ungqr`). `k` is the number of reflectors used.
-pub fn orgqr<T: LapackScalar>(
-    a: &mut MatrixMut<'_, T>,
-    tau: &[T],
-    k: usize,
-) -> Result<()> {
+pub fn orgqr<T: LapackScalar>(a: &mut MatrixMut<'_, T>, tau: &[T], k: usize) -> Result<()> {
     if tau.len() < k {
-        return Err(Error::InvalidArgument(
-            "tau must have at least k entries",
-        ));
+        return Err(Error::InvalidArgument("tau must have at least k entries"));
     }
     let info = unsafe {
         T::lapacke_orgqr(
@@ -514,9 +496,7 @@ pub fn syev<T: RealLapackScalar>(
 ) -> Result<()> {
     let n = ensure_square(a)?;
     if w.len() < n {
-        return Err(Error::InvalidArgument(
-            "w must have at least n entries",
-        ));
+        return Err(Error::InvalidArgument("w must have at least n entries"));
     }
     let info = unsafe {
         T::lapacke_syev(
@@ -541,9 +521,7 @@ pub fn heev<T: ComplexLapackScalar>(
 ) -> Result<()> {
     let n = ensure_square(a)?;
     if w.len() < n {
-        return Err(Error::InvalidArgument(
-            "w must have at least n entries",
-        ));
+        return Err(Error::InvalidArgument("w must have at least n entries"));
     }
     let info = unsafe {
         T::lapacke_heev(
@@ -619,9 +597,7 @@ pub fn geev_complex<T: ComplexLapackScalar>(
 ) -> Result<()> {
     let n = ensure_square(a)?;
     if w.len() < n {
-        return Err(Error::InvalidArgument(
-            "w must have at least n entries",
-        ));
+        return Err(Error::InvalidArgument("w must have at least n entries"));
     }
     let lapack_layout = a.layout().as_lapack();
     let lda = dim_to_mkl_int(a.leading_dim())?;
@@ -1076,19 +1052,13 @@ pub fn ptsv<T: LapackScalar>(
 }
 
 /// Cholesky factorization of a PD tridiagonal matrix.
-pub fn pttrf<T: LapackScalar>(
-    n: usize,
-    d: &mut [T::Real],
-    e: &mut [T],
-) -> Result<()> {
+pub fn pttrf<T: LapackScalar>(n: usize, d: &mut [T::Real], e: &mut [T]) -> Result<()> {
     if d.len() < n || e.len() < n.saturating_sub(1) {
         return Err(Error::InvalidArgument(
             "PD tridiagonal arrays too short: need |d| ≥ n, |e| ≥ n-1",
         ));
     }
-    let info = unsafe {
-        T::lapacke_pttrf(dim_to_mkl_int(n)?, d.as_mut_ptr(), e.as_mut_ptr())
-    };
+    let info = unsafe { T::lapacke_pttrf(dim_to_mkl_int(n)?, d.as_mut_ptr(), e.as_mut_ptr()) };
     check_info(info)
 }
 
@@ -1273,12 +1243,7 @@ pub fn ppsv<T: LapackScalar>(
 }
 
 /// PD packed Cholesky factorization.
-pub fn pptrf<T: LapackScalar>(
-    layout: Layout,
-    uplo: UpLo,
-    n: usize,
-    ap: &mut [T],
-) -> Result<()> {
+pub fn pptrf<T: LapackScalar>(layout: Layout, uplo: UpLo, n: usize, ap: &mut [T]) -> Result<()> {
     if ap.len() < n * (n + 1) / 2 {
         return Err(Error::InvalidArgument(
             "ap must have at least n*(n+1)/2 entries",
@@ -1728,9 +1693,17 @@ pub fn syevr<T: RealLapackScalar + Default>(
             abstol,
             &mut m_out,
             w.as_mut_ptr(),
-            if want_z { z.as_mut_ptr() } else { core::ptr::null_mut() },
+            if want_z {
+                z.as_mut_ptr()
+            } else {
+                core::ptr::null_mut()
+            },
             dim_to_mkl_int(n.max(1))?,
-            if want_z { isuppz.as_mut_ptr() } else { core::ptr::null_mut() },
+            if want_z {
+                isuppz.as_mut_ptr()
+            } else {
+                core::ptr::null_mut()
+            },
         )
     };
     check_info(info)?;
@@ -1768,7 +1741,12 @@ where
     let layout = a.layout();
     let range_char = range.as_char() as core::ffi::c_char;
     let (vl, vu, il, iu) = match range {
-        EigenRange::All => (T::Real::default(), T::Real::default(), 1_i32, n.max(1) as i32),
+        EigenRange::All => (
+            T::Real::default(),
+            T::Real::default(),
+            1_i32,
+            n.max(1) as i32,
+        ),
         EigenRange::Values { vl, vu } => (vl, vu, 1_i32, n.max(1) as i32),
         EigenRange::Indices { il, iu } => (T::Real::default(), T::Real::default(), il, iu),
     };
@@ -1803,9 +1781,17 @@ where
             abstol,
             &mut m_out,
             w.as_mut_ptr(),
-            if want_z { z.as_mut_ptr() } else { core::ptr::null_mut() },
+            if want_z {
+                z.as_mut_ptr()
+            } else {
+                core::ptr::null_mut()
+            },
             dim_to_mkl_int(n.max(1))?,
-            if want_z { isuppz.as_mut_ptr() } else { core::ptr::null_mut() },
+            if want_z {
+                isuppz.as_mut_ptr()
+            } else {
+                core::ptr::null_mut()
+            },
         )
     };
     check_info(info)?;
@@ -1951,9 +1937,12 @@ pub fn lacpy<T: LapackScalar>(
         T::lapacke_lacpy(
             layout.as_lapack(),
             part.as_char(),
-            m, n,
-            a.as_ptr(), lda,
-            b.as_mut_ptr(), ldb,
+            m,
+            n,
+            a.as_ptr(),
+            lda,
+            b.as_mut_ptr(),
+            ldb,
         )
     };
     check_info(info)
@@ -1969,8 +1958,10 @@ pub fn lange<T: LapackScalar>(norm: MatrixNorm, a: &MatrixRef<'_, T>) -> Result<
         T::lapacke_lange(
             a.layout().as_lapack(),
             norm.as_char(),
-            m, n,
-            a.as_ptr(), lda,
+            m,
+            n,
+            a.as_ptr(),
+            lda,
         )
     };
     Ok(value)
@@ -2001,7 +1992,8 @@ where
             a.layout().as_lapack(),
             norm.as_char(),
             n_i,
-            a.as_ptr(), lda,
+            a.as_ptr(),
+            lda,
             anorm,
             &mut rcond,
         )
@@ -2034,8 +2026,10 @@ pub fn laswp<T: LapackScalar>(
         T::lapacke_laswp(
             a.layout().as_lapack(),
             n,
-            a.as_mut_ptr(), lda,
-            k1, k2,
+            a.as_mut_ptr(),
+            lda,
+            k1,
+            k2,
             ipiv.as_ptr(),
             incx,
         )
@@ -2100,9 +2094,7 @@ pub fn iter_refine_gesv_f64(
         return Err(Error::InvalidArgument("B must have n rows"));
     }
     if x.rows() != n || x.cols() != b.cols() {
-        return Err(Error::InvalidArgument(
-            "X must have the same shape as B",
-        ));
+        return Err(Error::InvalidArgument("X must have the same shape as B"));
     }
     if ipiv.len() < n {
         return Err(Error::InvalidArgument("ipiv must have at least n entries"));
@@ -2146,9 +2138,7 @@ pub fn iter_refine_posv_f64(
         return Err(Error::InvalidArgument("B must have n rows"));
     }
     if x.rows() != n || x.cols() != b.cols() {
-        return Err(Error::InvalidArgument(
-            "X must have the same shape as B",
-        ));
+        return Err(Error::InvalidArgument("X must have the same shape as B"));
     }
     let mut iter: core::ffi::c_int = 0;
     let info = unsafe {
@@ -2184,9 +2174,7 @@ pub fn iter_refine_gesv_c64(
         return Err(Error::InvalidArgument("B must have n rows"));
     }
     if x.rows() != n || x.cols() != b.cols() {
-        return Err(Error::InvalidArgument(
-            "X must have the same shape as B",
-        ));
+        return Err(Error::InvalidArgument("X must have the same shape as B"));
     }
     if ipiv.len() < n {
         return Err(Error::InvalidArgument("ipiv must have at least n entries"));
@@ -2226,9 +2214,7 @@ pub fn iter_refine_posv_c64(
         return Err(Error::InvalidArgument("B must have n rows"));
     }
     if x.rows() != n || x.cols() != b.cols() {
-        return Err(Error::InvalidArgument(
-            "X must have the same shape as B",
-        ));
+        return Err(Error::InvalidArgument("X must have the same shape as B"));
     }
     let mut iter: core::ffi::c_int = 0;
     let info = unsafe {
@@ -2274,15 +2260,7 @@ where
     }
     let n_i = dim_to_mkl_int(n)?;
     let mut tau: T = T::default();
-    let info = unsafe {
-        T::lapacke_larfg(
-            n_i,
-            alpha,
-            x.as_mut_ptr(),
-            incx,
-            &mut tau,
-        )
-    };
+    let info = unsafe { T::lapacke_larfg(n_i, alpha, x.as_mut_ptr(), incx, &mut tau) };
     check_info(info)?;
     Ok(HouseholderReflector { alpha: *alpha, tau })
 }
@@ -2454,7 +2432,11 @@ macro_rules! impl_complex_aux {
     ($c:ty, $r:ty, $ct:ty, $lacgv:ident, $lacrm:ident) => {
         impl ComplexAuxScalar for $c {
             type Real = $r;
-            unsafe fn lapacke_lacgv(n: core::ffi::c_int, x: *mut Self, incx: core::ffi::c_int) -> i32 {
+            unsafe fn lapacke_lacgv(
+                n: core::ffi::c_int,
+                x: *mut Self,
+                incx: core::ffi::c_int,
+            ) -> i32 {
                 unsafe { onemkl_sys::$lacgv(n, x.cast::<$ct>(), incx) }
             }
             unsafe fn lapacke_lacrm(
@@ -2469,14 +2451,36 @@ macro_rules! impl_complex_aux {
                 ldc: core::ffi::c_int,
             ) -> i32 {
                 unsafe {
-                    onemkl_sys::$lacrm(layout, m, n, a.cast::<$ct>(), lda, b, ldb, c.cast::<$ct>(), ldc)
+                    onemkl_sys::$lacrm(
+                        layout,
+                        m,
+                        n,
+                        a.cast::<$ct>(),
+                        lda,
+                        b,
+                        ldb,
+                        c.cast::<$ct>(),
+                        ldc,
+                    )
                 }
             }
         }
     };
 }
-impl_complex_aux!(num_complex::Complex32, f32, onemkl_sys::MKL_Complex8, LAPACKE_clacgv, LAPACKE_clacrm);
-impl_complex_aux!(num_complex::Complex64, f64, onemkl_sys::MKL_Complex16, LAPACKE_zlacgv, LAPACKE_zlacrm);
+impl_complex_aux!(
+    num_complex::Complex32,
+    f32,
+    onemkl_sys::MKL_Complex8,
+    LAPACKE_clacgv,
+    LAPACKE_clacrm
+);
+impl_complex_aux!(
+    num_complex::Complex64,
+    f64,
+    onemkl_sys::MKL_Complex16,
+    LAPACKE_zlacgv,
+    LAPACKE_zlacrm
+);
 
 /// Conjugate `n` elements of a complex vector in place (stride `incx`,
 /// which may be negative). Wraps `LAPACKE_*lacgv`.
@@ -2485,7 +2489,9 @@ pub fn lacgv<T: ComplexAuxScalar>(n: usize, x: &mut [T], incx: i32) -> Result<()
         return Err(Error::InvalidArgument("incx must be non-zero"));
     }
     if n > 0 && x.len() < 1 + (n - 1) * incx.unsigned_abs() as usize {
-        return Err(Error::InvalidArgument("x is too short for n elements at stride incx"));
+        return Err(Error::InvalidArgument(
+            "x is too short for n elements at stride incx",
+        ));
     }
     // LAPACKE reads the vector starting at x[0] for a positive stride and
     // at the far end for a negative one, exactly as the reference does.
@@ -2573,7 +2579,16 @@ macro_rules! impl_symconv {
                 e: *mut Self,
             ) -> i32 {
                 unsafe {
-                    onemkl_sys::$syconv(layout, uplo, way, n, a.cast::<$ct>(), lda, ipiv, e.cast::<$ct>())
+                    onemkl_sys::$syconv(
+                        layout,
+                        uplo,
+                        way,
+                        n,
+                        a.cast::<$ct>(),
+                        lda,
+                        ipiv,
+                        e.cast::<$ct>(),
+                    )
                 }
             }
         }
@@ -2581,8 +2596,18 @@ macro_rules! impl_symconv {
 }
 impl_symconv!(f32, f32, LAPACKE_ssytrf, LAPACKE_ssyconv);
 impl_symconv!(f64, f64, LAPACKE_dsytrf, LAPACKE_dsyconv);
-impl_symconv!(num_complex::Complex32, onemkl_sys::MKL_Complex8, LAPACKE_csytrf, LAPACKE_csyconv);
-impl_symconv!(num_complex::Complex64, onemkl_sys::MKL_Complex16, LAPACKE_zsytrf, LAPACKE_zsyconv);
+impl_symconv!(
+    num_complex::Complex32,
+    onemkl_sys::MKL_Complex8,
+    LAPACKE_csytrf,
+    LAPACKE_csyconv
+);
+impl_symconv!(
+    num_complex::Complex64,
+    onemkl_sys::MKL_Complex16,
+    LAPACKE_zsytrf,
+    LAPACKE_zsyconv
+);
 
 /// Direction of a [`syconv`] conversion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -2598,7 +2623,11 @@ pub enum SyconvWay {
 /// Bunch-Kaufman factorization of a symmetric matrix, `A = U D Uᵀ` or
 /// `L D Lᵀ`, with `ipiv` encoding the pivots (negative entries mark 2x2
 /// blocks). Wraps `LAPACKE_*sytrf`. `ipiv` must hold at least `n` entries.
-pub fn sytrf<T: SymConvScalar>(uplo: UpLo, a: &mut MatrixMut<'_, T>, ipiv: &mut [i32]) -> Result<()> {
+pub fn sytrf<T: SymConvScalar>(
+    uplo: UpLo,
+    a: &mut MatrixMut<'_, T>,
+    ipiv: &mut [i32],
+) -> Result<()> {
     let n = a.rows();
     if a.cols() != n {
         return Err(Error::InvalidArgument("A must be square"));

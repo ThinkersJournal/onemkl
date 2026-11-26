@@ -18,16 +18,29 @@ fn main() {
     let activations: Vec<f32> = (0..batch_seq * hidden)
         .map(|i| (i as f32) * 0.001)
         .collect();
-    let wq: Vec<f32> = (0..hidden * head_dim).map(|i| (i as f32) * 0.0005).collect();
-    let wk: Vec<f32> = (0..hidden * head_dim).map(|i| (i as f32) * 0.0007).collect();
-    let wv: Vec<f32> = (0..hidden * head_dim).map(|i| (i as f32) * 0.0011).collect();
+    let wq: Vec<f32> = (0..hidden * head_dim)
+        .map(|i| (i as f32) * 0.0005)
+        .collect();
+    let wk: Vec<f32> = (0..hidden * head_dim)
+        .map(|i| (i as f32) * 0.0007)
+        .collect();
+    let wv: Vec<f32> = (0..hidden * head_dim)
+        .map(|i| (i as f32) * 0.0011)
+        .collect();
 
     // Build the JIT'd kernel once — same shape for Q, K, V.
     let plan = JitGemm::<f32>::new(
         Layout::RowMajor,
-        Transpose::NoTrans, Transpose::NoTrans,
-        batch_seq, head_dim, hidden,
-        1.0, hidden, head_dim, 0.0, head_dim,
+        Transpose::NoTrans,
+        Transpose::NoTrans,
+        batch_seq,
+        head_dim,
+        hidden,
+        1.0,
+        hidden,
+        head_dim,
+        0.0,
+        head_dim,
     )
     .unwrap();
     println!("JIT kernel status: {:?}", plan.status());

@@ -45,8 +45,7 @@ fn staggered_cosine_round_trip() {
     let original: Vec<f64> = (0..n).map(|i| ((i + 1) as f64).sin()).collect();
     let mut buf = original.clone();
 
-    let mut plan =
-        TrigTransform::<f64>::new(TrigTransformType::StaggeredCosine, n).unwrap();
+    let mut plan = TrigTransform::<f64>::new(TrigTransformType::StaggeredCosine, n).unwrap();
     plan.forward(&mut buf).unwrap();
     plan.backward(&mut buf).unwrap();
 
@@ -106,10 +105,8 @@ fn dirichlet_error(n: usize, q: f64) -> f64 {
         }
     }
     let zeros = vec![0.0; n + 1];
-    let mut s = Helmholtz2D::<f64>::new(
-        (0.0, 1.0), (0.0, 1.0), n, n, [Boundary::Dirichlet; 4], q,
-    )
-    .unwrap();
+    let mut s =
+        Helmholtz2D::<f64>::new((0.0, 1.0), (0.0, 1.0), n, n, [Boundary::Dirichlet; 4], q).unwrap();
     s.solve(&mut f, &zeros, &zeros, &zeros, &zeros).unwrap();
     let mut err = 0.0_f64;
     for j in 0..=n {
@@ -135,7 +132,12 @@ fn helmholtz_2d_dirichlet_is_second_order() {
 fn helmholtz_2d_rejects_bad_arguments() {
     let d = [Boundary::Dirichlet; 4];
     assert!(Helmholtz2D::<f64>::new((0.0, 1.0), (0.0, 1.0), 7, 8, d, 0.0).is_err());
-    let mixed = [Boundary::Periodic, Boundary::Dirichlet, Boundary::Dirichlet, Boundary::Dirichlet];
+    let mixed = [
+        Boundary::Periodic,
+        Boundary::Dirichlet,
+        Boundary::Dirichlet,
+        Boundary::Dirichlet,
+    ];
     assert!(Helmholtz2D::<f64>::new((0.0, 1.0), (0.0, 1.0), 8, 8, mixed, 0.0).is_err());
 }
 
@@ -153,10 +155,9 @@ fn helmholtz_2d_nonzero_dirichlet_data_is_exact_for_quadratics() {
     let bd_bx: Vec<f64> = (0..=ny).map(|j| u(lx, j as f64 * hy)).collect();
     let bd_ay: Vec<f64> = (0..=nx).map(|i| u(i as f64 * hx, 0.0)).collect();
     let bd_by: Vec<f64> = (0..=nx).map(|i| u(i as f64 * hx, ly)).collect();
-    let mut s = Helmholtz2D::<f64>::new(
-        (0.0, lx), (0.0, ly), nx, ny, [Boundary::Dirichlet; 4], 0.0,
-    )
-    .unwrap();
+    let mut s =
+        Helmholtz2D::<f64>::new((0.0, lx), (0.0, ly), nx, ny, [Boundary::Dirichlet; 4], 0.0)
+            .unwrap();
     s.solve(&mut f, &bd_ax, &bd_bx, &bd_ay, &bd_by).unwrap();
     for j in 0..=ny {
         for i in 0..=nx {
@@ -165,8 +166,6 @@ fn helmholtz_2d_nonzero_dirichlet_data_is_exact_for_quadratics() {
         }
     }
 }
-
-
 
 use onemkl::pde::Helmholtz3D;
 
@@ -178,19 +177,38 @@ fn helmholtz_3d_dirichlet_is_second_order() {
         let ex = |x: f64, y: f64, z: f64| (pi * x).sin() * (pi * y).sin() * (pi * z).sin();
         let w = n + 1;
         let mut f = vec![0.0; w * w * w];
-        for k in 0..=n { for j in 0..=n { for i in 0..=n {
-            f[i + j * w + k * w * w] =
-                -(3.0 * pi * pi + q) * ex(i as f64 * h, j as f64 * h, k as f64 * h);
-        }}}
+        for k in 0..=n {
+            for j in 0..=n {
+                for i in 0..=n {
+                    f[i + j * w + k * w * w] =
+                        -(3.0 * pi * pi + q) * ex(i as f64 * h, j as f64 * h, k as f64 * h);
+                }
+            }
+        }
         let z = vec![0.0; w * w];
         let mut s = Helmholtz3D::<f64>::new(
-            (0.0, 1.0), (0.0, 1.0), (0.0, 1.0), n, n, n, [Boundary::Dirichlet; 6], q,
-        ).unwrap();
+            (0.0, 1.0),
+            (0.0, 1.0),
+            (0.0, 1.0),
+            n,
+            n,
+            n,
+            [Boundary::Dirichlet; 6],
+            q,
+        )
+        .unwrap();
         s.solve(&mut f, [&z, &z, &z, &z, &z, &z]).unwrap();
         let mut e = 0.0_f64;
-        for k in 0..=n { for j in 0..=n { for i in 0..=n {
-            e = e.max((f[i + j * w + k * w * w] - ex(i as f64 * h, j as f64 * h, k as f64 * h)).abs());
-        }}}
+        for k in 0..=n {
+            for j in 0..=n {
+                for i in 0..=n {
+                    e = e.max(
+                        (f[i + j * w + k * w * w] - ex(i as f64 * h, j as f64 * h, k as f64 * h))
+                            .abs(),
+                    );
+                }
+            }
+        }
         e
     }
     for q in [0.0, 3.0] {
@@ -213,32 +231,49 @@ fn helmholtz_3d_nonzero_dirichlet_data_is_exact_for_polynomials() {
     let mut f = vec![2.0; wx * wy * (nz + 1)];
     let mut ax = vec![0.0; wy * (nz + 1)];
     let mut bx = ax.clone();
-    for k in 0..=nz { for j in 0..=ny {
-        ax[j + k * wy] = u(0.0, j as f64 * hy, k as f64 * hz);
-        bx[j + k * wy] = u(lx, j as f64 * hy, k as f64 * hz);
-    }}
+    for k in 0..=nz {
+        for j in 0..=ny {
+            ax[j + k * wy] = u(0.0, j as f64 * hy, k as f64 * hz);
+            bx[j + k * wy] = u(lx, j as f64 * hy, k as f64 * hz);
+        }
+    }
     let mut ay = vec![0.0; wx * (nz + 1)];
     let mut by = ay.clone();
-    for k in 0..=nz { for i in 0..=nx {
-        ay[i + k * wx] = u(i as f64 * hx, 0.0, k as f64 * hz);
-        by[i + k * wx] = u(i as f64 * hx, ly, k as f64 * hz);
-    }}
+    for k in 0..=nz {
+        for i in 0..=nx {
+            ay[i + k * wx] = u(i as f64 * hx, 0.0, k as f64 * hz);
+            by[i + k * wx] = u(i as f64 * hx, ly, k as f64 * hz);
+        }
+    }
     let mut az = vec![0.0; wx * wy];
     let mut bz = az.clone();
-    for j in 0..=ny { for i in 0..=nx {
-        az[i + j * wx] = u(i as f64 * hx, j as f64 * hy, 0.0);
-        bz[i + j * wx] = u(i as f64 * hx, j as f64 * hy, lz);
-    }}
+    for j in 0..=ny {
+        for i in 0..=nx {
+            az[i + j * wx] = u(i as f64 * hx, j as f64 * hy, 0.0);
+            bz[i + j * wx] = u(i as f64 * hx, j as f64 * hy, lz);
+        }
+    }
     let mut s = Helmholtz3D::<f64>::new(
-        (0.0, lx), (0.0, ly), (0.0, lz), nx, ny, nz, [Boundary::Dirichlet; 6], 0.0,
-    ).unwrap();
+        (0.0, lx),
+        (0.0, ly),
+        (0.0, lz),
+        nx,
+        ny,
+        nz,
+        [Boundary::Dirichlet; 6],
+        0.0,
+    )
+    .unwrap();
     s.solve(&mut f, [&ax, &bx, &ay, &by, &az, &bz]).unwrap();
-    for k in 0..=nz { for j in 0..=ny { for i in 0..=nx {
-        let want = u(i as f64 * hx, j as f64 * hy, k as f64 * hz);
-        assert_abs_diff_eq!(f[i + j * wx + k * wx * wy], want, epsilon = 1e-9);
-    }}}
+    for k in 0..=nz {
+        for j in 0..=ny {
+            for i in 0..=nx {
+                let want = u(i as f64 * hx, j as f64 * hy, k as f64 * hz);
+                assert_abs_diff_eq!(f[i + j * wx + k * wx * wy], want, epsilon = 1e-9);
+            }
+        }
+    }
 }
-
 
 #[test]
 fn helmholtz_2d_neumann_data_is_exact_for_quadratics() {
@@ -250,20 +285,33 @@ fn helmholtz_2d_neumann_data_is_exact_for_quadratics() {
     let w = nx + 1;
     let u = |x: f64, y: f64| x * x - y * y + x * y + 1.0;
     let mut f = vec![0.0; w * (ny + 1)];
-    for j in 0..=ny { for i in 0..=nx {
-        f[i + j * w] = -q * u(i as f64 * hx, j as f64 * hy);
-    }}
+    for j in 0..=ny {
+        for i in 0..=nx {
+            f[i + j * w] = -q * u(i as f64 * hx, j as f64 * hy);
+        }
+    }
     let ax: Vec<f64> = (0..=ny).map(|j| u(0.0, j as f64 * hy)).collect();
     let bx: Vec<f64> = (0..=ny).map(|j| u(lx, j as f64 * hy)).collect();
     // du/dy = -2y + x; outward normal at y = 0 is -y.
     let ay: Vec<f64> = (0..=nx).map(|i| -(i as f64 * hx)).collect();
     let by: Vec<f64> = (0..=nx).map(|i| -2.0 * ly + i as f64 * hx).collect();
-    let bc = [Boundary::Dirichlet, Boundary::Dirichlet, Boundary::Neumann, Boundary::Neumann];
+    let bc = [
+        Boundary::Dirichlet,
+        Boundary::Dirichlet,
+        Boundary::Neumann,
+        Boundary::Neumann,
+    ];
     let mut s = Helmholtz2D::<f64>::new((0.0, lx), (0.0, ly), nx, ny, bc, q).unwrap();
     s.solve(&mut f, &ax, &bx, &ay, &by).unwrap();
-    for j in 0..=ny { for i in 0..=nx {
-        assert_abs_diff_eq!(f[i + j * w], u(i as f64 * hx, j as f64 * hy), epsilon = 1e-9);
-    }}
+    for j in 0..=ny {
+        for i in 0..=nx {
+            assert_abs_diff_eq!(
+                f[i + j * w],
+                u(i as f64 * hx, j as f64 * hy),
+                epsilon = 1e-9
+            );
+        }
+    }
 }
 
 fn conv_2d(n: usize, bc: [Boundary; 4]) -> f64 {
@@ -273,28 +321,42 @@ fn conv_2d(n: usize, bc: [Boundary; 4]) -> f64 {
     let w = n + 1;
     let q = 3.0;
     let (u, lam): (Box<dyn Fn(f64, f64) -> f64>, f64) = if bc[0] == Boundary::Periodic {
-        (Box::new(move |x, y| (2.0 * pi * x).sin() * (pi * y).sin()), 5.0 * pi * pi)
+        (
+            Box::new(move |x, y| (2.0 * pi * x).sin() * (pi * y).sin()),
+            5.0 * pi * pi,
+        )
     } else {
-        (Box::new(move |x, y| (pi * x).cos() * (pi * y).cos()), 2.0 * pi * pi)
+        (
+            Box::new(move |x, y| (pi * x).cos() * (pi * y).cos()),
+            2.0 * pi * pi,
+        )
     };
     let mut f = vec![0.0; w * w];
-    for j in 0..=n { for i in 0..=n {
-        f[i + j * w] = -(lam + q) * u(i as f64 * h, j as f64 * h);
-    }}
+    for j in 0..=n {
+        for i in 0..=n {
+            f[i + j * w] = -(lam + q) * u(i as f64 * h, j as f64 * h);
+        }
+    }
     let z = vec![0.0; w];
     let mut s = Helmholtz2D::<f64>::new((0.0, 1.0), (0.0, 1.0), n, n, bc, q).unwrap();
     s.solve(&mut f, &z, &z, &z, &z).unwrap();
     let mut e = 0.0_f64;
-    for j in 0..=n { for i in 0..=n {
-        e = e.max((f[i + j * w] - u(i as f64 * h, j as f64 * h)).abs());
-    }}
+    for j in 0..=n {
+        for i in 0..=n {
+            e = e.max((f[i + j * w] - u(i as f64 * h, j as f64 * h)).abs());
+        }
+    }
     e
 }
 
 #[test]
 fn helmholtz_2d_periodic_and_neumann_are_second_order() {
     use Boundary::*;
-    for bc in [[Periodic, Periodic, Dirichlet, Dirichlet], [Neumann; 4], [Dirichlet, Dirichlet, Periodic, Periodic]] {
+    for bc in [
+        [Periodic, Periodic, Dirichlet, Dirichlet],
+        [Neumann; 4],
+        [Dirichlet, Dirichlet, Periodic, Periodic],
+    ] {
         if bc[2] == Periodic {
             continue; // the sin(pi y) factor above is not y-periodic
         }
@@ -317,35 +379,46 @@ fn helmholtz_3d_neumann_data_is_exact_for_polynomials() {
     let mut f = vec![2.0; wx * wy * (nz + 1)];
     let mut ax = vec![0.0; wy * (nz + 1)];
     let mut bx = ax.clone();
-    for k in 0..=nz { for j in 0..=ny {
-        ax[j + k * wy] = u(0.0, j as f64 * hy, k as f64 * hz);
-        bx[j + k * wy] = u(lx, j as f64 * hy, k as f64 * hz);
-    }}
+    for k in 0..=nz {
+        for j in 0..=ny {
+            ax[j + k * wy] = u(0.0, j as f64 * hy, k as f64 * hz);
+            bx[j + k * wy] = u(lx, j as f64 * hy, k as f64 * hz);
+        }
+    }
     // du/dy = -2y + xz; outward normal at y = 0 is -y.
     let mut ay = vec![0.0; wx * (nz + 1)];
     let mut by = ay.clone();
-    for k in 0..=nz { for i in 0..=nx {
-        let (x, z) = (i as f64 * hx, k as f64 * hz);
-        ay[i + k * wx] = -(x * z);
-        by[i + k * wx] = -2.0 * ly + x * z;
-    }}
+    for k in 0..=nz {
+        for i in 0..=nx {
+            let (x, z) = (i as f64 * hx, k as f64 * hz);
+            ay[i + k * wx] = -(x * z);
+            by[i + k * wx] = -2.0 * ly + x * z;
+        }
+    }
     let mut az = vec![0.0; wx * wy];
     let mut bz = az.clone();
-    for j in 0..=ny { for i in 0..=nx {
-        az[i + j * wx] = u(i as f64 * hx, j as f64 * hy, 0.0);
-        bz[i + j * wx] = u(i as f64 * hx, j as f64 * hy, lz);
-    }}
+    for j in 0..=ny {
+        for i in 0..=nx {
+            az[i + j * wx] = u(i as f64 * hx, j as f64 * hy, 0.0);
+            bz[i + j * wx] = u(i as f64 * hx, j as f64 * hy, lz);
+        }
+    }
     use Boundary::*;
     let bc = [Dirichlet, Dirichlet, Neumann, Neumann, Dirichlet, Dirichlet];
-    let mut s = Helmholtz3D::<f64>::new((0.0, lx), (0.0, ly), (0.0, lz), nx, ny, nz, bc, 0.0).unwrap();
+    let mut s =
+        Helmholtz3D::<f64>::new((0.0, lx), (0.0, ly), (0.0, lz), nx, ny, nz, bc, 0.0).unwrap();
     s.solve(&mut f, [&ax, &bx, &ay, &by, &az, &bz]).unwrap();
-    for k in 0..=nz { for j in 0..=ny { for i in 0..=nx {
-        assert_abs_diff_eq!(
-            f[i + j * wx + k * wx * wy],
-            u(i as f64 * hx, j as f64 * hy, k as f64 * hz),
-            epsilon = 1e-9
-        );
-    }}}
+    for k in 0..=nz {
+        for j in 0..=ny {
+            for i in 0..=nx {
+                assert_abs_diff_eq!(
+                    f[i + j * wx + k * wx * wy],
+                    u(i as f64 * hx, j as f64 * hy, k as f64 * hz),
+                    epsilon = 1e-9
+                );
+            }
+        }
+    }
 }
 
 #[test]
@@ -358,17 +431,30 @@ fn helmholtz_3d_mixed_periodic_dirichlet_neumann_is_second_order() {
         let q = 3.0;
         let u = |x: f64, y: f64, z: f64| (2.0 * pi * x).sin() * (pi * y).sin() * (pi * z).cos();
         let mut f = vec![0.0; w * w * w];
-        for k in 0..=n { for j in 0..=n { for i in 0..=n {
-            f[i + j * w + k * w * w] = -(6.0 * pi * pi + q) * u(i as f64 * h, j as f64 * h, k as f64 * h);
-        }}}
+        for k in 0..=n {
+            for j in 0..=n {
+                for i in 0..=n {
+                    f[i + j * w + k * w * w] =
+                        -(6.0 * pi * pi + q) * u(i as f64 * h, j as f64 * h, k as f64 * h);
+                }
+            }
+        }
         let z = vec![0.0; w * w];
         let bc = [Periodic, Periodic, Dirichlet, Dirichlet, Neumann, Neumann];
-        let mut s = Helmholtz3D::<f64>::new((0.0, 1.0), (0.0, 1.0), (0.0, 1.0), n, n, n, bc, q).unwrap();
+        let mut s =
+            Helmholtz3D::<f64>::new((0.0, 1.0), (0.0, 1.0), (0.0, 1.0), n, n, n, bc, q).unwrap();
         s.solve(&mut f, [&z, &z, &z, &z, &z, &z]).unwrap();
         let mut e = 0.0_f64;
-        for k in 0..=n { for j in 0..=n { for i in 0..=n {
-            e = e.max((f[i + j * w + k * w * w] - u(i as f64 * h, j as f64 * h, k as f64 * h)).abs());
-        }}}
+        for k in 0..=n {
+            for j in 0..=n {
+                for i in 0..=n {
+                    e = e.max(
+                        (f[i + j * w + k * w * w] - u(i as f64 * h, j as f64 * h, k as f64 * h))
+                            .abs(),
+                    );
+                }
+            }
+        }
         e
     }
     let (e16, e32) = (err(16), err(32));
@@ -386,18 +472,34 @@ fn helmholtz_f32_reproduces_polynomials_2d_and_3d() {
     let w = nx + 1;
     let u = |x: f32, y: f32| x * x - y * y + x * y + 1.0;
     let mut f = vec![0.0_f32; w * (ny + 1)];
-    for j in 0..=ny { for i in 0..=nx { f[i + j * w] = -q * u(i as f32 * hx, j as f32 * hy); } }
+    for j in 0..=ny {
+        for i in 0..=nx {
+            f[i + j * w] = -q * u(i as f32 * hx, j as f32 * hy);
+        }
+    }
     let ax: Vec<f32> = (0..=ny).map(|j| u(0.0, j as f32 * hy)).collect();
     let bx: Vec<f32> = (0..=ny).map(|j| u(lx, j as f32 * hy)).collect();
     let ay: Vec<f32> = (0..=nx).map(|i| -(i as f32 * hx)).collect();
     let by: Vec<f32> = (0..=nx).map(|i| -2.0 * ly + i as f32 * hx).collect();
     let mut s = Helmholtz2D::<f32>::new(
-        (0.0, lx), (0.0, ly), nx, ny, [Dirichlet, Dirichlet, Neumann, Neumann], q,
-    ).unwrap();
+        (0.0, lx),
+        (0.0, ly),
+        nx,
+        ny,
+        [Dirichlet, Dirichlet, Neumann, Neumann],
+        q,
+    )
+    .unwrap();
     s.solve(&mut f, &ax, &bx, &ay, &by).unwrap();
-    for j in 0..=ny { for i in 0..=nx {
-        assert_abs_diff_eq!(f[i + j * w], u(i as f32 * hx, j as f32 * hy), epsilon = 2e-3);
-    }}
+    for j in 0..=ny {
+        for i in 0..=nx {
+            assert_abs_diff_eq!(
+                f[i + j * w],
+                u(i as f32 * hx, j as f32 * hy),
+                epsilon = 2e-3
+            );
+        }
+    }
 
     // 3-D: all Dirichlet, u = x^2 - y^2 + z^2 + xyz + 1, Δu = 2.
     let n = 8usize;
@@ -406,23 +508,46 @@ fn helmholtz_f32_reproduces_polynomials_2d_and_3d() {
     let w = n + 1;
     let mut f = vec![2.0_f32; w * w * w];
     let mut faces: Vec<Vec<f32>> = vec![vec![0.0; w * w]; 6];
-    for b in 0..w { for a in 0..w {
-        let (p, r) = (a as f32 * h, b as f32 * h);
-        faces[0][a + b * w] = u3(0.0, p, r); faces[1][a + b * w] = u3(1.0, p, r);
-        faces[2][a + b * w] = u3(p, 0.0, r); faces[3][a + b * w] = u3(p, 1.0, r);
-        faces[4][a + b * w] = u3(p, r, 0.0); faces[5][a + b * w] = u3(p, r, 1.0);
-    }}
+    for b in 0..w {
+        for a in 0..w {
+            let (p, r) = (a as f32 * h, b as f32 * h);
+            faces[0][a + b * w] = u3(0.0, p, r);
+            faces[1][a + b * w] = u3(1.0, p, r);
+            faces[2][a + b * w] = u3(p, 0.0, r);
+            faces[3][a + b * w] = u3(p, 1.0, r);
+            faces[4][a + b * w] = u3(p, r, 0.0);
+            faces[5][a + b * w] = u3(p, r, 1.0);
+        }
+    }
     let mut s = Helmholtz3D::<f32>::new(
-        (0.0, 1.0), (0.0, 1.0), (0.0, 1.0), n, n, n, [Dirichlet; 6], 0.0,
-    ).unwrap();
-    s.solve(&mut f, [&faces[0], &faces[1], &faces[2], &faces[3], &faces[4], &faces[5]]).unwrap();
-    for k in 0..=n { for j in 0..=n { for i in 0..=n {
-        assert_abs_diff_eq!(
-            f[i + j * w + k * w * w],
-            u3(i as f32 * h, j as f32 * h, k as f32 * h),
-            epsilon = 2e-3
-        );
-    }}}
+        (0.0, 1.0),
+        (0.0, 1.0),
+        (0.0, 1.0),
+        n,
+        n,
+        n,
+        [Dirichlet; 6],
+        0.0,
+    )
+    .unwrap();
+    s.solve(
+        &mut f,
+        [
+            &faces[0], &faces[1], &faces[2], &faces[3], &faces[4], &faces[5],
+        ],
+    )
+    .unwrap();
+    for k in 0..=n {
+        for j in 0..=n {
+            for i in 0..=n {
+                assert_abs_diff_eq!(
+                    f[i + j * w + k * w * w],
+                    u3(i as f32 * h, j as f32 * h, k as f32 * h),
+                    epsilon = 2e-3
+                );
+            }
+        }
+    }
 }
 
 use onemkl::pde::SphericalHelmholtz;
@@ -443,16 +568,20 @@ fn sph_error(np: usize, nt: usize) -> f64 {
             - (6.0 + q) * 0.25 * t.sin().powi(2) * (2.0 * p).cos()
     };
     let mut f = vec![0.0; w * (nt + 1)];
-    for j in 0..=nt { for i in 0..=np {
-        f[i + j * w] = rhs(j as f64 * pi / nt as f64, i as f64 * 2.0 * pi / np as f64);
-    }}
+    for j in 0..=nt {
+        for i in 0..=np {
+            f[i + j * w] = rhs(j as f64 * pi / nt as f64, i as f64 * 2.0 * pi / np as f64);
+        }
+    }
     let mut s = SphericalHelmholtz::<f64>::new(np, nt, q).unwrap();
     s.solve(&mut f).unwrap();
     let mut e = 0.0_f64;
-    for j in 0..=nt { for i in 0..=np {
-        let want = u(j as f64 * pi / nt as f64, i as f64 * 2.0 * pi / np as f64);
-        e = e.max((f[i + j * w] - want).abs());
-    }}
+    for j in 0..=nt {
+        for i in 0..=np {
+            let want = u(j as f64 * pi / nt as f64, i as f64 * 2.0 * pi / np as f64);
+            e = e.max((f[i + j * w] - want).abs());
+        }
+    }
     e
 }
 
@@ -485,7 +614,12 @@ fn patch_error<T: onemkl::pde::HelmholtzScalar>(np: usize, nt: usize) -> f64 {
             - (6.0 + q) * 0.5 * t.sin() * t.cos() * p.cos()
             - (6.0 + q) * 0.25 * t.sin().powi(2) * (2.0 * p).cos()
     };
-    let node = |i: usize, j: usize| (at + j as f64 * (bt - at) / nt as f64, ap + i as f64 * (bp - ap) / np as f64);
+    let node = |i: usize, j: usize| {
+        (
+            at + j as f64 * (bt - at) / nt as f64,
+            ap + i as f64 * (bp - ap) / np as f64,
+        )
+    };
     let mut f = vec![T::default(); w * (nt + 1)];
     for j in 0..=nt {
         for i in 0..=np {
@@ -508,11 +642,18 @@ fn patch_error<T: onemkl::pde::HelmholtzScalar>(np: usize, nt: usize) -> f64 {
 
 #[test]
 fn spherical_patch_is_second_order() {
-    let e: Vec<f64> = [(16, 8), (32, 16), (64, 32), (128, 64)].iter().map(|&(a, b)| patch_error::<f64>(a, b)).collect();
+    let e: Vec<f64> = [(16, 8), (32, 16), (64, 32), (128, 64)]
+        .iter()
+        .map(|&(a, b)| patch_error::<f64>(a, b))
+        .collect();
     eprintln!("patch errors {e:?}");
     assert!(e[3] < 1e-3, "error {}", e[3]);
     for k in 0..3 {
-        assert!((3.0..5.0).contains(&(e[k] / e[k + 1])), "ratio {}", e[k] / e[k + 1]);
+        assert!(
+            (3.0..5.0).contains(&(e[k] / e[k + 1])),
+            "ratio {}",
+            e[k] / e[k + 1]
+        );
     }
 }
 
@@ -531,14 +672,17 @@ fn spherical_patch_reproduces_a_discrete_solution() {
     let w = np + 1;
     let (hp, ht) = ((bp - ap) / np as f64, (bt - at) / nt as f64);
     let s = |j: usize| (at + j as f64 * ht).sin();
-    let u: Vec<f64> = (0..w * (nt + 1)).map(|k| ((k * 37 % 101) as f64) / 50.0 - 1.0).collect();
+    let u: Vec<f64> = (0..w * (nt + 1))
+        .map(|k| ((k * 37 % 101) as f64) / 50.0 - 1.0)
+        .collect();
     let mut f = u.clone();
     for j in 1..nt {
         let (sj, sp, sm) = (s(j), 0.5 * (s(j) + s(j + 1)), 0.5 * (s(j) + s(j - 1)));
         for i in 1..np {
             let k = i + j * w;
             let au = ht * ht * sj * q * u[k]
-                + sp * (u[k] - u[k + w]) + sm * (u[k] - u[k - w])
+                + sp * (u[k] - u[k + w])
+                + sm * (u[k] - u[k - w])
                 + ht * ht / (sj * hp * hp) * (2.0 * u[k] - u[k - 1] - u[k + 1]);
             f[k] = -au / (ht * ht * sj);
         }
@@ -546,7 +690,12 @@ fn spherical_patch_reproduces_a_discrete_solution() {
     let mut sol = SphericalPatchHelmholtz::<f64>::new(ap, bp, at, bt, np, nt, q).unwrap();
     sol.solve(&mut f).unwrap();
     for k in 0..f.len() {
-        assert!((f[k] - u[k]).abs() < 1e-10, "node {k}: {} vs {}", f[k], u[k]);
+        assert!(
+            (f[k] - u[k]).abs() < 1e-10,
+            "node {k}: {} vs {}",
+            f[k],
+            u[k]
+        );
     }
 }
 

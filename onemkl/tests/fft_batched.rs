@@ -23,7 +23,10 @@ fn dft(x: &[Complex64]) -> Vec<Complex64> {
 }
 
 fn val(t: usize, j: usize) -> Complex64 {
-    Complex64::new(((t * 5 + j * 3) % 7) as f64 - 2.0, ((t * 2 + j) % 5) as f64 - 1.5)
+    Complex64::new(
+        ((t * 5 + j * 3) % 7) as f64 - 2.0,
+        ((t * 2 + j) % 5) as f64 - 1.5,
+    )
 }
 
 /// Fill a buffer with a sentinel, put transform `t` element `j` at

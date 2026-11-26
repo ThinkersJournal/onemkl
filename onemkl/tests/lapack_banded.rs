@@ -6,8 +6,8 @@ use approx::assert_abs_diff_eq;
 use num_complex::Complex64;
 
 use onemkl::lapack::{
-    gbsv, gbtrf, gbtrs, gtsv, gttrf, gttrs, pbsv, pbtrf, pbtrs, ptsv, pttrf,
-    pttrs_complex, pttrs_real,
+    gbsv, gbtrf, gbtrs, gtsv, gttrf, gttrs, pbsv, pbtrf, pbtrs, ptsv, pttrf, pttrs_complex,
+    pttrs_real,
 };
 use onemkl::{Layout, Transpose, UpLo};
 
@@ -30,14 +30,26 @@ fn gbsv_solves_tridiagonal() {
     //   col 3: [_, -1, 4, _ ]
     let _ = (4, 1, 1); // n, kl, ku
     let mut ab = vec![
-        0.0_f64, 0.0,  4.0, -1.0,  // col 0
-        0.0,    -1.0,  4.0, -1.0,  // col 1
-        0.0,    -1.0,  4.0, -1.0,  // col 2
-        0.0,    -1.0,  4.0,  0.0,  // col 3
+        0.0_f64, 0.0, 4.0, -1.0, // col 0
+        0.0, -1.0, 4.0, -1.0, // col 1
+        0.0, -1.0, 4.0, -1.0, // col 2
+        0.0, -1.0, 4.0, 0.0, // col 3
     ];
     let mut b = vec![3.0_f64, 2.0, 2.0, 3.0];
     let mut ipiv = vec![0_i32; 4];
-    gbsv::<f64>(Layout::ColMajor, 4, 1, 1, 1, &mut ab, 4, &mut ipiv, &mut b, 4).unwrap();
+    gbsv::<f64>(
+        Layout::ColMajor,
+        4,
+        1,
+        1,
+        1,
+        &mut ab,
+        4,
+        &mut ipiv,
+        &mut b,
+        4,
+    )
+    .unwrap();
     for x in &b {
         assert_abs_diff_eq!(*x, 1.0, epsilon = 1e-10);
     }
@@ -47,18 +59,24 @@ fn gbsv_solves_tridiagonal() {
 fn gbtrf_then_gbtrs() {
     // Same matrix as above; factor then solve in two steps.
     let mut ab = vec![
-        0.0_f64, 0.0,  4.0, -1.0,
-        0.0,    -1.0,  4.0, -1.0,
-        0.0,    -1.0,  4.0, -1.0,
-        0.0,    -1.0,  4.0,  0.0,
+        0.0_f64, 0.0, 4.0, -1.0, 0.0, -1.0, 4.0, -1.0, 0.0, -1.0, 4.0, -1.0, 0.0, -1.0, 4.0, 0.0,
     ];
     let mut ipiv = vec![0_i32; 4];
     gbtrf::<f64>(Layout::ColMajor, 4, 4, 1, 1, &mut ab, 4, &mut ipiv).unwrap();
 
     let mut b = vec![3.0_f64, 2.0, 2.0, 3.0];
     gbtrs::<f64>(
-        Layout::ColMajor, Transpose::NoTrans,
-        4, 1, 1, 1, &ab, 4, &ipiv, &mut b, 4,
+        Layout::ColMajor,
+        Transpose::NoTrans,
+        4,
+        1,
+        1,
+        1,
+        &ab,
+        4,
+        &ipiv,
+        &mut b,
+        4,
     )
     .unwrap();
     for x in &b {
@@ -94,8 +112,17 @@ fn gttrf_then_gttrs() {
 
     let mut b = vec![3.0_f64, 2.0, 3.0];
     gttrs::<f64>(
-        Layout::ColMajor, Transpose::NoTrans, 3, 1,
-        &dl, &d, &du, &du2, &ipiv, &mut b, 3,
+        Layout::ColMajor,
+        Transpose::NoTrans,
+        3,
+        1,
+        &dl,
+        &d,
+        &du,
+        &du2,
+        &ipiv,
+        &mut b,
+        3,
     )
     .unwrap();
     for x in &b {
@@ -114,13 +141,24 @@ fn pbsv_pd_banded() {
     //   col 2: [-1, 4]
     //   col 3: [-1, 4]
     let mut ab = vec![
-        0.0_f64,  4.0,  // col 0
-        -1.0,     4.0,  // col 1
-        -1.0,     4.0,  // col 2
-        -1.0,     4.0,  // col 3
+        0.0_f64, 4.0, // col 0
+        -1.0, 4.0, // col 1
+        -1.0, 4.0, // col 2
+        -1.0, 4.0, // col 3
     ];
     let mut b = vec![3.0_f64, 2.0, 2.0, 3.0];
-    pbsv::<f64>(Layout::ColMajor, UpLo::Upper, 4, 1, 1, &mut ab, 2, &mut b, 4).unwrap();
+    pbsv::<f64>(
+        Layout::ColMajor,
+        UpLo::Upper,
+        4,
+        1,
+        1,
+        &mut ab,
+        2,
+        &mut b,
+        4,
+    )
+    .unwrap();
     for x in &b {
         assert_abs_diff_eq!(*x, 1.0, epsilon = 1e-10);
     }
@@ -128,12 +166,7 @@ fn pbsv_pd_banded() {
 
 #[test]
 fn pbtrf_then_pbtrs() {
-    let mut ab = vec![
-        0.0_f64,  4.0,
-        -1.0,     4.0,
-        -1.0,     4.0,
-        -1.0,     4.0,
-    ];
+    let mut ab = vec![0.0_f64, 4.0, -1.0, 4.0, -1.0, 4.0, -1.0, 4.0];
     pbtrf::<f64>(Layout::ColMajor, UpLo::Upper, 4, 1, &mut ab, 2).unwrap();
 
     let mut b = vec![3.0_f64, 2.0, 2.0, 3.0];
@@ -185,8 +218,7 @@ fn pttrs_complex_works() {
         Complex64::new(6.0, 0.0),
         Complex64::new(5.0, -1.0),
     ];
-    pttrs_complex::<Complex64>(Layout::ColMajor, UpLo::Upper, 3, 1, &d, &e, &mut b, 3)
-        .unwrap();
+    pttrs_complex::<Complex64>(Layout::ColMajor, UpLo::Upper, 3, 1, &d, &e, &mut b, 3).unwrap();
     for x in &b {
         assert_abs_diff_eq!(x.re, 1.0, epsilon = 1e-9);
         assert_abs_diff_eq!(x.im, 0.0, epsilon = 1e-9);

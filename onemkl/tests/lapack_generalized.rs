@@ -5,7 +5,7 @@
 use approx::assert_abs_diff_eq;
 use num_complex::Complex64;
 
-use onemkl::lapack::{ggev_complex, ggev_real, hegv, sygv, GeneralizedEigenType, Job};
+use onemkl::lapack::{GeneralizedEigenType, Job, ggev_complex, ggev_real, hegv, sygv};
 use onemkl::matrix::MatrixMut;
 use onemkl::{Layout, UpLo};
 
@@ -61,12 +61,16 @@ fn hegv_hermitian_definite() {
     // B = identity 2x2
     // A x = λ B x is the same as A's eigenvalues: 1 and 4 (computed earlier in heev).
     let mut a = vec![
-        Complex64::new(2.0, 0.0), Complex64::new(1.0, 1.0),
-        Complex64::new(99.0, 99.0), Complex64::new(3.0, 0.0),
+        Complex64::new(2.0, 0.0),
+        Complex64::new(1.0, 1.0),
+        Complex64::new(99.0, 99.0),
+        Complex64::new(3.0, 0.0),
     ];
     let mut b = vec![
-        Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
-        Complex64::new(99.0, 99.0), Complex64::new(1.0, 0.0),
+        Complex64::new(1.0, 0.0),
+        Complex64::new(0.0, 0.0),
+        Complex64::new(99.0, 99.0),
+        Complex64::new(1.0, 0.0),
     ];
     let mut w = vec![0.0_f64; 2];
     let mut a_view = MatrixMut::new(&mut a, 2, 2, Layout::RowMajor).unwrap();
@@ -122,12 +126,16 @@ fn ggev_complex_diagonal() {
     // A = diag(2+i, 3-i); B = identity.
     // alpha/beta = 2+i, 3-i.
     let mut a = vec![
-        Complex64::new(2.0, 1.0), Complex64::new(0.0, 0.0),
-        Complex64::new(0.0, 0.0), Complex64::new(3.0, -1.0),
+        Complex64::new(2.0, 1.0),
+        Complex64::new(0.0, 0.0),
+        Complex64::new(0.0, 0.0),
+        Complex64::new(3.0, -1.0),
     ];
     let mut b = vec![
-        Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
-        Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0),
+        Complex64::new(1.0, 0.0),
+        Complex64::new(0.0, 0.0),
+        Complex64::new(0.0, 0.0),
+        Complex64::new(1.0, 0.0),
     ];
     let mut alpha = vec![Complex64::new(0.0, 0.0); 2];
     let mut beta = vec![Complex64::new(0.0, 0.0); 2];

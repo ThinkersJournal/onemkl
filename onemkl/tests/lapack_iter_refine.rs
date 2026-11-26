@@ -7,8 +7,7 @@ use approx::assert_abs_diff_eq;
 use num_complex::Complex64;
 
 use onemkl::lapack::{
-    iter_refine_gesv_c64, iter_refine_gesv_f64, iter_refine_posv_c64,
-    iter_refine_posv_f64,
+    iter_refine_gesv_c64, iter_refine_gesv_f64, iter_refine_posv_c64, iter_refine_posv_f64,
 };
 use onemkl::matrix::MatrixMut;
 use onemkl::{Layout, UpLo};
@@ -26,13 +25,7 @@ fn iter_refine_gesv_f64_solves_2x2() {
     let mut b_view = MatrixMut::new(&mut b, 2, 1, Layout::RowMajor).unwrap();
     let mut x_view = MatrixMut::new(&mut x, 2, 1, Layout::RowMajor).unwrap();
 
-    let outcome = iter_refine_gesv_f64(
-        &mut a_view,
-        &mut ipiv,
-        &mut b_view,
-        &mut x_view,
-    )
-    .unwrap();
+    let outcome = iter_refine_gesv_f64(&mut a_view, &mut ipiv, &mut b_view, &mut x_view).unwrap();
 
     // iter can be negative (fell back to plain double) for this tiny
     // matrix, but the solution must still be correct.
@@ -53,13 +46,7 @@ fn iter_refine_posv_f64_solves_spd() {
     let mut b_view = MatrixMut::new(&mut b, 2, 1, Layout::RowMajor).unwrap();
     let mut x_view = MatrixMut::new(&mut x, 2, 1, Layout::RowMajor).unwrap();
 
-    iter_refine_posv_f64(
-        UpLo::Upper,
-        &mut a_view,
-        &mut b_view,
-        &mut x_view,
-    )
-    .unwrap();
+    iter_refine_posv_f64(UpLo::Upper, &mut a_view, &mut b_view, &mut x_view).unwrap();
 
     let det = 4.0 * 3.0 - 1.0 * 1.0;
     let expected_x0 = (3.0 * 5.0 - 1.0 * 7.0) / det;
@@ -86,13 +73,7 @@ fn iter_refine_gesv_c64_solves_2x2_complex() {
     let mut b_view = MatrixMut::new(&mut b, 2, 1, Layout::RowMajor).unwrap();
     let mut x_view = MatrixMut::new(&mut x, 2, 1, Layout::RowMajor).unwrap();
 
-    iter_refine_gesv_c64(
-        &mut a_view,
-        &mut ipiv,
-        &mut b_view,
-        &mut x_view,
-    )
-    .unwrap();
+    iter_refine_gesv_c64(&mut a_view, &mut ipiv, &mut b_view, &mut x_view).unwrap();
 
     // det = 4 - (0 + i)(0 - i) = 4 - 1 = 3
     // x = (1/3) * [2, i] · [1, 0]ᵀ = [2/3, i/3]
@@ -118,13 +99,7 @@ fn iter_refine_posv_c64_solves_hermitian_pd() {
     let mut b_view = MatrixMut::new(&mut b, 2, 1, Layout::RowMajor).unwrap();
     let mut x_view = MatrixMut::new(&mut x, 2, 1, Layout::RowMajor).unwrap();
 
-    iter_refine_posv_c64(
-        UpLo::Upper,
-        &mut a_view,
-        &mut b_view,
-        &mut x_view,
-    )
-    .unwrap();
+    iter_refine_posv_c64(UpLo::Upper, &mut a_view, &mut b_view, &mut x_view).unwrap();
 
     assert_abs_diff_eq!(x[0].re, 2.0 / 3.0, epsilon = 1e-10);
     assert_abs_diff_eq!(x[1].im, 1.0 / 3.0, epsilon = 1e-10);

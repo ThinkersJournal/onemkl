@@ -83,8 +83,13 @@ pub trait RealVmScalar: VmScalar + RealScalar {
     unsafe fn vm_inv(n: MKL_INT, a: *const Self, r: *mut Self);
     #[allow(clippy::too_many_arguments)]
     unsafe fn vm_linear_frac(
-        n: MKL_INT, a: *const Self, b: *const Self,
-        scale_a: Self, shift_a: Self, scale_b: Self, shift_b: Self,
+        n: MKL_INT,
+        a: *const Self,
+        b: *const Self,
+        scale_a: Self,
+        shift_a: Self,
+        scale_b: Self,
+        shift_b: Self,
         r: *mut Self,
     );
 
@@ -177,9 +182,7 @@ pub trait ComplexVmScalar: VmScalar + ComplexScalar {
     /// `r[i] = conj(a[i])`. Output is complex.
     unsafe fn vm_conj(n: MKL_INT, a: *const Self, r: *mut Self);
     /// `r[i] = a[i] * conj(b[i])`.
-    unsafe fn vm_mul_by_conj(
-        n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self,
-    );
+    unsafe fn vm_mul_by_conj(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
     /// `r[i] = exp(i * a[i])`. Input is real, output complex.
     unsafe fn vm_cis(n: MKL_INT, a: *const Self::Real, r: *mut Self);
 }
@@ -227,100 +230,273 @@ macro_rules! impl_vm_scalar_real {
         max_mag=$max_mag:ident, min_mag=$min_mag:ident,
     ) => {
         impl VmScalar for $ty {
-            unsafe fn vm_add(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$add(n, a, b, r) } }
-            unsafe fn vm_sub(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$sub(n, a, b, r) } }
-            unsafe fn vm_mul(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$mul(n, a, b, r) } }
-            unsafe fn vm_div(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$div(n, a, b, r) } }
-            unsafe fn vm_sqrt(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$sqrt(n, a, r) } }
-            unsafe fn vm_pow(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$pow(n, a, b, r) } }
-            unsafe fn vm_powx(n: MKL_INT, a: *const Self, b: Self, r: *mut Self) { unsafe { sys::$powx(n, a, b, r) } }
-            unsafe fn vm_exp(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$exp(n, a, r) } }
-            unsafe fn vm_ln(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$ln(n, a, r) } }
-            unsafe fn vm_log10(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$log10(n, a, r) } }
-            unsafe fn vm_cos(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$cos(n, a, r) } }
-            unsafe fn vm_sin(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$sin(n, a, r) } }
-            unsafe fn vm_tan(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$tan(n, a, r) } }
-            unsafe fn vm_acos(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$acos(n, a, r) } }
-            unsafe fn vm_asin(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$asin(n, a, r) } }
-            unsafe fn vm_atan(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$atan(n, a, r) } }
-            unsafe fn vm_cosh(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$cosh(n, a, r) } }
-            unsafe fn vm_sinh(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$sinh(n, a, r) } }
-            unsafe fn vm_tanh(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$tanh(n, a, r) } }
-            unsafe fn vm_acosh(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$acosh(n, a, r) } }
-            unsafe fn vm_asinh(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$asinh(n, a, r) } }
-            unsafe fn vm_atanh(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$atanh(n, a, r) } }
+            unsafe fn vm_add(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$add(n, a, b, r) }
+            }
+            unsafe fn vm_sub(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$sub(n, a, b, r) }
+            }
+            unsafe fn vm_mul(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$mul(n, a, b, r) }
+            }
+            unsafe fn vm_div(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$div(n, a, b, r) }
+            }
+            unsafe fn vm_sqrt(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$sqrt(n, a, r) }
+            }
+            unsafe fn vm_pow(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$pow(n, a, b, r) }
+            }
+            unsafe fn vm_powx(n: MKL_INT, a: *const Self, b: Self, r: *mut Self) {
+                unsafe { sys::$powx(n, a, b, r) }
+            }
+            unsafe fn vm_exp(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$exp(n, a, r) }
+            }
+            unsafe fn vm_ln(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$ln(n, a, r) }
+            }
+            unsafe fn vm_log10(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$log10(n, a, r) }
+            }
+            unsafe fn vm_cos(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$cos(n, a, r) }
+            }
+            unsafe fn vm_sin(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$sin(n, a, r) }
+            }
+            unsafe fn vm_tan(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$tan(n, a, r) }
+            }
+            unsafe fn vm_acos(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$acos(n, a, r) }
+            }
+            unsafe fn vm_asin(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$asin(n, a, r) }
+            }
+            unsafe fn vm_atan(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$atan(n, a, r) }
+            }
+            unsafe fn vm_cosh(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$cosh(n, a, r) }
+            }
+            unsafe fn vm_sinh(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$sinh(n, a, r) }
+            }
+            unsafe fn vm_tanh(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$tanh(n, a, r) }
+            }
+            unsafe fn vm_acosh(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$acosh(n, a, r) }
+            }
+            unsafe fn vm_asinh(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$asinh(n, a, r) }
+            }
+            unsafe fn vm_atanh(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$atanh(n, a, r) }
+            }
         }
 
         impl RealVmScalar for $ty {
-            unsafe fn vm_abs_real(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$abs(n, a, r) } }
-            unsafe fn vm_sqr(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$sqr(n, a, r) } }
-            unsafe fn vm_inv(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$inv(n, a, r) } }
+            unsafe fn vm_abs_real(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$abs(n, a, r) }
+            }
+            unsafe fn vm_sqr(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$sqr(n, a, r) }
+            }
+            unsafe fn vm_inv(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$inv(n, a, r) }
+            }
             unsafe fn vm_linear_frac(
-                n: MKL_INT, a: *const Self, b: *const Self,
-                scale_a: Self, shift_a: Self, scale_b: Self, shift_b: Self,
+                n: MKL_INT,
+                a: *const Self,
+                b: *const Self,
+                scale_a: Self,
+                shift_a: Self,
+                scale_b: Self,
+                shift_b: Self,
                 r: *mut Self,
             ) {
                 unsafe { sys::$linear_frac(n, a, b, scale_a, shift_a, scale_b, shift_b, r) }
             }
-            unsafe fn vm_inv_sqrt(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$inv_sqrt(n, a, r) } }
-            unsafe fn vm_cbrt(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$cbrt(n, a, r) } }
-            unsafe fn vm_inv_cbrt(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$inv_cbrt(n, a, r) } }
-            unsafe fn vm_powr(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$powr(n, a, b, r) } }
-            unsafe fn vm_pow2o3(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$pow2o3(n, a, r) } }
-            unsafe fn vm_pow3o2(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$pow3o2(n, a, r) } }
-            unsafe fn vm_hypot(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$hypot(n, a, b, r) } }
-            unsafe fn vm_exp2(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$exp2(n, a, r) } }
-            unsafe fn vm_exp10(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$exp10(n, a, r) } }
-            unsafe fn vm_expm1(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$expm1(n, a, r) } }
-            unsafe fn vm_log2(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$log2(n, a, r) } }
-            unsafe fn vm_log1p(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$log1p(n, a, r) } }
-            unsafe fn vm_logb(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$logb(n, a, r) } }
-            unsafe fn vm_cosd(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$cosd(n, a, r) } }
-            unsafe fn vm_sind(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$sind(n, a, r) } }
-            unsafe fn vm_tand(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$tand(n, a, r) } }
-            unsafe fn vm_cospi(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$cospi(n, a, r) } }
-            unsafe fn vm_sinpi(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$sinpi(n, a, r) } }
-            unsafe fn vm_tanpi(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$tanpi(n, a, r) } }
-            unsafe fn vm_sincos(n: MKL_INT, a: *const Self, s: *mut Self, c: *mut Self) { unsafe { sys::$sincos(n, a, s, c) } }
-            unsafe fn vm_sincospi(n: MKL_INT, a: *const Self, s: *mut Self, c: *mut Self) { unsafe { sys::$sincospi(n, a, s, c) } }
-            unsafe fn vm_atan2(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$atan2(n, a, b, r) } }
-            unsafe fn vm_acospi(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$acospi(n, a, r) } }
-            unsafe fn vm_asinpi(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$asinpi(n, a, r) } }
-            unsafe fn vm_atanpi(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$atanpi(n, a, r) } }
-            unsafe fn vm_atan2pi(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$atan2pi(n, a, b, r) } }
-            unsafe fn vm_erf(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$erf(n, a, r) } }
-            unsafe fn vm_erfc(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$erfc(n, a, r) } }
-            unsafe fn vm_erf_inv(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$erf_inv(n, a, r) } }
-            unsafe fn vm_erfc_inv(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$erfc_inv(n, a, r) } }
-            unsafe fn vm_erfcx(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$erfcx(n, a, r) } }
-            unsafe fn vm_cdf_norm(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$cdf_norm(n, a, r) } }
-            unsafe fn vm_cdf_norm_inv(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$cdf_norm_inv(n, a, r) } }
-            unsafe fn vm_lgamma(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$lgamma(n, a, r) } }
-            unsafe fn vm_tgamma(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$tgamma(n, a, r) } }
-            unsafe fn vm_exp_int1(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$exp_int1(n, a, r) } }
-            unsafe fn vm_i0(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$i0(n, a, r) } }
-            unsafe fn vm_i1(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$i1(n, a, r) } }
-            unsafe fn vm_j0(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$j0(n, a, r) } }
-            unsafe fn vm_j1(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$j1(n, a, r) } }
-            unsafe fn vm_y0(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$y0(n, a, r) } }
-            unsafe fn vm_y1(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$y1(n, a, r) } }
-            unsafe fn vm_floor(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$floor(n, a, r) } }
-            unsafe fn vm_ceil(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$ceil(n, a, r) } }
-            unsafe fn vm_trunc(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$trunc(n, a, r) } }
-            unsafe fn vm_round(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$round(n, a, r) } }
-            unsafe fn vm_nearby_int(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$nearby_int(n, a, r) } }
-            unsafe fn vm_rint(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$rint(n, a, r) } }
-            unsafe fn vm_frac(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$frac(n, a, r) } }
-            unsafe fn vm_modf(n: MKL_INT, a: *const Self, ip: *mut Self, fp: *mut Self) { unsafe { sys::$modf(n, a, ip, fp) } }
-            unsafe fn vm_fmod(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$fmod(n, a, b, r) } }
-            unsafe fn vm_remainder(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$remainder(n, a, b, r) } }
-            unsafe fn vm_copysign(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$copysign(n, a, b, r) } }
-            unsafe fn vm_next_after(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$next_after(n, a, b, r) } }
-            unsafe fn vm_fdim(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$fdim(n, a, b, r) } }
-            unsafe fn vm_fmax(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$fmax(n, a, b, r) } }
-            unsafe fn vm_fmin(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$fmin(n, a, b, r) } }
-            unsafe fn vm_max_mag(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$max_mag(n, a, b, r) } }
-            unsafe fn vm_min_mag(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$min_mag(n, a, b, r) } }
+            unsafe fn vm_inv_sqrt(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$inv_sqrt(n, a, r) }
+            }
+            unsafe fn vm_cbrt(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$cbrt(n, a, r) }
+            }
+            unsafe fn vm_inv_cbrt(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$inv_cbrt(n, a, r) }
+            }
+            unsafe fn vm_powr(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$powr(n, a, b, r) }
+            }
+            unsafe fn vm_pow2o3(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$pow2o3(n, a, r) }
+            }
+            unsafe fn vm_pow3o2(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$pow3o2(n, a, r) }
+            }
+            unsafe fn vm_hypot(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$hypot(n, a, b, r) }
+            }
+            unsafe fn vm_exp2(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$exp2(n, a, r) }
+            }
+            unsafe fn vm_exp10(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$exp10(n, a, r) }
+            }
+            unsafe fn vm_expm1(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$expm1(n, a, r) }
+            }
+            unsafe fn vm_log2(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$log2(n, a, r) }
+            }
+            unsafe fn vm_log1p(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$log1p(n, a, r) }
+            }
+            unsafe fn vm_logb(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$logb(n, a, r) }
+            }
+            unsafe fn vm_cosd(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$cosd(n, a, r) }
+            }
+            unsafe fn vm_sind(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$sind(n, a, r) }
+            }
+            unsafe fn vm_tand(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$tand(n, a, r) }
+            }
+            unsafe fn vm_cospi(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$cospi(n, a, r) }
+            }
+            unsafe fn vm_sinpi(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$sinpi(n, a, r) }
+            }
+            unsafe fn vm_tanpi(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$tanpi(n, a, r) }
+            }
+            unsafe fn vm_sincos(n: MKL_INT, a: *const Self, s: *mut Self, c: *mut Self) {
+                unsafe { sys::$sincos(n, a, s, c) }
+            }
+            unsafe fn vm_sincospi(n: MKL_INT, a: *const Self, s: *mut Self, c: *mut Self) {
+                unsafe { sys::$sincospi(n, a, s, c) }
+            }
+            unsafe fn vm_atan2(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$atan2(n, a, b, r) }
+            }
+            unsafe fn vm_acospi(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$acospi(n, a, r) }
+            }
+            unsafe fn vm_asinpi(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$asinpi(n, a, r) }
+            }
+            unsafe fn vm_atanpi(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$atanpi(n, a, r) }
+            }
+            unsafe fn vm_atan2pi(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$atan2pi(n, a, b, r) }
+            }
+            unsafe fn vm_erf(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$erf(n, a, r) }
+            }
+            unsafe fn vm_erfc(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$erfc(n, a, r) }
+            }
+            unsafe fn vm_erf_inv(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$erf_inv(n, a, r) }
+            }
+            unsafe fn vm_erfc_inv(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$erfc_inv(n, a, r) }
+            }
+            unsafe fn vm_erfcx(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$erfcx(n, a, r) }
+            }
+            unsafe fn vm_cdf_norm(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$cdf_norm(n, a, r) }
+            }
+            unsafe fn vm_cdf_norm_inv(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$cdf_norm_inv(n, a, r) }
+            }
+            unsafe fn vm_lgamma(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$lgamma(n, a, r) }
+            }
+            unsafe fn vm_tgamma(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$tgamma(n, a, r) }
+            }
+            unsafe fn vm_exp_int1(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$exp_int1(n, a, r) }
+            }
+            unsafe fn vm_i0(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$i0(n, a, r) }
+            }
+            unsafe fn vm_i1(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$i1(n, a, r) }
+            }
+            unsafe fn vm_j0(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$j0(n, a, r) }
+            }
+            unsafe fn vm_j1(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$j1(n, a, r) }
+            }
+            unsafe fn vm_y0(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$y0(n, a, r) }
+            }
+            unsafe fn vm_y1(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$y1(n, a, r) }
+            }
+            unsafe fn vm_floor(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$floor(n, a, r) }
+            }
+            unsafe fn vm_ceil(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$ceil(n, a, r) }
+            }
+            unsafe fn vm_trunc(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$trunc(n, a, r) }
+            }
+            unsafe fn vm_round(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$round(n, a, r) }
+            }
+            unsafe fn vm_nearby_int(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$nearby_int(n, a, r) }
+            }
+            unsafe fn vm_rint(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$rint(n, a, r) }
+            }
+            unsafe fn vm_frac(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$frac(n, a, r) }
+            }
+            unsafe fn vm_modf(n: MKL_INT, a: *const Self, ip: *mut Self, fp: *mut Self) {
+                unsafe { sys::$modf(n, a, ip, fp) }
+            }
+            unsafe fn vm_fmod(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$fmod(n, a, b, r) }
+            }
+            unsafe fn vm_remainder(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$remainder(n, a, b, r) }
+            }
+            unsafe fn vm_copysign(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$copysign(n, a, b, r) }
+            }
+            unsafe fn vm_next_after(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$next_after(n, a, b, r) }
+            }
+            unsafe fn vm_fdim(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$fdim(n, a, b, r) }
+            }
+            unsafe fn vm_fmax(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$fmax(n, a, b, r) }
+            }
+            unsafe fn vm_fmin(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$fmin(n, a, b, r) }
+            }
+            unsafe fn vm_max_mag(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$max_mag(n, a, b, r) }
+            }
+            unsafe fn vm_min_mag(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$min_mag(n, a, b, r) }
+            }
         }
     };
 }
@@ -403,30 +579,72 @@ macro_rules! impl_vm_scalar_complex {
         mul_by_conj=$mul_by_conj:ident, cis=$cis:ident,
     ) => {
         impl VmScalar for $ty {
-            unsafe fn vm_add(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$add(n, a.cast(), b.cast(), r.cast()) } }
-            unsafe fn vm_sub(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$sub(n, a.cast(), b.cast(), r.cast()) } }
-            unsafe fn vm_mul(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$mul(n, a.cast(), b.cast(), r.cast()) } }
-            unsafe fn vm_div(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$div(n, a.cast(), b.cast(), r.cast()) } }
-            unsafe fn vm_sqrt(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$sqrt(n, a.cast(), r.cast()) } }
-            unsafe fn vm_pow(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) { unsafe { sys::$pow(n, a.cast(), b.cast(), r.cast()) } }
+            unsafe fn vm_add(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$add(n, a.cast(), b.cast(), r.cast()) }
+            }
+            unsafe fn vm_sub(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$sub(n, a.cast(), b.cast(), r.cast()) }
+            }
+            unsafe fn vm_mul(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$mul(n, a.cast(), b.cast(), r.cast()) }
+            }
+            unsafe fn vm_div(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$div(n, a.cast(), b.cast(), r.cast()) }
+            }
+            unsafe fn vm_sqrt(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$sqrt(n, a.cast(), r.cast()) }
+            }
+            unsafe fn vm_pow(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self) {
+                unsafe { sys::$pow(n, a.cast(), b.cast(), r.cast()) }
+            }
             unsafe fn vm_powx(n: MKL_INT, a: *const Self, b: Self, r: *mut Self) {
                 unsafe { sys::$powx(n, a.cast(), core::mem::transmute_copy(&b), r.cast()) }
             }
-            unsafe fn vm_exp(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$exp(n, a.cast(), r.cast()) } }
-            unsafe fn vm_ln(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$ln(n, a.cast(), r.cast()) } }
-            unsafe fn vm_log10(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$log10(n, a.cast(), r.cast()) } }
-            unsafe fn vm_cos(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$cos(n, a.cast(), r.cast()) } }
-            unsafe fn vm_sin(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$sin(n, a.cast(), r.cast()) } }
-            unsafe fn vm_tan(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$tan(n, a.cast(), r.cast()) } }
-            unsafe fn vm_acos(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$acos(n, a.cast(), r.cast()) } }
-            unsafe fn vm_asin(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$asin(n, a.cast(), r.cast()) } }
-            unsafe fn vm_atan(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$atan(n, a.cast(), r.cast()) } }
-            unsafe fn vm_cosh(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$cosh(n, a.cast(), r.cast()) } }
-            unsafe fn vm_sinh(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$sinh(n, a.cast(), r.cast()) } }
-            unsafe fn vm_tanh(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$tanh(n, a.cast(), r.cast()) } }
-            unsafe fn vm_acosh(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$acosh(n, a.cast(), r.cast()) } }
-            unsafe fn vm_asinh(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$asinh(n, a.cast(), r.cast()) } }
-            unsafe fn vm_atanh(n: MKL_INT, a: *const Self, r: *mut Self) { unsafe { sys::$atanh(n, a.cast(), r.cast()) } }
+            unsafe fn vm_exp(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$exp(n, a.cast(), r.cast()) }
+            }
+            unsafe fn vm_ln(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$ln(n, a.cast(), r.cast()) }
+            }
+            unsafe fn vm_log10(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$log10(n, a.cast(), r.cast()) }
+            }
+            unsafe fn vm_cos(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$cos(n, a.cast(), r.cast()) }
+            }
+            unsafe fn vm_sin(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$sin(n, a.cast(), r.cast()) }
+            }
+            unsafe fn vm_tan(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$tan(n, a.cast(), r.cast()) }
+            }
+            unsafe fn vm_acos(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$acos(n, a.cast(), r.cast()) }
+            }
+            unsafe fn vm_asin(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$asin(n, a.cast(), r.cast()) }
+            }
+            unsafe fn vm_atan(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$atan(n, a.cast(), r.cast()) }
+            }
+            unsafe fn vm_cosh(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$cosh(n, a.cast(), r.cast()) }
+            }
+            unsafe fn vm_sinh(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$sinh(n, a.cast(), r.cast()) }
+            }
+            unsafe fn vm_tanh(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$tanh(n, a.cast(), r.cast()) }
+            }
+            unsafe fn vm_acosh(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$acosh(n, a.cast(), r.cast()) }
+            }
+            unsafe fn vm_asinh(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$asinh(n, a.cast(), r.cast()) }
+            }
+            unsafe fn vm_atanh(n: MKL_INT, a: *const Self, r: *mut Self) {
+                unsafe { sys::$atanh(n, a.cast(), r.cast()) }
+            }
         }
 
         impl ComplexVmScalar for $ty {

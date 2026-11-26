@@ -4,9 +4,7 @@
 
 use approx::assert_abs_diff_eq;
 
-use onemkl::rng::convolution::{
-    convolve_1d, correlate_1d, Conv1d, ConvMode, Corr1d, CorrMode,
-};
+use onemkl::rng::convolution::{Conv1d, ConvMode, Corr1d, CorrMode, convolve_1d, correlate_1d};
 
 #[test]
 fn convolve_short_vectors() {

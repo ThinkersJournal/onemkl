@@ -4,7 +4,7 @@
 
 use approx::assert_abs_diff_eq;
 
-use onemkl::blas::compact::{gemm, gepack, geunpack, get_size, CompactFormat};
+use onemkl::blas::compact::{CompactFormat, gemm, gepack, get_size, geunpack};
 use onemkl::{Layout, Transpose};
 
 #[test]
@@ -23,13 +23,7 @@ fn pack_unpack_roundtrip_2x2() {
     // Pack the two matrices.
     let ptrs: [*const f64; 2] = [a0.as_ptr(), a1.as_ptr()];
     unsafe {
-        gepack::<f64>(
-            Layout::RowMajor, ld, ld,
-            &ptrs, ld,
-            &mut packed, ld,
-            format,
-        )
-        .unwrap();
+        gepack::<f64>(Layout::RowMajor, ld, ld, &ptrs, ld, &mut packed, ld, format).unwrap();
     }
 
     // Unpack back into fresh buffers.
@@ -37,13 +31,7 @@ fn pack_unpack_roundtrip_2x2() {
     let mut out1 = vec![0.0_f64; 4];
     let out_ptrs: [*mut f64; 2] = [out0.as_mut_ptr(), out1.as_mut_ptr()];
     unsafe {
-        geunpack::<f64>(
-            Layout::RowMajor, ld, ld,
-            &out_ptrs, ld,
-            &packed, ld,
-            format,
-        )
-        .unwrap();
+        geunpack::<f64>(Layout::RowMajor, ld, ld, &out_ptrs, ld, &packed, ld, format).unwrap();
     }
 
     assert_eq!(out0, a0);
@@ -71,17 +59,47 @@ fn compact_gemm_two_2x2_matmuls() {
     let a_ptrs: [*const f64; 2] = [a0.as_ptr(), a1.as_ptr()];
     let b_ptrs: [*const f64; 2] = [b0.as_ptr(), b1.as_ptr()];
     unsafe {
-        gepack::<f64>(Layout::RowMajor, ld, ld, &a_ptrs, ld, &mut a_packed, ld, format).unwrap();
-        gepack::<f64>(Layout::RowMajor, ld, ld, &b_ptrs, ld, &mut b_packed, ld, format).unwrap();
+        gepack::<f64>(
+            Layout::RowMajor,
+            ld,
+            ld,
+            &a_ptrs,
+            ld,
+            &mut a_packed,
+            ld,
+            format,
+        )
+        .unwrap();
+        gepack::<f64>(
+            Layout::RowMajor,
+            ld,
+            ld,
+            &b_ptrs,
+            ld,
+            &mut b_packed,
+            ld,
+            format,
+        )
+        .unwrap();
     }
 
     gemm::<f64>(
-        Layout::RowMajor, Transpose::NoTrans, Transpose::NoTrans,
-        2, 2, 2, 1.0,
-        &a_packed, ld,
-        &b_packed, ld,
-        0.0, &mut c_packed, ld,
-        format, nm,
+        Layout::RowMajor,
+        Transpose::NoTrans,
+        Transpose::NoTrans,
+        2,
+        2,
+        2,
+        1.0,
+        &a_packed,
+        ld,
+        &b_packed,
+        ld,
+        0.0,
+        &mut c_packed,
+        ld,
+        format,
+        nm,
     )
     .unwrap();
 
@@ -128,17 +146,47 @@ fn compact_gemm_works_for_f32() {
     let a_ptrs: [*const f32; 1] = [a0.as_ptr()];
     let b_ptrs: [*const f32; 1] = [b0.as_ptr()];
     unsafe {
-        gepack::<f32>(Layout::RowMajor, ld, ld, &a_ptrs, ld, &mut a_packed, ld, format).unwrap();
-        gepack::<f32>(Layout::RowMajor, ld, ld, &b_ptrs, ld, &mut b_packed, ld, format).unwrap();
+        gepack::<f32>(
+            Layout::RowMajor,
+            ld,
+            ld,
+            &a_ptrs,
+            ld,
+            &mut a_packed,
+            ld,
+            format,
+        )
+        .unwrap();
+        gepack::<f32>(
+            Layout::RowMajor,
+            ld,
+            ld,
+            &b_ptrs,
+            ld,
+            &mut b_packed,
+            ld,
+            format,
+        )
+        .unwrap();
     }
 
     gemm::<f32>(
-        Layout::RowMajor, Transpose::NoTrans, Transpose::NoTrans,
-        2, 2, 2, 1.0,
-        &a_packed, ld,
-        &b_packed, ld,
-        0.0, &mut c_packed, ld,
-        format, nm,
+        Layout::RowMajor,
+        Transpose::NoTrans,
+        Transpose::NoTrans,
+        2,
+        2,
+        2,
+        1.0,
+        &a_packed,
+        ld,
+        &b_packed,
+        ld,
+        0.0,
+        &mut c_packed,
+        ld,
+        format,
+        nm,
     )
     .unwrap();
 

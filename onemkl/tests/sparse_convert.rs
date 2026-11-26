@@ -26,8 +26,24 @@ fn copy_preserves_mv() {
     let x = [1.0_f64; 3];
     let mut ya = [0.0_f64; 2];
     let mut yb = [0.0_f64; 2];
-    a.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut ya).unwrap();
-    b.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut yb).unwrap();
+    a.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut ya,
+    )
+    .unwrap();
+    b.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut yb,
+    )
+    .unwrap();
     assert_eq!(ya, yb);
 }
 
@@ -40,8 +56,24 @@ fn convert_csr_to_csc_then_back() {
     let x = [1.0_f64; 3];
     let mut ya = [0.0_f64; 2];
     let mut yc = [0.0_f64; 2];
-    a.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut ya).unwrap();
-    csr.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut yc).unwrap();
+    a.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut ya,
+    )
+    .unwrap();
+    csr.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut yc,
+    )
+    .unwrap();
     for (a, b) in ya.iter().zip(&yc) {
         assert_abs_diff_eq!(*a, *b, epsilon = 1e-12);
     }
@@ -53,7 +85,15 @@ fn convert_csr_to_coo() {
     let coo = a.convert_coo(Operation::NoTrans).unwrap();
     let x = [1.0_f64; 3];
     let mut y = [0.0_f64; 2];
-    coo.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y).unwrap();
+    coo.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     // A * [1,1,1] = [1+2, 3] = [3, 3]
     assert_abs_diff_eq!(y[0], 3.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[1], 3.0, epsilon = 1e-12);
@@ -69,7 +109,15 @@ fn convert_csr_with_transpose() {
     // (Aᵀ) * [1, 1] = column sums of A = [1, 3, 2].
     let x = [1.0_f64, 1.0];
     let mut y = [0.0_f64; 3];
-    at.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y).unwrap();
+    at.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     assert_abs_diff_eq!(y[0], 1.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[1], 3.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[2], 2.0, epsilon = 1e-12);
@@ -86,8 +134,7 @@ fn convert_to_bsr_block_diagonal() {
     let row_ptr = vec![0, 2, 4, 6, 8];
     let col_idx = vec![0, 1, 0, 1, 2, 3, 2, 3];
     let values = vec![1.0_f64, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-    let csr =
-        SparseMatrix::from_csr(4, 4, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
+    let csr = SparseMatrix::from_csr(4, 4, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
     let bsr = csr
         .convert_bsr(2, BlockLayout::RowMajor, Operation::NoTrans)
         .unwrap();
@@ -95,8 +142,24 @@ fn convert_to_bsr_block_diagonal() {
     let x = [1.0_f64; 4];
     let mut y_csr = [0.0_f64; 4];
     let mut y_bsr = [0.0_f64; 4];
-    csr.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y_csr).unwrap();
-    bsr.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y_bsr).unwrap();
+    csr.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y_csr,
+    )
+    .unwrap();
+    bsr.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y_bsr,
+    )
+    .unwrap();
     for (a, b) in y_csr.iter().zip(&y_bsr) {
         assert_abs_diff_eq!(*a, *b, epsilon = 1e-12);
     }
@@ -111,13 +174,20 @@ fn order_succeeds() {
     // Row 0 columns out of order: [2, 0] instead of [0, 2].
     let col_idx = vec![2, 0, 1];
     let values = vec![2.0_f64, 1.0, 3.0];
-    let a =
-        SparseMatrix::from_csr(2, 3, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
+    let a = SparseMatrix::from_csr(2, 3, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
     a.order().unwrap();
 
     let x = [1.0_f64; 3];
     let mut y = [0.0_f64; 2];
-    a.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y).unwrap();
+    a.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     assert_abs_diff_eq!(y[0], 3.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[1], 3.0, epsilon = 1e-12);
 }
@@ -130,7 +200,15 @@ fn mv_hint_then_optimize() {
     a.optimize().unwrap();
     let x = [1.0_f64; 3];
     let mut y = [0.0_f64; 2];
-    a.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y).unwrap();
+    a.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     assert_abs_diff_eq!(y[0], 3.0, epsilon = 1e-12);
 }
 
@@ -154,8 +232,7 @@ fn sv_hint_then_optimize() {
     let row_ptr = vec![0, 2, 3];
     let col_idx = vec![0, 1, 1];
     let values = vec![2.0_f64, 1.0, 3.0];
-    let a =
-        SparseMatrix::from_csr(2, 2, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
+    let a = SparseMatrix::from_csr(2, 2, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
     a.set_sv_hint(
         Operation::NoTrans,
         MatrixDescr::triangular(

@@ -4,7 +4,9 @@
 
 use approx::assert_abs_diff_eq;
 
-use onemkl::optim::{solve_trnls_bounded, TrnlsBoundedSession, TrnlsOptions, TrnlsSession, TrnlsStep};
+use onemkl::optim::{
+    TrnlsBoundedSession, TrnlsOptions, TrnlsSession, TrnlsStep, solve_trnls_bounded,
+};
 
 // Fit y = a + b*x through (1, 2) and (2, 3): solution a = b = 1.
 fn residual(x: &[f64], f: &mut [f64]) {
@@ -68,7 +70,8 @@ fn run_bounded(s: &mut TrnlsBoundedSession) {
 fn bounded_session_respects_the_bound_and_matches_the_closure_solver() {
     // Unconstrained optimum is (1, 1); the bound x1 <= 0.5 is active.
     let (lo, hi) = ([-10.0, -10.0], [10.0, 0.5]);
-    let mut s = TrnlsBoundedSession::new(2, 2, &[0.0, 0.0], &lo, &hi, TrnlsOptions::default()).unwrap();
+    let mut s =
+        TrnlsBoundedSession::new(2, 2, &[0.0, 0.0], &lo, &hi, TrnlsOptions::default()).unwrap();
     run_bounded(&mut s);
     assert!(s.x()[1] <= 0.5 + 1e-12, "bound violated: {:?}", s.x());
     // MKL's bounded solver stops early on this toy problem (it does not reach
@@ -80,7 +83,17 @@ fn bounded_session_respects_the_bound_and_matches_the_closure_solver() {
     assert!(f[0].hypot(f[1]) < f0, "no descent: {:?}", s.x());
 
     let mut x = [0.0, 0.0];
-    solve_trnls_bounded(2, 2, &mut x, &lo, &hi, TrnlsOptions::default(), residual, |_, j| jacobian(j)).unwrap();
+    solve_trnls_bounded(
+        2,
+        2,
+        &mut x,
+        &lo,
+        &hi,
+        TrnlsOptions::default(),
+        residual,
+        |_, j| jacobian(j),
+    )
+    .unwrap();
     assert_abs_diff_eq!(s.x()[0], x[0], epsilon = 1e-8);
     assert_abs_diff_eq!(s.x()[1], x[1], epsilon = 1e-8);
 }
@@ -88,12 +101,16 @@ fn bounded_session_respects_the_bound_and_matches_the_closure_solver() {
 #[test]
 fn bounded_check_and_length_validation() {
     let (lo, hi) = ([-10.0, -10.0], [10.0, 10.0]);
-    let mut s = TrnlsBoundedSession::new(2, 2, &[0.0, 0.0], &lo, &hi, TrnlsOptions::default()).unwrap();
+    let mut s =
+        TrnlsBoundedSession::new(2, 2, &[0.0, 0.0], &lo, &hi, TrnlsOptions::default()).unwrap();
     let x = s.x().to_vec();
     residual(&x, s.residual_mut());
     jacobian(s.jacobian_mut());
     assert!(s.check().unwrap().is_valid());
     s.jacobian_mut()[2] = f64::NAN;
     assert!(!s.check().unwrap().is_valid());
-    assert!(TrnlsBoundedSession::new(2, 2, &[0.0, 0.0], &lo[..1], &hi, TrnlsOptions::default()).is_err());
+    assert!(
+        TrnlsBoundedSession::new(2, 2, &[0.0, 0.0], &lo[..1], &hi, TrnlsOptions::default())
+            .is_err()
+    );
 }

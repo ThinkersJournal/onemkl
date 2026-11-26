@@ -3,7 +3,7 @@
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
-use onemkl_sys::{MKLVersion, MKL_Get_Version, MKL_Get_Version_String};
+use onemkl_sys::{MKL_Get_Version, MKL_Get_Version_String, MKLVersion};
 
 #[test]
 fn version_struct_is_populated() {
@@ -28,8 +28,7 @@ fn version_string_is_nonempty() {
     unsafe {
         MKL_Get_Version_String(buf.as_mut_ptr().cast::<c_char>(), buf.len() as i32);
     }
-    let s = CStr::from_bytes_until_nul(&buf)
-        .expect("version string should be NUL-terminated");
+    let s = CStr::from_bytes_until_nul(&buf).expect("version string should be NUL-terminated");
     let text = s.to_string_lossy();
     assert!(!text.is_empty());
     println!("Version string: {text}");

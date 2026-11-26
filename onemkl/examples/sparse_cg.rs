@@ -4,29 +4,18 @@
 //!
 //! Run with `cargo run --example sparse_cg`.
 
-use onemkl::iss::{solve_cg, IssOptions, IssStopReason};
+use onemkl::iss::{IssOptions, IssStopReason, solve_cg};
 use onemkl::sparse::{IndexBase, MatrixType, Operation, SparseMatrix};
 
 fn main() {
     // 5×5 SPD pentadiagonal A, the discrete Laplacian on a line:
     //   diag = 4, off-diag = -1.
     let row_ptr = vec![0, 2, 5, 8, 11, 13];
-    let col_idx = vec![
-        0, 1,
-        0, 1, 2,
-        1, 2, 3,
-        2, 3, 4,
-        3, 4,
-    ];
+    let col_idx = vec![0, 1, 0, 1, 2, 1, 2, 3, 2, 3, 4, 3, 4];
     let values = vec![
-        4.0_f64, -1.0,
-        -1.0, 4.0, -1.0,
-        -1.0, 4.0, -1.0,
-        -1.0, 4.0, -1.0,
-        -1.0, 4.0,
+        4.0_f64, -1.0, -1.0, 4.0, -1.0, -1.0, 4.0, -1.0, -1.0, 4.0, -1.0, -1.0, 4.0,
     ];
-    let a =
-        SparseMatrix::from_csr(5, 5, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
+    let a = SparseMatrix::from_csr(5, 5, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
 
     // x_true = [1, 2, 3, 4, 5]; b = A * x_true = [2, 4, 6, 8, 16].
     let b = [2.0_f64, 4.0, 6.0, 8.0, 16.0];

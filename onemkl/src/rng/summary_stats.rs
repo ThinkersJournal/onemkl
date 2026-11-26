@@ -39,11 +39,7 @@ pub trait SsScalar: Copy + Default + 'static {
         indices: *const c_int,
     ) -> c_int;
 
-    unsafe fn ss_edit_task(
-        task: VSLSSTaskPtr,
-        parameter: c_int,
-        address: *const Self,
-    ) -> c_int;
+    unsafe fn ss_edit_task(task: VSLSSTaskPtr, parameter: c_int, address: *const Self) -> c_int;
 
     #[allow(clippy::too_many_arguments)]
     unsafe fn ss_edit_moments(
@@ -57,11 +53,7 @@ pub trait SsScalar: Copy + Default + 'static {
         c4m: *mut Self,
     ) -> c_int;
 
-    unsafe fn ss_compute(
-        task: VSLSSTaskPtr,
-        estimates: u64,
-        method: c_int,
-    ) -> c_int;
+    unsafe fn ss_compute(task: VSLSSTaskPtr, estimates: u64, method: c_int) -> c_int;
 
     #[allow(clippy::too_many_arguments)]
     unsafe fn ss_edit_quantiles(
@@ -155,11 +147,7 @@ macro_rules! impl_ss_scalar {
             ) -> c_int {
                 unsafe { sys::$moments(task, mean, r2m, r3m, r4m, c2m, c3m, c4m) }
             }
-            unsafe fn ss_compute(
-                task: VSLSSTaskPtr,
-                estimates: u64,
-                method: c_int,
-            ) -> c_int {
+            unsafe fn ss_compute(task: VSLSSTaskPtr, estimates: u64, method: c_int) -> c_int {
                 unsafe { sys::$compute(task, estimates, method) }
             }
             unsafe fn ss_edit_quantiles(
@@ -208,11 +196,7 @@ macro_rules! impl_ss_scalar {
                 mean_out: *mut Self,
                 cov_out: *mut Self,
             ) -> c_int {
-                unsafe {
-                    sys::$robust_cov(
-                        task, cov_storage, n_params, params, mean_out, cov_out,
-                    )
-                }
+                unsafe { sys::$robust_cov(task, cov_storage, n_params, params, mean_out, cov_out) }
             }
             unsafe fn ss_edit_outliers_detection(
                 task: VSLSSTaskPtr,
@@ -255,19 +239,29 @@ macro_rules! impl_ss_scalar {
     };
 }
 
-impl_ss_scalar!(f32,
-    new=vslsSSNewTask, edit=vslsSSEditTask,
-    moments=vslsSSEditMoments, compute=vslsSSCompute,
-    quantiles=vslsSSEditQuantiles, stream_quantiles=vslsSSEditStreamQuantiles,
-    robust_cov=vslsSSEditRobustCovariance, outliers=vslsSSEditOutliersDetection,
-    missing=vslsSSEditMissingValues,
+impl_ss_scalar!(
+    f32,
+    new = vslsSSNewTask,
+    edit = vslsSSEditTask,
+    moments = vslsSSEditMoments,
+    compute = vslsSSCompute,
+    quantiles = vslsSSEditQuantiles,
+    stream_quantiles = vslsSSEditStreamQuantiles,
+    robust_cov = vslsSSEditRobustCovariance,
+    outliers = vslsSSEditOutliersDetection,
+    missing = vslsSSEditMissingValues,
 );
-impl_ss_scalar!(f64,
-    new=vsldSSNewTask, edit=vsldSSEditTask,
-    moments=vsldSSEditMoments, compute=vsldSSCompute,
-    quantiles=vsldSSEditQuantiles, stream_quantiles=vsldSSEditStreamQuantiles,
-    robust_cov=vsldSSEditRobustCovariance, outliers=vsldSSEditOutliersDetection,
-    missing=vsldSSEditMissingValues,
+impl_ss_scalar!(
+    f64,
+    new = vsldSSNewTask,
+    edit = vsldSSEditTask,
+    moments = vsldSSEditMoments,
+    compute = vsldSSCompute,
+    quantiles = vsldSSEditQuantiles,
+    stream_quantiles = vsldSSEditStreamQuantiles,
+    robust_cov = vsldSSEditRobustCovariance,
+    outliers = vsldSSEditOutliersDetection,
+    missing = vsldSSEditMissingValues,
 );
 
 /// Owned summary-statistics task. Each compute method registers output
@@ -291,21 +285,21 @@ unsafe impl<T: SsScalar + Send> Send for SummaryStats<'_, T> {}
 impl<'data, T: SsScalar> SummaryStats<'data, T> {
     /// Build a task over `num_variables × num_observations` data laid
     /// out so variable `i` occupies `data[i * num_observations ..]`.
-    pub fn new(
-        data: &'data [T],
-        num_variables: usize,
-        num_observations: usize,
-    ) -> Result<Self> {
+    pub fn new(data: &'data [T], num_variables: usize, num_observations: usize) -> Result<Self> {
         if data.len() < num_variables * num_observations {
             return Err(Error::InvalidArgument(
                 "data buffer is smaller than num_variables * num_observations",
             ));
         }
         let p_box: Box<c_int> = Box::new(
-            num_variables.try_into().map_err(|_| Error::DimensionOverflow)?,
+            num_variables
+                .try_into()
+                .map_err(|_| Error::DimensionOverflow)?,
         );
         let n_box: Box<c_int> = Box::new(
-            num_observations.try_into().map_err(|_| Error::DimensionOverflow)?,
+            num_observations
+                .try_into()
+                .map_err(|_| Error::DimensionOverflow)?,
         );
         let xstorage_box: Box<c_int> = Box::new(sys::VSL_SS_MATRIX_STORAGE_ROWS as c_int);
         let mut task: VSLSSTaskPtr = ptr::null_mut();
@@ -336,9 +330,8 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     /// Per-variable mean. Length is `num_variables`.
     pub fn mean(&mut self) -> Result<Vec<T>> {
         let mut mean = vec![T::default(); self.p];
-        let status = unsafe {
-            T::ss_edit_task(self.task, sys::VSL_SS_ED_MEAN as c_int, mean.as_mut_ptr())
-        };
+        let status =
+            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_MEAN as c_int, mean.as_mut_ptr()) };
         check_vsl(status)?;
         let status = unsafe {
             T::ss_compute(
@@ -359,22 +352,18 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
         let mut mean = vec![T::default(); self.p];
         let mut r2m = vec![T::default(); self.p];
         let mut c2m = vec![T::default(); self.p];
-        let status = unsafe {
-            T::ss_edit_task(self.task, sys::VSL_SS_ED_MEAN as c_int, mean.as_mut_ptr())
-        };
+        let status =
+            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_MEAN as c_int, mean.as_mut_ptr()) };
         check_vsl(status)?;
-        let status = unsafe {
-            T::ss_edit_task(self.task, sys::VSL_SS_ED_2R_MOM as c_int, r2m.as_mut_ptr())
-        };
+        let status =
+            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_2R_MOM as c_int, r2m.as_mut_ptr()) };
         check_vsl(status)?;
-        let status = unsafe {
-            T::ss_edit_task(self.task, sys::VSL_SS_ED_2C_MOM as c_int, c2m.as_mut_ptr())
-        };
+        let status =
+            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_2C_MOM as c_int, c2m.as_mut_ptr()) };
         check_vsl(status)?;
         let estimates = (sys::VSL_SS_MEAN | sys::VSL_SS_2R_MOM | sys::VSL_SS_2C_MOM) as u64;
-        let status = unsafe {
-            T::ss_compute(self.task, estimates, sys::VSL_SS_METHOD_FAST as c_int)
-        };
+        let status =
+            unsafe { T::ss_compute(self.task, estimates, sys::VSL_SS_METHOD_FAST as c_int) };
         check_vsl(status)?;
         Ok(c2m)
     }
@@ -385,9 +374,8 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     /// variable before computing.
     pub fn min(&mut self) -> Result<Vec<T>> {
         let mut min = self.seed_from_first_observation();
-        let status = unsafe {
-            T::ss_edit_task(self.task, sys::VSL_SS_ED_MIN as c_int, min.as_mut_ptr())
-        };
+        let status =
+            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_MIN as c_int, min.as_mut_ptr()) };
         check_vsl(status)?;
         let status = unsafe {
             T::ss_compute(
@@ -404,9 +392,8 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     /// note.
     pub fn max(&mut self) -> Result<Vec<T>> {
         let mut max = self.seed_from_first_observation();
-        let status = unsafe {
-            T::ss_edit_task(self.task, sys::VSL_SS_ED_MAX as c_int, max.as_mut_ptr())
-        };
+        let status =
+            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_MAX as c_int, max.as_mut_ptr()) };
         check_vsl(status)?;
         let status = unsafe {
             T::ss_compute(
@@ -429,9 +416,8 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     /// Per-variable sum. Length is `num_variables`.
     pub fn sum(&mut self) -> Result<Vec<T>> {
         let mut sum = vec![T::default(); self.p];
-        let status = unsafe {
-            T::ss_edit_task(self.task, sys::VSL_SS_ED_SUM as c_int, sum.as_mut_ptr())
-        };
+        let status =
+            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_SUM as c_int, sum.as_mut_ptr()) };
         check_vsl(status)?;
         let status = unsafe {
             T::ss_compute(
@@ -490,11 +476,7 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     /// approximate quantile. `params` controls the estimator
     /// (typically `[buffer_size_per_quantile]`). Returns the same
     /// `num_variables × orders.len()` layout as [`Self::quantiles`].
-    pub fn stream_quantiles(
-        &mut self,
-        orders: &[T],
-        params: &[T],
-    ) -> Result<Vec<T>> {
+    pub fn stream_quantiles(&mut self, orders: &[T], params: &[T]) -> Result<Vec<T>> {
         if orders.is_empty() {
             return Err(Error::InvalidArgument("orders must be non-empty"));
         }
@@ -541,10 +523,7 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     /// Note: MKL exposes BACON only for *outlier weights*
     /// (see [`Self::outliers_bacon`]); for a full robust covariance
     /// estimate the supported algorithm is TBS.
-    pub fn robust_covariance_tbs(
-        &mut self,
-        params: &[T],
-    ) -> Result<(Vec<T>, Vec<T>)> {
+    pub fn robust_covariance_tbs(&mut self, params: &[T]) -> Result<(Vec<T>, Vec<T>)> {
         let cov_storage: c_int = sys::VSL_SS_MATRIX_STORAGE_FULL as c_int;
         let n_params: c_int = params
             .len()
@@ -672,11 +651,7 @@ impl SummaryStats<'_, f64> {
     #[inline]
     #[must_use]
     pub fn bacon_default_params() -> [f64; 3] {
-        [
-            sys::VSL_SS_METHOD_BACON_MEDIAN_INIT as f64,
-            0.05,
-            0.05,
-        ]
+        [sys::VSL_SS_METHOD_BACON_MEDIAN_INIT as f64, 0.05, 0.05]
     }
 
     /// Default multiple-imputation parameters: copy input, 25 EM
@@ -686,10 +661,10 @@ impl SummaryStats<'_, f64> {
     pub fn impute_default_params() -> [f64; 5] {
         [
             sys::VSL_SS_METHOD_MI as f64, // method id
-            25.0,                          // max iterations
-            1.0e-4,                        // tolerance
-            1.0,                           // copy data flag
-            0.0,                           // reserved
+            25.0,                         // max iterations
+            1.0e-4,                       // tolerance
+            1.0,                          // copy data flag
+            0.0,                          // reserved
         ]
     }
 }
@@ -699,24 +674,14 @@ impl SummaryStats<'_, f32> {
     #[inline]
     #[must_use]
     pub fn bacon_default_params() -> [f32; 3] {
-        [
-            sys::VSL_SS_METHOD_BACON_MEDIAN_INIT as f32,
-            0.05,
-            0.05,
-        ]
+        [sys::VSL_SS_METHOD_BACON_MEDIAN_INIT as f32, 0.05, 0.05]
     }
 
     /// `f32` counterpart of [`SummaryStats::<f64>::impute_default_params`].
     #[inline]
     #[must_use]
     pub fn impute_default_params() -> [f32; 5] {
-        [
-            sys::VSL_SS_METHOD_MI as f32,
-            25.0,
-            1.0e-4,
-            1.0,
-            0.0,
-        ]
+        [sys::VSL_SS_METHOD_MI as f32, 25.0, 1.0e-4, 1.0, 0.0]
     }
 }
 

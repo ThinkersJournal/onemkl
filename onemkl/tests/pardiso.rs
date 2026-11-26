@@ -5,7 +5,7 @@
 use approx::assert_abs_diff_eq;
 
 use onemkl::pardiso::{
-    pardiso_64_raw, set_pardiso_pivot_callback, IndexBase, Pardiso, PardisoMatrixType,
+    IndexBase, Pardiso, PardisoMatrixType, pardiso_64_raw, set_pardiso_pivot_callback,
 };
 
 #[test]
@@ -28,8 +28,7 @@ fn solve_real_spd_3x3() {
     let b = vec![3.0_f64, 2.0, 3.0];
     let mut x = vec![0.0_f64; 3];
 
-    let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd)
-        .with_indexing(IndexBase::One);
+    let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd).with_indexing(IndexBase::One);
     solver.solve(3, &a, &ia, &ja, &b, &mut x).unwrap();
     assert_abs_diff_eq!(x[0], 1.0, epsilon = 1e-10);
     assert_abs_diff_eq!(x[1], 1.0, epsilon = 1e-10);
@@ -53,8 +52,8 @@ fn solve_real_unsymmetric_3x3() {
     let b = vec![3.0_f64, 4.0, 5.0];
     let mut x = vec![0.0_f64; 3];
 
-    let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealUnsym)
-        .with_indexing(IndexBase::One);
+    let mut solver =
+        Pardiso::<f64>::new(PardisoMatrixType::RealUnsym).with_indexing(IndexBase::One);
     solver.solve(3, &a, &ia, &ja, &b, &mut x).unwrap();
     assert_abs_diff_eq!(x[0], 1.0, epsilon = 1e-10);
     assert_abs_diff_eq!(x[1], 1.0, epsilon = 1e-10);
@@ -70,8 +69,7 @@ fn solve_zero_indexed_csr() {
     let b = vec![3.0_f64, 2.0, 3.0];
     let mut x = vec![0.0_f64; 3];
 
-    let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd)
-        .with_indexing(IndexBase::Zero);
+    let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd).with_indexing(IndexBase::Zero);
     solver.solve(3, &a, &ia, &ja, &b, &mut x).unwrap();
     assert_abs_diff_eq!(x[0], 1.0, epsilon = 1e-10);
     assert_abs_diff_eq!(x[1], 1.0, epsilon = 1e-10);
@@ -89,8 +87,7 @@ fn solve_two_rhs() {
     let b = vec![3.0_f64, 2.0, 3.0, 6.0, 4.0, 6.0];
     let mut x = vec![0.0_f64; 6];
 
-    let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd)
-        .with_indexing(IndexBase::One);
+    let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd).with_indexing(IndexBase::One);
     solver.solve_multi(3, 2, &a, &ia, &ja, &b, &mut x).unwrap();
     assert_abs_diff_eq!(x[0], 1.0, epsilon = 1e-10);
     assert_abs_diff_eq!(x[1], 1.0, epsilon = 1e-10);
@@ -106,8 +103,7 @@ fn second_solve_uses_cached_factorization() {
     let ja = vec![1_i32, 2, 2, 3, 3];
     let a = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
 
-    let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd)
-        .with_indexing(IndexBase::One);
+    let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd).with_indexing(IndexBase::One);
 
     // First solve: factorizes.
     let b1 = vec![3.0_f64, 2.0, 3.0];
@@ -130,8 +126,7 @@ fn analyze_then_solve() {
     let ja = vec![1_i32, 2, 2, 3, 3];
     let a = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
 
-    let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd)
-        .with_indexing(IndexBase::One);
+    let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd).with_indexing(IndexBase::One);
     solver.analyze_and_factorize(3, &a, &ia, &ja).unwrap();
 
     let b = vec![3.0_f64, 2.0, 3.0];
@@ -199,8 +194,7 @@ fn pardiso_pivot_callback_install_and_solve() {
     let b = vec![3.0_f64, 2.0, 3.0];
     let mut x = vec![0.0_f64; 3];
 
-    let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd)
-        .with_indexing(IndexBase::One);
+    let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd).with_indexing(IndexBase::One);
     solver.solve(3, &a, &ia, &ja, &b, &mut x).unwrap();
     assert_abs_diff_eq!(x[0], 1.0, epsilon = 1e-10);
     assert_abs_diff_eq!(x[1], 1.0, epsilon = 1e-10);
@@ -232,9 +226,7 @@ fn pardiso_64_raw_solves_3x3_spd() {
 
     // Phase 13 = analyze + factorize + solve.
     pardiso_64_raw::<f64>(
-        &mut pt, 1, 1, mtype, 13, 3,
-        &a, &ia, &ja, None, 1, &mut iparm, 0,
-        &b, &mut x,
+        &mut pt, 1, 1, mtype, 13, 3, &a, &ia, &ja, None, 1, &mut iparm, 0, &b, &mut x,
     )
     .unwrap();
     assert_abs_diff_eq!(x[0], 1.0, epsilon = 1e-10);
@@ -243,9 +235,7 @@ fn pardiso_64_raw_solves_3x3_spd() {
 
     // Phase -1 = release all internal memory.
     pardiso_64_raw::<f64>(
-        &mut pt, 1, 1, mtype, -1, 3,
-        &a, &ia, &ja, None, 0, &mut iparm, 0,
-        &no_b, &mut no_x,
+        &mut pt, 1, 1, mtype, -1, 3, &a, &ia, &ja, None, 0, &mut iparm, 0, &no_b, &mut no_x,
     )
     .unwrap();
 }
@@ -261,9 +251,7 @@ fn pardiso_64_raw_rejects_complex_real_mismatch() {
     let mut pt: [*mut core::ffi::c_void; 64] = [core::ptr::null_mut(); 64];
     let mut iparm: [i64; 64] = [0; 64];
     let r = pardiso_64_raw::<f64>(
-        &mut pt, 1, 1, 13, 13, 1,
-        &a, &ia, &ja, None, 1, &mut iparm, 0,
-        &b, &mut x,
+        &mut pt, 1, 1, 13, 13, 1, &a, &ia, &ja, None, 1, &mut iparm, 0, &b, &mut x,
     );
     assert!(r.is_err());
 }
@@ -279,8 +267,7 @@ fn perm_records_fill_reducing_permutation() {
     let ja = vec![1_i32, 2, 2, 3, 3];
     let a = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
 
-    let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd)
-        .with_indexing(IndexBase::One);
+    let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd).with_indexing(IndexBase::One);
     solver.set_perm(Some(vec![0_i32; 3]));
     solver.iparm()[4] = 2; // ask MKL to write its perm choice
     solver.analyze_and_factorize(3, &a, &ia, &ja).unwrap();
@@ -302,15 +289,14 @@ fn save_then_restore_handle_roundtrips() {
     let ja = vec![1_i32, 2, 2, 3, 3];
     let a = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
     {
-        let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd)
-            .with_indexing(IndexBase::One);
+        let mut solver =
+            Pardiso::<f64>::new(PardisoMatrixType::RealSpd).with_indexing(IndexBase::One);
         solver.analyze_and_factorize(3, &a, &ia, &ja).unwrap();
         solver.save_handle(dir_path).unwrap();
     }
 
     // Load into a fresh solver and solve.
-    let mut solver2 = Pardiso::<f64>::new(PardisoMatrixType::RealSpd)
-        .with_indexing(IndexBase::One);
+    let mut solver2 = Pardiso::<f64>::new(PardisoMatrixType::RealSpd).with_indexing(IndexBase::One);
     solver2.load_handle(dir_path).unwrap();
     let b = vec![3.0_f64, 2.0, 3.0];
     let mut x = vec![0.0_f64; 3];

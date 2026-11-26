@@ -113,22 +113,30 @@ impl PackedGemmScalar for f32 {
         layout: sys::CBLAS_LAYOUT::Type,
         identifier: sys::CBLAS_IDENTIFIER::Type,
         trans: sys::CBLAS_TRANSPOSE::Type,
-        m: c_int, n: c_int, k: c_int,
-        alpha: Self, src: *const Self, ld: c_int, dest: *mut Self,
+        m: c_int,
+        n: c_int,
+        k: c_int,
+        alpha: Self,
+        src: *const Self,
+        ld: c_int,
+        dest: *mut Self,
     ) {
-        unsafe {
-            sys::cblas_sgemm_pack(
-                layout, identifier, trans, m, n, k, alpha, src, ld, dest,
-            )
-        }
+        unsafe { sys::cblas_sgemm_pack(layout, identifier, trans, m, n, k, alpha, src, ld, dest) }
     }
     unsafe fn gemm_compute(
         layout: sys::CBLAS_LAYOUT::Type,
-        transa: c_int, transb: c_int,
-        m: c_int, n: c_int, k: c_int,
-        a: *const Self, lda: c_int,
-        b: *const Self, ldb: c_int,
-        beta: Self, c: *mut Self, ldc: c_int,
+        transa: c_int,
+        transb: c_int,
+        m: c_int,
+        n: c_int,
+        k: c_int,
+        a: *const Self,
+        lda: c_int,
+        b: *const Self,
+        ldb: c_int,
+        beta: Self,
+        c: *mut Self,
+        ldc: c_int,
     ) {
         unsafe {
             sys::cblas_sgemm_compute(
@@ -151,22 +159,30 @@ impl PackedGemmScalar for f64 {
         layout: sys::CBLAS_LAYOUT::Type,
         identifier: sys::CBLAS_IDENTIFIER::Type,
         trans: sys::CBLAS_TRANSPOSE::Type,
-        m: c_int, n: c_int, k: c_int,
-        alpha: Self, src: *const Self, ld: c_int, dest: *mut Self,
+        m: c_int,
+        n: c_int,
+        k: c_int,
+        alpha: Self,
+        src: *const Self,
+        ld: c_int,
+        dest: *mut Self,
     ) {
-        unsafe {
-            sys::cblas_dgemm_pack(
-                layout, identifier, trans, m, n, k, alpha, src, ld, dest,
-            )
-        }
+        unsafe { sys::cblas_dgemm_pack(layout, identifier, trans, m, n, k, alpha, src, ld, dest) }
     }
     unsafe fn gemm_compute(
         layout: sys::CBLAS_LAYOUT::Type,
-        transa: c_int, transb: c_int,
-        m: c_int, n: c_int, k: c_int,
-        a: *const Self, lda: c_int,
-        b: *const Self, ldb: c_int,
-        beta: Self, c: *mut Self, ldc: c_int,
+        transa: c_int,
+        transb: c_int,
+        m: c_int,
+        n: c_int,
+        k: c_int,
+        a: *const Self,
+        lda: c_int,
+        b: *const Self,
+        ldb: c_int,
+        beta: Self,
+        c: *mut Self,
+        ldc: c_int,
     ) {
         unsafe {
             sys::cblas_dgemm_compute(
@@ -244,8 +260,7 @@ impl<T: PackedGemmScalar> PackedMatrix<T> {
         let k_i: c_int = k.try_into().map_err(|_| Error::DimensionOverflow)?;
         let ld_i: c_int = ld.try_into().map_err(|_| Error::DimensionOverflow)?;
 
-        let bytes_needed =
-            unsafe { T::gemm_pack_get_size(identifier.as_cblas(), m_i, n_i, k_i) };
+        let bytes_needed = unsafe { T::gemm_pack_get_size(identifier.as_cblas(), m_i, n_i, k_i) };
         let elem_size = core::mem::size_of::<T>();
         if elem_size == 0 {
             return Err(Error::InvalidArgument("zero-sized scalar"));
@@ -284,7 +299,9 @@ impl<T: PackedGemmScalar> PackedMatrix<T> {
                 layout.as_cblas(),
                 identifier.as_cblas(),
                 trans.as_cblas(),
-                m_i, n_i, k_i,
+                m_i,
+                n_i,
+                k_i,
                 alpha,
                 src.as_ptr(),
                 ld_i,
@@ -295,7 +312,9 @@ impl<T: PackedGemmScalar> PackedMatrix<T> {
         Ok(Self {
             buffer,
             identifier,
-            m, n, k,
+            m,
+            n,
+            k,
             _marker: PhantomData,
         })
     }
@@ -358,7 +377,9 @@ pub fn gemm_compute_packed_a<T: PackedGemmScalar>(
             layout.as_cblas(),
             CBLAS_PACKED,
             trans_as_compute_int(transb),
-            m_i, n_i, k_i,
+            m_i,
+            n_i,
+            k_i,
             a_packed.buffer.as_ptr(),
             lda_i,
             b.as_ptr(),
@@ -408,7 +429,9 @@ pub fn gemm_compute_packed_b<T: PackedGemmScalar>(
             layout.as_cblas(),
             trans_as_compute_int(transa),
             CBLAS_PACKED,
-            m_i, n_i, k_i,
+            m_i,
+            n_i,
+            k_i,
             a.as_ptr(),
             lda_i,
             b_packed.buffer.as_ptr(),

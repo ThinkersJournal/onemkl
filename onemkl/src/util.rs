@@ -37,12 +37,7 @@ pub(crate) fn derive_n(slice_len: usize, inc: i64) -> Result<usize> {
 /// Validate that two BLAS vectors with separate strides address the same
 /// number of elements. Returns the agreed-upon `n`.
 #[inline]
-pub(crate) fn check_two_vectors<T, U>(
-    x: &[T],
-    incx: i64,
-    y: &[U],
-    incy: i64,
-) -> Result<usize> {
+pub(crate) fn check_two_vectors<T, U>(x: &[T], incx: i64, y: &[U], incy: i64) -> Result<usize> {
     let nx = derive_n(x.len(), incx)?;
     let ny = derive_n(y.len(), incy)?;
     if nx != ny {

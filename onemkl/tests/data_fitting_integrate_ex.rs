@@ -51,12 +51,16 @@ fn limits_outside_the_interval_are_split_between_the_three_callbacks() {
     let s = spline();
     let order = RefCell::new(Vec::new());
     let mut left = |p: IntegrationPieces<'_, f64>| {
-        order.borrow_mut().push(("left", p.left_limits[0], p.right_limits[0]));
+        order
+            .borrow_mut()
+            .push(("left", p.left_limits[0], p.right_limits[0]));
         p.out[0] = 1000.0;
         0
     };
     let mut right = |p: IntegrationPieces<'_, f64>| {
-        order.borrow_mut().push(("right", p.left_limits[0], p.right_limits[0]));
+        order
+            .borrow_mut()
+            .push(("right", p.left_limits[0], p.right_limits[0]));
         p.out[0] = 10.0;
         0
     };
@@ -138,4 +142,31 @@ fn no_callbacks_equals_plain_integrate() {
         .unwrap();
     let b = s.integrate(&[1.0, 0.0], &[3.0, 7.0]).unwrap();
     assert_eq!(a, b);
+}
+
+#[test]
+fn the_cubic_spline_has_the_same_call_back_form() {
+    use onemkl::data_fitting::CubicSpline1d;
+    let x: Vec<f64> = (0..8).map(f64::from).collect();
+    let y: Vec<f64> = x.iter().map(|v| v * v).collect();
+    let s = CubicSpline1d::natural(x, y).unwrap();
+    let mut right = |p: IntegrationPieces<'_, f64>| {
+        p.out[0] = 42.0;
+        0
+    };
+    let with = s
+        .integrate_with_callbacks(
+            &[1.0],
+            &[9.0],
+            IntegrateCallbacks {
+                right: Some(&mut right),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    let inside = s.integrate(&[1.0], &[7.0]).unwrap();
+    assert!(
+        (with[0] - (inside[0] + 42.0)).abs() < 1e-9,
+        "{with:?} {inside:?}"
+    );
 }

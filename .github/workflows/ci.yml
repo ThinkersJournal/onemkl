@@ -99,6 +99,27 @@ jobs:
       - name: cargo fmt --all --check
         run: cargo fmt --all -- --check
 
+  # Type-checks the whole workspace for the other platforms from a Linux runner
+  # (check does not link, and the vendored bindings avoid needing target C
+  # headers). Closes the blind spot that let a Windows-only type error
+  # (`c_long` is 4 bytes there) reach main: Linux and macOS both have an
+  # 8-byte `c_long`.
+  cross-check:
+    name: cargo check (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64-pc-windows-msvc, x86_64-apple-darwin, aarch64-apple-darwin]
+    env:
+      ONEMKL_SYS_USE_VENDORED_BINDINGS: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal --target ${{ matrix.target }} --no-self-update
+      - name: cargo check
+        run: cargo check --target ${{ matrix.target }} --workspace --all-targets
+
   clippy-report-only:
     name: cargo clippy (REPORT-ONLY, not required)
     runs-on: ubuntu-latest

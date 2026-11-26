@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased (version to be allocated by pm-assist)
+
+### Changed
+
+- Six `#[allow(clippy::too_many_arguments)]`, each on one function with a `reason` (C mirrors: `blas::level2::tpmv`/`tpsv`, their `cblas_tpmv`/`cblas_tpsv` trait declarations, `blas::compact::geqrf`; public surface published since 0.1.0: `pardiso` `solve_multi`); approved by CireSnave as a standing OK (board 512). No behaviour change.
+- Removed the no-op `#![allow(dead_code)]` from `onemkl-sys` (0 warnings without it).
+- CI: the report-only clippy job also prints the `too_many_arguments` count with the source allows overridden (row W1).
+
 ## 0.4.0 - 2026-11-26 (allocated by pm-assist; BREAKING: optim::solve_trnls_bounded takes TrnlsBounds)
 
 ### Changed

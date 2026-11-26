@@ -24,6 +24,14 @@ use crate::error::{Error, Result};
 /// Real scalar types supported by the data-fitting interface.
 #[allow(missing_docs)]
 pub trait DataFittingScalar: Copy + 'static {
+    /// Raw `df_new_task_1d` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be valid for a write of one `DFTaskPtr`. `nx >= 2` is the number of breakpoints and `x` must hold `nx` strictly increasing values (or 2 values `[a, b]` when `xhint` says the partition is uniform). `ny >= 1` is the number of functions and `y` must hold `ny * nx` values laid out per `yhint` (row-major: `ny` rows of `nx`; column-major by hint).
+    /// **Pointer retention:** the task stores the pointers passed to it; each such buffer must stay allocated at a stable address and be neither mutated nor aliased by a `&mut` while MKL may read it (outputs: not accessed at all) until the task is deleted (`dfDeleteTask`) or the pointer replaced.
+    /// On non-zero return `*task` must not be used. The MKL library must be linked and usable.
+    /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `x`: nx, `y`: nx * ny elements, with a non-uniform partition and no hints; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn df_new_task_1d(
         task: *mut DFTaskPtr,
@@ -34,6 +42,15 @@ pub trait DataFittingScalar: Copy + 'static {
         y: *const Self,
         yhint: c_int,
     ) -> c_int;
+    /// Raw `df_edit_pp_spline_1d` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be a live `DFTaskPtr` from `df_new_task_1d` and not yet deleted, and not used by another thread during the call.
+    /// `s_order`, `s_type`, `bc_type`, `ic_type` must be valid `DF_PP_*`/`DF_BC_*`/`DF_IC_*` constants. `bc` and `ic` must be readable for the lengths those types define (usually 0 to 2 values for `bc`, `nx - 1` or `ny * (nx-1)` for `ic` as MKL documents); `scoeff` must be valid for reads and writes of `ny * (nx - 1) * s_order` coefficients.
+    /// **Pointer retention:** the task stores the pointers passed to it; each such buffer must stay allocated at a stable address and be neither mutated nor aliased by a `&mut` while MKL may read it (outputs: not accessed at all) until the task is deleted (`dfDeleteTask`) or the pointer replaced.
+    /// The MKL library must be linked and usable.
+    /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `scoeff`: ny * (nx - 1) * 4 elements for a cubic spline (s_order = 4), with `bc`/`ic` null for free-end/no-IC; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn df_edit_pp_spline_1d(
         task: DFTaskPtr,
@@ -46,7 +63,23 @@ pub trait DataFittingScalar: Copy + 'static {
         scoeff: *const Self,
         scoeffhint: c_int,
     ) -> c_int;
+    /// Raw `df_construct_1d` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be a live `DFTaskPtr` from `df_new_task_1d` and not yet deleted, and not used by another thread during the call.
+    /// `s_format` and `method` must be `DF_PP_SPLINE` / `DF_METHOD_PP` as MKL requires; spline parameters must already have been set with `df_edit_pp_spline_1d`, whose registered buffers must still be valid.
+    /// The MKL library must be linked and usable.
+    /// Extents not listed as verified in this block are unverified (from MKL documentation). (no pointer arguments of its own; it reads the buffers registered earlier.)
     unsafe fn df_construct_1d(task: DFTaskPtr, s_format: c_int, method: c_int) -> c_int;
+    /// Raw `df_interpolate_1d` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be a live `DFTaskPtr` from `df_new_task_1d` and not yet deleted, and not used by another thread during the call.
+    /// `nsite` is the number of evaluation sites and `site` must hold `nsite` values (2 for a uniform `sitehint`). `ndorder` is the number of derivative orders and `dorder` must hold `ndorder` entries (non-zero flag per requested derivative). `datahint` may be null or point to the 1-element hint array MKL documents. `r` must be valid for writes of `ny * nsite * (number of nonzero dorder entries)` elements laid out per `rhint`; `cell` may be null, otherwise it must be valid for writes of `nsite` `c_int` values.
+    /// `r` and `cell` must not overlap `site`, `dorder` or any task-registered buffer. The MKL library must be linked and usable.
+    /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `site`: nsite, `dorder`: ndorder entries, `r`: nsite * ny * ndorder for ndorder = 2 with both flags set, `cell` null; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn df_interpolate_1d(
         task: DFTaskPtr,
@@ -62,6 +95,14 @@ pub trait DataFittingScalar: Copy + 'static {
         rhint: c_int,
         cell: *mut c_int,
     ) -> c_int;
+    /// Raw `df_integrate_1d` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be a live `DFTaskPtr` from `df_new_task_1d` and not yet deleted, and not used by another thread during the call.
+    /// `nlim` is the number of integration intervals; `llim` and `rlim` must each hold `nlim` values (or one value when the corresponding hint says so), with `llim <= rlim` inside the breakpoint range. `ldatahint` and `rdatahint` may be null or point to the hint arrays MKL documents. `r` must be valid for writes of `ny * nlim` elements laid out per `rhint`; `r` must not overlap any input or task-registered buffer.
+    /// The MKL library must be linked and usable.
+    /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `llim`: nlim, `r`: nlim * ny; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn df_integrate_1d(
         task: DFTaskPtr,

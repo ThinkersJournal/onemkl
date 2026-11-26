@@ -4,7 +4,9 @@
 
 use approx::assert_abs_diff_eq;
 
-use onemkl::optim::{TrnlsOptions, djacobi_with_callback, solve_trnls, solve_trnls_bounded};
+use onemkl::optim::{
+    TrnlsBounds, TrnlsOptions, djacobi_with_callback, solve_trnls, solve_trnls_bounded,
+};
 
 #[test]
 fn fits_a_line_through_two_points() {
@@ -158,8 +160,10 @@ fn bounded_solver_respects_bounds() {
         2,
         2,
         &mut params,
-        &lower,
-        &upper,
+        TrnlsBounds {
+            lower: &lower,
+            upper: &upper,
+        },
         TrnlsOptions::default(),
         residual,
         jacobian,

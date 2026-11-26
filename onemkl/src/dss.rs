@@ -336,7 +336,7 @@ impl<T> Drop for Dss<T> {
         if !self.handle.is_null() {
             let opt: c_int = sys::MKL_DSS_DEFAULTS as c_int;
             unsafe {
-                let _ = sys::dss_delete_(&mut self.handle, &opt);
+                let _ = sys::dss_delete_(&self.handle, &opt);
             }
         }
     }

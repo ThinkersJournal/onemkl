@@ -217,7 +217,7 @@ where
             &n_i,
             x.as_ptr(),
             b.as_ptr(),
-            &mut rci,
+            &rci,
             ipar.as_mut_ptr(),
             dpar.as_mut_ptr(),
             tmp.as_mut_ptr(),
@@ -398,7 +398,7 @@ fn classify_stop(
             IssStopReason::Converged
         }
     } else {
-        IssStopReason::Other(last_rci as i32)
+        IssStopReason::Other(last_rci)
     }
 }
 
@@ -569,20 +569,20 @@ impl CgSession {
                 let dst = &mut hi[..n];
                 Ok(RciAction::NeedPrecondition { src, dst })
             }
-            other => Ok(RciAction::Other(other as i32)),
+            other => Ok(RciAction::Other(other)),
         }
     }
 
     /// Read iteration / residual diagnostics and finalize the session.
     pub fn finish(&mut self, b: &[f64], x: &[f64]) -> Result<IssResult> {
         let mut itercount: c_int = 0;
-        let mut rci: c_int = 0;
+        let rci: c_int = 0;
         unsafe {
             sys::dcg_get(
                 &self.n,
                 x.as_ptr(),
                 b.as_ptr(),
-                &mut rci,
+                &rci,
                 self.ipar.as_mut_ptr(),
                 self.dpar.as_mut_ptr(),
                 self.tmp.as_mut_ptr(),
@@ -735,7 +735,7 @@ impl FgmresSession {
                 }
             }
             2 => Ok(RciAction::StoppingTest),
-            other => Ok(RciAction::Other(other as i32)),
+            other => Ok(RciAction::Other(other)),
         }
     }
 

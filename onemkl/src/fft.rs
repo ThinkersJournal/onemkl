@@ -85,7 +85,7 @@ fn check_dfti(status: c_long) -> Result<()> {
     if status == 0 {
         Ok(())
     } else {
-        Err(Error::DftiStatus(status as i64))
+        Err(Error::DftiStatus(status))
     }
 }
 

@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.4.0 - 2026-11-26 (allocated by pm-assist; BREAKING: optim::solve_trnls_bounded takes TrnlsBounds)
+
+### Changed
+
+- **BREAKING:** `optim::solve_trnls_bounded` takes the bounds as one `optim::TrnlsBounds { lower, upper }` argument instead of two separate slices (clippy `too_many_arguments`; pre-1.0, so a minor-as-major bump). Migration: `solve_trnls_bounded(n, m, &mut x, &lower, &upper, opts, f, j)` becomes `solve_trnls_bounded(n, m, &mut x, TrnlsBounds { lower: &lower, upper: &upper }, opts, f, j)`.
+- `# Safety` sections for the `feast`, `pde` and `data_fitting` unsafe trait methods, stating real preconditions; verified sizes are marked, the rest are marked unverified (completes the Safety docs begun in 0.3.14).
+- 29 clippy lints fixed with no behaviour change (`larfg` and `heevr` take `T: Default` in the generics instead of a where clause).
+
 ## 0.3.15 - 2026-11-26 (allocated by pm-assist; docs only)
 
 ### Changed

@@ -17,56 +17,215 @@ use crate::scalar::{ComplexScalar, RealScalar, Scalar};
 pub trait VmScalar: Scalar {
     // ---- Arithmetic ----
     /// `r[i] = a[i] + b[i]`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_add(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
     /// `r[i] = a[i] - b[i]`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_sub(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
     /// `r[i] = a[i] * b[i]`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_mul(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
     /// `r[i] = a[i] / b[i]`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_div(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
 
     // ---- Power & root ----
     /// `r[i] = sqrt(a[i])`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_sqrt(n: MKL_INT, a: *const Self, r: *mut Self);
     /// `r[i] = a[i] ^ b[i]`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_pow(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
     /// `r[i] = a[i] ^ b` (`b` a scalar)
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_powx(n: MKL_INT, a: *const Self, b: Self, r: *mut Self);
 
     // ---- Exp / log ----
     /// `r[i] = exp(a[i])`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_exp(n: MKL_INT, a: *const Self, r: *mut Self);
     /// `r[i] = ln(a[i])`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_ln(n: MKL_INT, a: *const Self, r: *mut Self);
     /// `r[i] = log10(a[i])`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_log10(n: MKL_INT, a: *const Self, r: *mut Self);
 
     // ---- Trigonometric ----
     /// `r[i] = cos(a[i])`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_cos(n: MKL_INT, a: *const Self, r: *mut Self);
     /// `r[i] = sin(a[i])`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_sin(n: MKL_INT, a: *const Self, r: *mut Self);
     /// `r[i] = tan(a[i])`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_tan(n: MKL_INT, a: *const Self, r: *mut Self);
     /// `r[i] = acos(a[i])`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_acos(n: MKL_INT, a: *const Self, r: *mut Self);
     /// `r[i] = asin(a[i])`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_asin(n: MKL_INT, a: *const Self, r: *mut Self);
     /// `r[i] = atan(a[i])`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_atan(n: MKL_INT, a: *const Self, r: *mut Self);
 
     // ---- Hyperbolic ----
     /// `r[i] = cosh(a[i])`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_cosh(n: MKL_INT, a: *const Self, r: *mut Self);
     /// `r[i] = sinh(a[i])`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_sinh(n: MKL_INT, a: *const Self, r: *mut Self);
     /// `r[i] = tanh(a[i])`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_tanh(n: MKL_INT, a: *const Self, r: *mut Self);
     /// `r[i] = acosh(a[i])`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_acosh(n: MKL_INT, a: *const Self, r: *mut Self);
     /// `r[i] = asinh(a[i])`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_asinh(n: MKL_INT, a: *const Self, r: *mut Self);
     /// `r[i] = atanh(a[i])`
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_atanh(n: MKL_INT, a: *const Self, r: *mut Self);
 }
 
@@ -78,9 +237,42 @@ pub trait VmScalar: Scalar {
 #[allow(missing_docs)] // Each method is documented in the corresponding free function
 pub trait RealVmScalar: VmScalar + RealScalar {
     // Arithmetic / abs / sqr / inv
+    /// Raw `vm_abs_real` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_abs_real(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_sqr` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_sqr(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_inv` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_inv(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_linear_frac` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     #[allow(clippy::too_many_arguments)]
     unsafe fn vm_linear_frac(
         n: MKL_INT,
@@ -94,76 +286,564 @@ pub trait RealVmScalar: VmScalar + RealScalar {
     );
 
     // Power & root (real-only because complex has no Sqr/Inv/Cbrt/InvCbrt/InvSqrt)
+    /// Raw `vm_inv_sqrt` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_inv_sqrt(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_cbrt` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_cbrt(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_inv_cbrt` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_inv_cbrt(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_powr` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_powr(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
+    /// Raw `vm_pow2o3` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_pow2o3(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_pow3o2` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_pow3o2(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_hypot` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_hypot(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
 
     // Exp / log
+    /// Raw `vm_exp2` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_exp2(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_exp10` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_exp10(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_expm1` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_expm1(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_log2` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_log2(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_log1p` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_log1p(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_logb` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_logb(n: MKL_INT, a: *const Self, r: *mut Self);
 
     // Trig (degree, π-scaled, multi-output)
+    /// Raw `vm_cosd` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_cosd(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_sind` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_sind(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_tand` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_tand(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_cospi` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_cospi(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_sinpi` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_sinpi(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_tanpi` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_tanpi(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_sincos` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `s` must be valid for writes of `n` consecutive elements.
+    /// `c` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`s`, `c`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_sincos(n: MKL_INT, a: *const Self, s: *mut Self, c: *mut Self);
+    /// Raw `vm_sincospi` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `s` must be valid for writes of `n` consecutive elements.
+    /// `c` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`s`, `c`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_sincospi(n: MKL_INT, a: *const Self, s: *mut Self, c: *mut Self);
 
     // Inverse trig
+    /// Raw `vm_atan2` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_atan2(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
+    /// Raw `vm_acospi` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_acospi(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_asinpi` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_asinpi(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_atanpi` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_atanpi(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_atan2pi` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_atan2pi(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
 
     // Special
+    /// Raw `vm_erf` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_erf(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_erfc` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_erfc(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_erf_inv` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_erf_inv(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_erfc_inv` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_erfc_inv(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_erfcx` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_erfcx(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_cdf_norm` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_cdf_norm(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_cdf_norm_inv` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_cdf_norm_inv(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_lgamma` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_lgamma(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_tgamma` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_tgamma(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_exp_int1` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_exp_int1(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_i0` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_i0(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_i1` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_i1(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_j0` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_j0(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_j1` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_j1(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_y0` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_y0(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_y1` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_y1(n: MKL_INT, a: *const Self, r: *mut Self);
 
     // Rounding
+    /// Raw `vm_floor` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_floor(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_ceil` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_ceil(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_trunc` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_trunc(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_round` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_round(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_nearby_int` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_nearby_int(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_rint` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_rint(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_frac` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_frac(n: MKL_INT, a: *const Self, r: *mut Self);
+    /// Raw `vm_modf` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `ip` must be valid for writes of `n` consecutive elements.
+    /// `fp` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`ip`, `fp`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_modf(n: MKL_INT, a: *const Self, ip: *mut Self, fp: *mut Self);
 
     // Misc binary
+    /// Raw `vm_fmod` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_fmod(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
+    /// Raw `vm_remainder` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_remainder(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
+    /// Raw `vm_copysign` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_copysign(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
+    /// Raw `vm_next_after` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_next_after(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
+    /// Raw `vm_fdim` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_fdim(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
+    /// Raw `vm_fmax` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_fmax(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
+    /// Raw `vm_fmin` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_fmin(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
+    /// Raw `vm_max_mag` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_max_mag(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
+    /// Raw `vm_min_mag` kernel over `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_min_mag(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
 }
 
@@ -176,14 +856,50 @@ pub trait RealVmScalar: VmScalar + RealScalar {
 #[allow(missing_docs)]
 pub trait ComplexVmScalar: VmScalar + ComplexScalar {
     /// `r[i] = |a[i]|`. Output is real.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_abs_complex(n: MKL_INT, a: *const Self, r: *mut Self::Real);
     /// `r[i] = arg(a[i])`. Output is real (in radians).
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_arg(n: MKL_INT, a: *const Self, r: *mut Self::Real);
     /// `r[i] = conj(a[i])`. Output is complex.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_conj(n: MKL_INT, a: *const Self, r: *mut Self);
     /// `r[i] = a[i] * conj(b[i])`.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `b` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_mul_by_conj(n: MKL_INT, a: *const Self, b: *const Self, r: *mut Self);
     /// `r[i] = exp(i * a[i])`. Input is real, output complex.
+    ///
+    /// # Safety
+    ///
+    /// `n` must be non-negative and not exceed the length of any buffer below.
+    /// `a` must be valid for reads of `n` consecutive elements.
+    /// `r` must be valid for writes of `n` consecutive elements.
+    /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
     unsafe fn vm_cis(n: MKL_INT, a: *const Self::Real, r: *mut Self);
 }
 

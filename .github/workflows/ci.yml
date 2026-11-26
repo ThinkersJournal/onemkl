@@ -86,9 +86,49 @@ jobs:
           RUSTDOCFLAGS: -D warnings
         run: cargo doc --workspace --no-deps
 
+  fmt:
+    name: cargo fmt --check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal --component rustfmt --no-self-update
+      - name: cargo fmt --all --check
+        run: cargo fmt --all -- --check
+
+  clippy-report-only:
+    name: cargo clippy (REPORT-ONLY, not required)
+    runs-on: ubuntu-latest
+    # Report-only until the 6 remaining too_many_arguments lints are
+    # resolved: blas/scalar.rs cblas_tpmv + cblas_tpsv, blas/level2.rs
+    # tpmv + tpsv, blas/compact.rs geqrf, pardiso.rs solve_multi.
+    # Then this becomes `-D warnings` and required.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal --component clippy --no-self-update
+      - name: Install Intel oneAPI MKL headers and libclang (bindgen)
+        run: |
+          wget -qO- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB             | sudo gpg --dearmor -o /usr/share/keyrings/oneapi-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main"             | sudo tee /etc/apt/sources.list.d/oneAPI.list
+          sudo apt-get update
+          sudo apt-get install -y intel-oneapi-mkl-devel libclang-dev
+      - name: cargo clippy (lib, report only)
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          cargo clippy -p onemkl --lib
+
   deny:
     name: cargo deny (advisories, licences, bans, sources)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2
+
+  # Advisory (ROADMAP row, pm-kernels 2026-11-25): NOT a required check and no rule is silenced here. The called workflow fixes the
+  # rule profile and the CodeRipper version; this repository passes nothing.
+  portfolio:
+    permissions:
+      contents: read
+    uses: ciresnave/coderipper/.github/workflows/portfolio.yml@467fd259d6d062cba4c5683d310f1a6f2b66e763 # CodeRipper 0.48.1

@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased (version to be allocated by pm-assist)
+
+### Changed
+
+- Whole tree formatted with `cargo fmt --all` (mechanical, no behaviour change; 86 files).
+
+### Added
+
+- CI: `cargo fmt --check` job, a report-only `cargo clippy` job (6 `too_many_arguments` findings remain pending a decision on allows) and the advisory coderipper portfolio job.
+
 ## 0.3.11 - 2026-11-26 (allocated by pm-assist)
 
 ### Fixed

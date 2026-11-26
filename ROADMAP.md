@@ -248,7 +248,19 @@ Every non-MPI domain at Comprehensive:
     functions (192 pre-existing plus the 6 added by `lane/allows`), so the
     "303 findings" row above never included them: they were already silenced.
     The allows are more than the flagged functions because trait impl methods
-    are not linted and carry allows that do nothing.
+    are not linted and carry allows that do nothing (INFERRED, not yet
+    measured: remove them on one impl and rerun clippy).
+  - **First-pass classification of the 198 flagged functions** (by the text
+    of the flagged line, so unreviewed; a function is only "C-mirror" once its
+    doc names the C function and the argument lists match one for one):
+    124 are `unsafe fn` (raw FFI trait declarations and `unsafe` helpers:
+    `blas/scalar.rs` 48, `lapack/scalar.rs` 34, `blas/compact.rs` 10,
+    `feast.rs` 8, `sparse/scalar.rs` 6, and 18 in 11 other files), the likely
+    C mirrors; 74 are safe `pub fn`/`fn` wrappers (`blas/level2.rs` 14,
+    `lapack/mod.rs` 14, `blas/extensions.rs` 11, `blas/mixed_precision.rs` 8,
+    `feast.rs` 8, `blas/packed.rs` 5, and 14 elsewhere), each to be sorted
+    into C-mirror, public-surface (published API, check the tag) or
+    restructurable (parameter struct; a breaking change).
   - **Wanted:** per item, either a `reason = "mirrors the oneMKL C signature
     <name> argument for argument"` (C mirrors: most of the trait declarations
     and wrappers above), or a restructure (a parameter struct) for the rest;

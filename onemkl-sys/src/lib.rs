@@ -33,10 +33,10 @@
 //! 4. Platform-standard install paths (`C:\Program Files (x86)\Intel\oneAPI`
 //!    on Windows, `/opt/intel/oneapi` elsewhere)
 
+// Standard bindgen-output allows: the bindings are generated C names.
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
-#![allow(dead_code)]
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 

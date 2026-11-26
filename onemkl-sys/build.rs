@@ -32,6 +32,17 @@ fn main() {
     println!("cargo:rerun-if-env-changed=ONEMKL_SYS_USE_VENDORED_BINDINGS");
 
     if is_docs_only_build() {
+        // The vendored bindings were generated for the LP64 interface (`MKL_INT`
+        // is `int`). With `ilp64` they would type-check as hundreds of
+        // unrelated integer-width errors, so refuse with the real reason.
+        if cfg_feature("ilp64") {
+            fatal(concat!(
+                "the `ilp64` feature needs bindings generated from the ILP64 headers ",
+                "(bindgen with -DMKL_ILP64); the vendored bindings used under ",
+                "DOCS_RS / ONEMKL_SYS_USE_VENDORED_BINDINGS are LP64-only. ",
+                "Unset ONEMKL_SYS_USE_VENDORED_BINDINGS and build with oneMKL installed."
+            ));
+        }
         use_vendored_bindings();
         return;
     }

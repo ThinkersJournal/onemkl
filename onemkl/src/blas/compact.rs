@@ -79,6 +79,12 @@ fn map_transpose(t: Transpose) -> sys::MKL_TRANSPOSE::Type {
 /// Real scalar types supported by the Compact BLAS lifecycle.
 #[allow(missing_docs)]
 pub trait CompactScalar: Copy + 'static {
+    /// Raw `get_size_compact` call.
+    ///
+    /// # Safety
+    ///
+    /// `ld` is the leading dimension, `sd` the second dimension of one matrix, `format` a `MKL_COMPACT_*` constant, `nm >= 0` the number of matrices; there are no pointers. Returns the buffer size in **bytes** MKL needs for the matching compact buffer (**verified**: `mkl_dget_size_compact(100, 100, MKL_COMPACT_AVX, 10)` returned 960000 = 3 groups x 4 lanes x 8 bytes x 100 x 100, i.e. `nm` rounded up to whole SIMD groups; and 1600000 for `nm = 20`; oneMKL 2026.2, Linux x86_64). Callers must check it is non-negative and fits `usize`.
+    /// The MKL library must be linked and usable; invalid arguments are reported through MKL's error handler, not by this wrapper.
     unsafe fn get_size_compact(
         ld: c_int,
         sd: c_int,
@@ -86,6 +92,13 @@ pub trait CompactScalar: Copy + 'static {
         nm: c_int,
     ) -> c_int;
 
+    /// Raw `gepack_compact` call.
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `nm` matrix pointers; each pointer must be non-null and address a `rows x cols` matrix with leading dimension `lda` per `layout` (`lda >= rows` column-major, `>= cols` row-major), readable for `lda * cols` (column-major) or `lda * rows` (row-major) elements.
+    /// `ap` must be valid for writes of a compact buffer for those `nm` matrices: A compact buffer `ap` holds `nm` matrices interleaved in SIMD-width groups per `format`. It must be valid for the byte size returned by `get_size_compact(ldap, stored_cols, format, nm)` (column-major; `stored_rows` for row-major), where `ldap` is at least the stored row (column-major) or column (row-major) count times the group width and `stored_rows x stored_cols` is the per-matrix shape the routine defines for it, and `format` and `nm` must be the same values used when the buffer was packed.
+    /// `ap` must not overlap any matrix addressed through `a`. The MKL library must be linked and usable; invalid arguments are reported through MKL's error handler, not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn gepack_compact(
         layout: sys::MKL_LAYOUT::Type,
@@ -99,6 +112,12 @@ pub trait CompactScalar: Copy + 'static {
         nm: c_int,
     );
 
+    /// Raw `geunpack_compact` call.
+    ///
+    /// # Safety
+    ///
+    /// `ap` must be valid for reads of a compact buffer that was packed with the same `rows`, `cols`, `format` and `nm`: A compact buffer `ap` holds `nm` matrices interleaved in SIMD-width groups per `format`. It must be valid for the byte size returned by `get_size_compact(ldap, stored_cols, format, nm)` (column-major; `stored_rows` for row-major), where `ldap` is at least the stored row (column-major) or column (row-major) count times the group width and `stored_rows x stored_cols` is the per-matrix shape the routine defines for it, and `format` and `nm` must be the same values used when the buffer was packed.
+    /// `a` must be valid for reads of `nm` matrix pointers; each pointer must be non-null and address distinct writable storage for a `rows x cols` matrix with leading dimension `lda` per `layout`. No Rust reference to that storage may be live, and none may overlap `ap`. The MKL library must be linked and usable; invalid arguments are reported through MKL's error handler, not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn geunpack_compact(
         layout: sys::MKL_LAYOUT::Type,
@@ -112,6 +131,12 @@ pub trait CompactScalar: Copy + 'static {
         nm: c_int,
     );
 
+    /// Raw `gemm_compact` call.
+    ///
+    /// # Safety
+    ///
+    /// `a`, `b` and `c` are compact buffers (`ap`-style) for `nm` matrices in the same `format`; each must be valid per: A compact buffer `ap` holds `nm` matrices interleaved in SIMD-width groups per `format`. It must be valid for the byte size returned by `get_size_compact(ldap, stored_cols, format, nm)` (column-major; `stored_rows` for row-major), where `ldap` is at least the stored row (column-major) or column (row-major) count times the group width and `stored_rows x stored_cols` is the per-matrix shape the routine defines for it, and `format` and `nm` must be the same values used when the buffer was packed. with the per-matrix shapes `op(A): m x k`, `op(B): k x n`, `C: m x n` and leading dimensions `ldap`, `ldbp`, `ldcp`.
+    /// `c` is read (when `beta != 0`) and written, and must not overlap `a` or `b`. `m`, `n`, `k` must be non-negative. The MKL library must be linked and usable; invalid arguments are reported through MKL's error handler, not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn gemm_compact(
         layout: sys::MKL_LAYOUT::Type,
@@ -446,6 +471,12 @@ fn map_diag(d: Diag) -> sys::MKL_DIAG::Type {
 pub trait CompactFactorScalar: CompactScalar {
     fn zero() -> Self;
     fn to_workspace_len(self) -> usize;
+    /// Raw `trsm_compact` call.
+    ///
+    /// # Safety
+    ///
+    /// `a` and `b` are compact buffers for `nm` matrices in the same `format` (see below); `a` is the triangular `m x m` (side left) or `n x n` (side right) factor with leading dimension `ldap`, `b` the `m x n` right-hand side overwritten with the solution, leading dimension `ldbp`. Each must satisfy: A compact buffer `ap` holds `nm` matrices interleaved in SIMD-width groups per `format`. It must be valid for the byte size returned by `get_size_compact(ldap, stored_cols, format, nm)` (column-major; `stored_rows` for row-major), where `ldap` is at least the stored row (column-major) or column (row-major) count times the group width and `stored_rows x stored_cols` is the per-matrix shape the routine defines for it, and `format` and `nm` must be the same values used when the buffer was packed.
+    /// `b` must not overlap `a`; the diagonal of `a` must be non-singular unless `diag` is unit. The MKL library must be linked and usable; invalid arguments are reported through MKL's error handler, not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn trsm_compact(
         layout: sys::MKL_LAYOUT::Type,
@@ -463,6 +494,13 @@ pub trait CompactFactorScalar: CompactScalar {
         format: sys::MKL_COMPACT_PACK::Type,
         nm: c_int,
     );
+    /// Raw `potrf_compact` call.
+    ///
+    /// # Safety
+    ///
+    /// `ap` must be a compact buffer for `nm` `n x n` matrices (updated in place with the Cholesky factor of the triangle given by `uplo`): A compact buffer `ap` holds `nm` matrices interleaved in SIMD-width groups per `format`. It must be valid for the byte size returned by `get_size_compact(ldap, stored_cols, format, nm)` (column-major; `stored_rows` for row-major), where `ldap` is at least the stored row (column-major) or column (row-major) count times the group width and `stored_rows x stored_cols` is the per-matrix shape the routine defines for it, and `format` and `nm` must be the same values used when the buffer was packed.
+    /// `info` must be valid for writes of the per-matrix status array MKL defines for compact routines (one `c_int` per matrix in the compact group set, `nm` in total); entries are written even on partial failure.
+    /// The MKL library must be linked and usable; invalid arguments are reported through MKL's error handler, not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn potrf_compact(
         layout: sys::MKL_LAYOUT::Type,
@@ -474,6 +512,13 @@ pub trait CompactFactorScalar: CompactScalar {
         format: sys::MKL_COMPACT_PACK::Type,
         nm: c_int,
     );
+    /// Raw `getrfnp_compact` call.
+    ///
+    /// # Safety
+    ///
+    /// `ap` must be a compact buffer for `nm` `m x n` matrices (updated in place with the LU factors; no pivoting is performed, so a zero pivot yields a non-zero `info` entry): A compact buffer `ap` holds `nm` matrices interleaved in SIMD-width groups per `format`. It must be valid for the byte size returned by `get_size_compact(ldap, stored_cols, format, nm)` (column-major; `stored_rows` for row-major), where `ldap` is at least the stored row (column-major) or column (row-major) count times the group width and `stored_rows x stored_cols` is the per-matrix shape the routine defines for it, and `format` and `nm` must be the same values used when the buffer was packed.
+    /// `info` must be valid for writes of the per-matrix status array MKL defines for compact routines (one `c_int` per matrix in the compact group set, `nm` in total); entries are written even on partial failure.
+    /// The MKL library must be linked and usable; invalid arguments are reported through MKL's error handler, not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn getrfnp_compact(
         layout: sys::MKL_LAYOUT::Type,
@@ -485,6 +530,15 @@ pub trait CompactFactorScalar: CompactScalar {
         format: sys::MKL_COMPACT_PACK::Type,
         nm: c_int,
     );
+    /// Raw `geqrf_compact` call.
+    ///
+    /// # Safety
+    ///
+    /// `ap` must be a compact buffer for `nm` `m x n` matrices (updated in place with the QR factors): A compact buffer `ap` holds `nm` matrices interleaved in SIMD-width groups per `format`. It must be valid for the byte size returned by `get_size_compact(ldap, stored_cols, format, nm)` (column-major; `stored_rows` for row-major), where `ldap` is at least the stored row (column-major) or column (row-major) count times the group width and `stored_rows x stored_cols` is the per-matrix shape the routine defines for it, and `format` and `nm` must be the same values used when the buffer was packed.
+    /// `taup` must be a compact buffer holding `min(m, n)` scalars per matrix, in the same `format` and `nm`, writable for its full compact size.
+    /// `work` must be valid for writes of `lwork` elements, and `lwork` must be at least the workspace MKL requires (`lwork = -1` is a size query writing only `work[0]`).
+    /// `info` must be valid for writes of the per-matrix status array MKL defines for compact routines (one `c_int` per matrix in the compact group set, `nm` in total); entries are written even on partial failure.
+    /// The MKL library must be linked and usable; invalid arguments are reported through MKL's error handler, not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn geqrf_compact(
         layout: sys::MKL_LAYOUT::Type,
@@ -499,6 +553,14 @@ pub trait CompactFactorScalar: CompactScalar {
         format: sys::MKL_COMPACT_PACK::Type,
         nm: c_int,
     );
+    /// Raw `getrinp_compact` call.
+    ///
+    /// # Safety
+    ///
+    /// `ap` must be a compact buffer for `nm` `n x n` matrices previously LU-factorised without pivoting by `getrfnp_compact`; it is overwritten with the inverses: A compact buffer `ap` holds `nm` matrices interleaved in SIMD-width groups per `format`. It must be valid for the byte size returned by `get_size_compact(ldap, stored_cols, format, nm)` (column-major; `stored_rows` for row-major), where `ldap` is at least the stored row (column-major) or column (row-major) count times the group width and `stored_rows x stored_cols` is the per-matrix shape the routine defines for it, and `format` and `nm` must be the same values used when the buffer was packed.
+    /// `work` must be valid for writes of `lwork` elements, and `lwork` at least the workspace MKL requires.
+    /// `info` must be valid for writes of the per-matrix status array MKL defines for compact routines (one `c_int` per matrix in the compact group set, `nm` in total); entries are written even on partial failure.
+    /// The MKL library must be linked and usable; invalid arguments are reported through MKL's error handler, not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn getrinp_compact(
         layout: sys::MKL_LAYOUT::Type,

@@ -275,6 +275,15 @@ pub trait BlasScalar: Scalar {
     /// `cblas_*symm` — symmetric matrix-matrix multiply.
     /// `C ← alpha * op(A) * B + beta * C` if `side == Left`, else
     /// `C ← alpha * B * op(A) + beta * C`. `A` is symmetric.
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `b` must be valid for reads of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `b`, after `trans`/`side` are applied) and `ldb` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `c` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `ldc * stored_cols` elements for column-major or `ldc * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `c`, after `trans`/`side` are applied) and `ldc` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_symm(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -294,6 +303,14 @@ pub trait BlasScalar: Scalar {
 
     /// `cblas_*syrk` — symmetric rank-k update.
     /// `C ← alpha * A * Aᵀ + beta * C` (or `Aᵀ * A` if `trans` flips).
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `c` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `ldc * stored_cols` elements for column-major or `ldc * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `c`, after `trans`/`side` are applied) and `ldc` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_syrk(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -311,6 +328,15 @@ pub trait BlasScalar: Scalar {
 
     /// `cblas_*syr2k` — symmetric rank-2k update.
     /// `C ← alpha * (A * Bᵀ + B * Aᵀ) + beta * C`.
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `b` must be valid for reads of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `b`, after `trans`/`side` are applied) and `ldb` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `c` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `ldc * stored_cols` elements for column-major or `ldc * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `c`, after `trans`/`side` are applied) and `ldc` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_syr2k(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -330,6 +356,14 @@ pub trait BlasScalar: Scalar {
 
     /// `cblas_*trmm` — triangular matrix-matrix multiply.
     /// `B ← alpha * op(A) * B` (left) or `B ← alpha * B * op(A)` (right).
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `b` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `b`, after `trans`/`side` are applied) and `ldb` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`b`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_trmm(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -348,6 +382,14 @@ pub trait BlasScalar: Scalar {
 
     /// `cblas_*trsm` — triangular solve with multiple right-hand sides.
     /// `B ← alpha * op(A)⁻¹ * B` (left) or `B ← alpha * B * op(A)⁻¹` (right).
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `b` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `b`, after `trans`/`side` are applied) and `ldb` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`b`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_trsm(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -366,6 +408,15 @@ pub trait BlasScalar: Scalar {
 
     /// `cblas_*gemmt` — gemm but only writes the upper or lower triangle of
     /// `C`. Useful when `C` is known to be symmetric/Hermitian.
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `b` must be valid for reads of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `b`, after `trans`/`side` are applied) and `ldb` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `c` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `ldc * stored_cols` elements for column-major or `ldc * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `c`, after `trans`/`side` are applied) and `ldc` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_gemmt(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -426,6 +477,13 @@ pub trait BlasScalar: Scalar {
 
     /// `MKL_*omatcopy` — out-of-place matrix transposition with scaling
     /// `B ← alpha * op(A)`.
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `b` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `b`, after `trans`/`side` are applied) and `ldb` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// Buffers written by the routine (`b`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn mkl_omatcopy(
         ordering: c_char,
@@ -440,6 +498,13 @@ pub trait BlasScalar: Scalar {
     );
 
     /// `MKL_*omatcopy2` — out-of-place 2-D strided transposition.
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `b` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `b`, after `trans`/`side` are applied) and `ldb` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// Buffers written by the routine (`b`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn mkl_omatcopy2(
         ordering: c_char,
@@ -456,6 +521,14 @@ pub trait BlasScalar: Scalar {
     );
 
     /// `MKL_*omatadd` — `C ← alpha * op(A) + beta * op(B)`.
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `b` must be valid for reads of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `b`, after `trans`/`side` are applied) and `ldb` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `c` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `ldc * stored_cols` elements for column-major or `ldc * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `c`, after `trans`/`side` are applied) and `ldc` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn mkl_omatadd(
         ordering: c_char,
@@ -480,6 +553,13 @@ pub trait BlasScalar: Scalar {
     // user-specified element-stride between slices.
 
     /// `cblas_*axpy_batch_strided` — batched [`cblas_axpy`](Self::cblas_axpy).
+    ///
+    /// # Safety
+    ///
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read and/or written of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_axpy_batch_strided(
         n: MKL_INT,
@@ -494,6 +574,13 @@ pub trait BlasScalar: Scalar {
     );
 
     /// `cblas_*copy_batch_strided` — batched [`cblas_copy`](Self::cblas_copy).
+    ///
+    /// # Safety
+    ///
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read and/or written of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_copy_batch_strided(
         n: MKL_INT,
@@ -507,6 +594,15 @@ pub trait BlasScalar: Scalar {
     );
 
     /// `cblas_*gemv_batch_strided` — batched [`cblas_gemv`](Self::cblas_gemv).
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `(batch_size - 1) * stridea` plus `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read and/or written of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_gemv_batch_strided(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -528,6 +624,15 @@ pub trait BlasScalar: Scalar {
     );
 
     /// `cblas_*gemm_batch_strided` — batched [`cblas_gemm`](Self::cblas_gemm).
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `(batch_size - 1) * stridea` plus `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `b` must be valid for reads of `(batch_size - 1) * strideb` plus `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `b`, after `trans`/`side` are applied) and `ldb` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `c` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `(batch_size - 1) * stridec` plus `ldc * stored_cols` elements for column-major or `ldc * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `c`, after `trans`/`side` are applied) and `ldc` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_gemm_batch_strided(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -555,6 +660,12 @@ pub trait BlasScalar: Scalar {
     /// `group_size[i]` is the number of GEMMs in group `i`. The
     /// pointer arrays for `A`, `B`, `C` have total length
     /// `sum(group_size)`.
+    ///
+    /// # Safety
+    ///
+    /// Pointer-array batch: `group_count` groups; each `*_array` argument holds one entry per group, `group_size` holds `group_count` entries, and `a_array`/`b_array`/`c_array`/`x_array`/`y_array` hold `sum(group_size)` buffer pointers. Every buffer pointer must satisfy, with its group's dimensions and leading dimension, the same extent rule as the corresponding single call; outputs must not overlap each other or any input.
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_gemm_batch(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -576,6 +687,12 @@ pub trait BlasScalar: Scalar {
     );
 
     /// `cblas_*gemv_batch` — pointer-array batched GEMV.
+    ///
+    /// # Safety
+    ///
+    /// Pointer-array batch: `group_count` groups; each `*_array` argument holds one entry per group, `group_size` holds `group_count` entries, and `a_array`/`b_array`/`c_array`/`x_array`/`y_array` hold `sum(group_size)` buffer pointers. Every buffer pointer must satisfy, with its group's dimensions and leading dimension, the same extent rule as the corresponding single call; outputs must not overlap each other or any input.
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_gemv_batch(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -595,6 +712,12 @@ pub trait BlasScalar: Scalar {
     );
 
     /// `cblas_*trsm_batch` — pointer-array batched TRSM.
+    ///
+    /// # Safety
+    ///
+    /// Pointer-array batch: `group_count` groups; each `*_array` argument holds one entry per group, `group_size` holds `group_count` entries, and `a_array`/`b_array`/`c_array`/`x_array`/`y_array` hold `sum(group_size)` buffer pointers. Every buffer pointer must satisfy, with its group's dimensions and leading dimension, the same extent rule as the corresponding single call; outputs must not overlap each other or any input.
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_trsm_batch(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -614,6 +737,14 @@ pub trait BlasScalar: Scalar {
     );
 
     /// `cblas_*trsm_batch_strided` — batched [`cblas_trsm`](Self::cblas_trsm).
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `(batch_size - 1) * stridea` plus `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `b` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `(batch_size - 1) * strideb` plus `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `b`, after `trans`/`side` are applied) and `ldb` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`b`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_trsm_batch_strided(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -636,6 +767,15 @@ pub trait BlasScalar: Scalar {
     /// `cblas_*dgmm_batch_strided` — batched diagonal-matrix multiply.
     /// `C[i] ← A[i] * diag(x[i])` (right) or `C[i] ← diag(x[i]) * A[i]`
     /// (left).
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `(batch_size - 1) * stridea` plus `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `c` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `(batch_size - 1) * stridec` plus `ldc * stored_cols` elements for column-major or `ldc * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `c`, after `trans`/`side` are applied) and `ldc` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_dgmm_batch_strided(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -700,6 +840,15 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
     unsafe fn cblas_rotg(a: *mut Self, b: *mut Self, c: *mut Self, s: *mut Self);
 
     /// `cblas_*ger` — general rank-1 update `A ← α * x * yᵀ + A`.
+    ///
+    /// # Safety
+    ///
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// `a` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`a`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_ger(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -715,6 +864,15 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
     );
 
     /// `cblas_*symv` — symmetric matrix-vector multiply.
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read and/or written of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_symv(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -731,6 +889,14 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
     );
 
     /// `cblas_*syr` — symmetric rank-1 update `A ← α * x * xᵀ + A`.
+    ///
+    /// # Safety
+    ///
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `a` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`a`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_syr(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -745,6 +911,15 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
 
     /// `cblas_*syr2` — symmetric rank-2 update
     /// `A ← α * (x * yᵀ + y * xᵀ) + A`.
+    ///
+    /// # Safety
+    ///
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// `a` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`a`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_syr2(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -760,6 +935,15 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
     );
 
     /// `cblas_*sbmv` — symmetric band matrix-vector multiply.
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read and/or written of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_sbmv(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -777,6 +961,15 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
     );
 
     /// `cblas_*spmv` — symmetric packed matrix-vector multiply.
+    ///
+    /// # Safety
+    ///
+    /// `ap` must hold the packed triangle: `n * (n + 1) / 2` elements, in the order given by `layout` and `uplo`.
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read and/or written of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_spmv(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -792,6 +985,14 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
     );
 
     /// `cblas_*spr` — packed symmetric rank-1 update.
+    ///
+    /// # Safety
+    ///
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `ap` must hold the packed triangle: `n * (n + 1) / 2` elements, in the order given by `layout` and `uplo`.
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`ap`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     unsafe fn cblas_spr(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -803,6 +1004,15 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
     );
 
     /// `cblas_*spr2` — packed symmetric rank-2 update.
+    ///
+    /// # Safety
+    ///
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// `ap` must hold the packed triangle: `n * (n + 1) / 2` elements, in the order given by `layout` and `uplo`.
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`ap`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_spr2(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -826,6 +1036,12 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
 /// Implemented for [`Complex32`] and [`Complex64`].
 pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     /// `cblas_*dotc_sub` — conjugated dot product `Σ conj(x_i) * y_i`.
+    ///
+    /// # Safety
+    ///
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     unsafe fn cblas_dotc(
         n: MKL_INT,
         x: *const Self,
@@ -835,6 +1051,12 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     ) -> Self;
 
     /// `cblas_*dotu_sub` — unconjugated dot product `Σ x_i * y_i`.
+    ///
+    /// # Safety
+    ///
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     unsafe fn cblas_dotu(
         n: MKL_INT,
         x: *const Self,
@@ -845,10 +1067,25 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
 
     /// `cblas_csscal` / `cblas_zdscal` — scale a complex vector by a real
     /// scalar.
+    ///
+    /// # Safety
+    ///
+    /// `x` must be valid for read and/or written of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// Buffers written by the routine (`x`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     unsafe fn cblas_scal_real(n: MKL_INT, alpha: Self::Real, x: *mut Self, incx: MKL_INT);
 
     /// `cblas_*gerc` — conjugated rank-1 update
     /// `A ← α * x * yᴴ + A`.
+    ///
+    /// # Safety
+    ///
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// `a` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`a`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_gerc(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -865,6 +1102,15 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
 
     /// `cblas_*geru` — unconjugated rank-1 update
     /// `A ← α * x * yᵀ + A`.
+    ///
+    /// # Safety
+    ///
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// `a` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`a`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_geru(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -880,6 +1126,15 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     );
 
     /// `cblas_*hemv` — Hermitian matrix-vector multiply.
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read and/or written of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_hemv(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -897,6 +1152,14 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
 
     /// `cblas_*her` — Hermitian rank-1 update with real `alpha`:
     /// `A ← α * x * xᴴ + A`.
+    ///
+    /// # Safety
+    ///
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `a` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`a`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_her(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -911,6 +1174,15 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
 
     /// `cblas_*her2` — Hermitian rank-2 update with complex `alpha`:
     /// `A ← α * x * yᴴ + conj(α) * y * xᴴ + A`.
+    ///
+    /// # Safety
+    ///
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// `a` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`a`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_her2(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -926,6 +1198,15 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     );
 
     /// `cblas_*hbmv` — Hermitian band matrix-vector multiply.
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read and/or written of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_hbmv(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -943,6 +1224,15 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     );
 
     /// `cblas_*hpmv` — Hermitian packed matrix-vector multiply.
+    ///
+    /// # Safety
+    ///
+    /// `ap` must hold the packed triangle: `n * (n + 1) / 2` elements, in the order given by `layout` and `uplo`.
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read and/or written of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_hpmv(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -958,6 +1248,14 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     );
 
     /// `cblas_*hpr` — packed Hermitian rank-1 update with real alpha.
+    ///
+    /// # Safety
+    ///
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `ap` must hold the packed triangle: `n * (n + 1) / 2` elements, in the order given by `layout` and `uplo`.
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`ap`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     unsafe fn cblas_hpr(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -969,6 +1267,15 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     );
 
     /// `cblas_*hpr2` — packed Hermitian rank-2 update with complex alpha.
+    ///
+    /// # Safety
+    ///
+    /// `x` must be valid for read of `1 + (len - 1) * |incx|` elements, where `len` is the vector length the routine defines for `x` from its dimension arguments (and `trans`), and `incx` must be non-zero.
+    /// `y` must be valid for read of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
+    /// `ap` must hold the packed triangle: `n * (n + 1) / 2` elements, in the order given by `layout` and `uplo`.
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`ap`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_hpr2(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -983,6 +1290,15 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     );
 
     /// `cblas_*hemm` — Hermitian matrix-matrix multiply.
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `b` must be valid for reads of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `b`, after `trans`/`side` are applied) and `ldb` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `c` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `ldc * stored_cols` elements for column-major or `ldc * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `c`, after `trans`/`side` are applied) and `ldc` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_hemm(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -1002,6 +1318,14 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
 
     /// `cblas_*herk` — Hermitian rank-k update with **real** `alpha` and
     /// `beta`. `C ← alpha * A * Aᴴ + beta * C` (or `Aᴴ * A` if trans flips).
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `c` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `ldc * stored_cols` elements for column-major or `ldc * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `c`, after `trans`/`side` are applied) and `ldc` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_herk(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -1019,6 +1343,15 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
 
     /// `cblas_*her2k` — Hermitian rank-2k update with complex `alpha`
     /// and **real** `beta`.
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `b` must be valid for reads of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `b`, after `trans`/`side` are applied) and `ldb` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `c` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `ldc * stored_cols` elements for column-major or `ldc * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `c`, after `trans`/`side` are applied) and `ldc` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_her2k(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -1038,6 +1371,15 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
 
     /// `cblas_*gemm3m` — complex `gemm` using Karatsuba-like 3M algorithm.
     /// Numerically less stable than `gemm` but faster for large matrices.
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `b` must be valid for reads of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `b`, after `trans`/`side` are applied) and `ldb` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `c` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `ldc * stored_cols` elements for column-major or `ldc * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `c`, after `trans`/`side` are applied) and `ldc` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_gemm3m(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -1057,6 +1399,15 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     );
 
     /// `cblas_*gemm3m_batch_strided` — batched [`cblas_gemm3m`](Self::cblas_gemm3m).
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads of `(batch_size - 1) * stridea` plus `lda * stored_cols` elements for column-major or `lda * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `a`, after `trans`/`side` are applied) and `lda` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `b` must be valid for reads of `(batch_size - 1) * strideb` plus `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `b`, after `trans`/`side` are applied) and `ldb` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `c` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `(batch_size - 1) * stridec` plus `ldc * stored_cols` elements for column-major or `ldc * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `c`, after `trans`/`side` are applied) and `ldc` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
+    /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
+    /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
+    /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
     #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_gemm3m_batch_strided(
         layout: sys::CBLAS_LAYOUT::Type,

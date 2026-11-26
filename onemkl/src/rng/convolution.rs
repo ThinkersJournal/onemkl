@@ -75,6 +75,13 @@ impl CorrMode {
 /// Real scalar types supported by 1-D convolution / correlation tasks.
 #[allow(missing_docs)]
 pub trait ConvCorrScalar: Copy + 'static {
+    /// Raw `conv_new_task_1d` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be valid for a write of one `VSLConvTaskPtr`. `mode` must be a `VSL_CONV_MODE_*` constant. `xshape`, `yshape` and `zshape` are lengths (>= 1) of `x`, `y` and the result `z`; `zshape` must equal the output length MKL defines for the chosen mode (for full convolution `xshape + yshape - 1`).
+    /// On a non-zero return `*task` must not be used. A non-zero return is the VSL status. The MKL library must be linked and usable.
+    /// Extents not listed as verified in this block are unverified (from MKL documentation).
     unsafe fn conv_new_task_1d(
         task: *mut VSLConvTaskPtr,
         mode: c_int,
@@ -83,6 +90,13 @@ pub trait ConvCorrScalar: Copy + 'static {
         zshape: c_int,
     ) -> c_int;
 
+    /// Raw `corr_new_task_1d` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be valid for a write of one `VSLCorrTaskPtr`. `mode` must be a `VSL_CORR_MODE_*` constant. `xshape`, `yshape` and `zshape` are lengths (>= 1) of `x`, `y` and the result `z`; `zshape` must equal the output length MKL defines for the chosen mode.
+    /// On a non-zero return `*task` must not be used. A non-zero return is the VSL status. The MKL library must be linked and usable.
+    /// Extents not listed as verified in this block are unverified (from MKL documentation).
     unsafe fn corr_new_task_1d(
         task: *mut VSLCorrTaskPtr,
         mode: c_int,
@@ -91,6 +105,14 @@ pub trait ConvCorrScalar: Copy + 'static {
         zshape: c_int,
     ) -> c_int;
 
+    /// Raw `conv_exec_1d` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be a live task of the matching kind created by `conv_new_task_1d` and not yet deleted, and not used from another thread during the call.
+    /// `x` must be valid for reads of `1 + (xshape - 1) * |xstride|` elements, `y` of `1 + (yshape - 1) * |ystride|`, and `z` for writes of `1 + (zshape - 1) * |zstride|`, with the shapes given when the task was created and all strides non-zero. `z` must not overlap `x` or `y`.
+    /// A non-zero return is the VSL status. The MKL library must be linked and usable.
+    /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `x`, `y`, `z` each `1 + (shape - 1) * stride` elements, strides 1 and 2, VSL_CONV_MODE_DIRECT, x = 8, y = 5, z = 12; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn conv_exec_1d(
         task: VSLConvTaskPtr,
@@ -102,6 +124,14 @@ pub trait ConvCorrScalar: Copy + 'static {
         zstride: c_int,
     ) -> c_int;
 
+    /// Raw `corr_exec_1d` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be a live task of the matching kind created by `corr_new_task_1d` and not yet deleted, and not used from another thread during the call.
+    /// `x` must be valid for reads of `1 + (xshape - 1) * |xstride|` elements, `y` of `1 + (yshape - 1) * |ystride|`, and `z` for writes of `1 + (zshape - 1) * |zstride|`, with the shapes given when the task was created and all strides non-zero. `z` must not overlap `x` or `y`.
+    /// A non-zero return is the VSL status. The MKL library must be linked and usable.
+    /// Same extent rule as `conv_exec_1d` (verified there for convolution only; for correlation unverified).
     #[allow(clippy::too_many_arguments)]
     unsafe fn corr_exec_1d(
         task: VSLCorrTaskPtr,

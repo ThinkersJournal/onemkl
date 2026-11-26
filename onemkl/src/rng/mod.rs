@@ -452,7 +452,7 @@ impl Stream {
         if dimen == 0 {
             return Err(Error::InvalidArgument("dimen must be >= 1"));
         }
-        if out.len() % dimen != 0 {
+        if !out.len().is_multiple_of(dimen) {
             return Err(Error::InvalidArgument(
                 "out.len() must be a multiple of dimen",
             ));
@@ -501,10 +501,10 @@ impl Stream {
         lo: f64,
         hi: f64,
     ) -> Result<()> {
-        if !(lo < hi) {
+        if lo.partial_cmp(&hi) != Some(core::cmp::Ordering::Less) {
             return Err(Error::InvalidArgument("require lo < hi"));
         }
-        if !(sigma > 0.0) {
+        if sigma.partial_cmp(&0.0) != Some(core::cmp::Ordering::Greater) {
             return Err(Error::InvalidArgument("sigma must be > 0"));
         }
         rejection_truncated_normal_f64(self, out, mean, sigma, lo, hi)
@@ -519,10 +519,10 @@ impl Stream {
         lo: f32,
         hi: f32,
     ) -> Result<()> {
-        if !(lo < hi) {
+        if lo.partial_cmp(&hi) != Some(core::cmp::Ordering::Less) {
             return Err(Error::InvalidArgument("require lo < hi"));
         }
-        if !(sigma > 0.0) {
+        if sigma.partial_cmp(&0.0) != Some(core::cmp::Ordering::Greater) {
             return Err(Error::InvalidArgument("sigma must be > 0"));
         }
         rejection_truncated_normal_f32(self, out, mean, sigma, lo, hi)
@@ -542,10 +542,13 @@ impl Stream {
         if k == 0 {
             return Err(Error::InvalidArgument("alpha must be non-empty"));
         }
-        if alpha.iter().any(|&a| !(a > 0.0)) {
+        if alpha
+            .iter()
+            .any(|&a| a.partial_cmp(&0.0) != Some(core::cmp::Ordering::Greater))
+        {
             return Err(Error::InvalidArgument("every alpha entry must be > 0"));
         }
-        if out.len() % k != 0 {
+        if !out.len().is_multiple_of(k) {
             return Err(Error::InvalidArgument(
                 "out.len() must be a multiple of alpha.len()",
             ));
@@ -557,7 +560,7 @@ impl Stream {
                 *slot = one[0];
             }
             let sum: f64 = row.iter().sum();
-            if !(sum > 0.0) {
+            if sum.partial_cmp(&0.0) != Some(core::cmp::Ordering::Greater) {
                 // Re-draw with a tiny perturbation to avoid div-by-zero
                 // from underflow when alpha is very small.
                 for slot in row.iter_mut() {
@@ -666,7 +669,7 @@ impl Stream {
         if k == 0 {
             return Err(Error::InvalidArgument("p must be non-empty"));
         }
-        if out.len() % k != 0 {
+        if !out.len().is_multiple_of(k) {
             return Err(Error::InvalidArgument(
                 "out.len() must be a multiple of p.len()",
             ));
@@ -816,6 +819,15 @@ impl Drop for Stream {
 /// generators ([`f32`] and [`f64`]).
 #[allow(missing_docs)]
 pub trait RngFloat: Copy + 'static {
+    /// Raw `rng_uniform` call.
+    ///
+    /// # Safety
+    ///
+    /// `stream` must be a live `VSLStreamStatePtr` created by `vslNewStream*` (and not yet deleted). The call advances its state, so no other thread may use the same stream during the call (VSL streams are not synchronised).
+    /// `method` must be a method constant valid for this distribution; `n` must be non-negative.
+    /// `r` must be valid for writes of `n` consecutive elements (contents need not be initialised; all `n` are overwritten on success); no Rust reference to that buffer may be live during the call.
+    /// Parameters: `a < b` (the interval `[a, b)`).
+    /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_uniform(
         method: c_int,
         stream: VSLStreamStatePtr,
@@ -824,6 +836,15 @@ pub trait RngFloat: Copy + 'static {
         a: Self,
         b: Self,
     ) -> c_int;
+    /// Raw `rng_gaussian` call.
+    ///
+    /// # Safety
+    ///
+    /// `stream` must be a live `VSLStreamStatePtr` created by `vslNewStream*` (and not yet deleted). The call advances its state, so no other thread may use the same stream during the call (VSL streams are not synchronised).
+    /// `method` must be a method constant valid for this distribution; `n` must be non-negative.
+    /// `r` must be valid for writes of `n` consecutive elements (contents need not be initialised; all `n` are overwritten on success); no Rust reference to that buffer may be live during the call.
+    /// Parameters: `sigma > 0`; `mean` any finite value.
+    /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_gaussian(
         method: c_int,
         stream: VSLStreamStatePtr,
@@ -832,6 +853,15 @@ pub trait RngFloat: Copy + 'static {
         mean: Self,
         sigma: Self,
     ) -> c_int;
+    /// Raw `rng_exponential` call.
+    ///
+    /// # Safety
+    ///
+    /// `stream` must be a live `VSLStreamStatePtr` created by `vslNewStream*` (and not yet deleted). The call advances its state, so no other thread may use the same stream during the call (VSL streams are not synchronised).
+    /// `method` must be a method constant valid for this distribution; `n` must be non-negative.
+    /// `r` must be valid for writes of `n` consecutive elements (contents need not be initialised; all `n` are overwritten on success); no Rust reference to that buffer may be live during the call.
+    /// Parameters: `beta > 0` (scale); `displacement` any finite value.
+    /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_exponential(
         method: c_int,
         stream: VSLStreamStatePtr,
@@ -840,6 +870,15 @@ pub trait RngFloat: Copy + 'static {
         displacement: Self,
         beta: Self,
     ) -> c_int;
+    /// Raw `rng_lognormal` call.
+    ///
+    /// # Safety
+    ///
+    /// `stream` must be a live `VSLStreamStatePtr` created by `vslNewStream*` (and not yet deleted). The call advances its state, so no other thread may use the same stream during the call (VSL streams are not synchronised).
+    /// `method` must be a method constant valid for this distribution; `n` must be non-negative.
+    /// `r` must be valid for writes of `n` consecutive elements (contents need not be initialised; all `n` are overwritten on success); no Rust reference to that buffer may be live during the call.
+    /// Parameters: `sigma > 0` and `scale > 0`; `displacement` any finite value.
+    /// A non-zero return is the VSL status; `r` may be partially written on failure.
     #[allow(clippy::too_many_arguments)]
     unsafe fn rng_lognormal(
         method: c_int,
@@ -851,6 +890,15 @@ pub trait RngFloat: Copy + 'static {
         displacement: Self,
         scale: Self,
     ) -> c_int;
+    /// Raw `rng_cauchy` call.
+    ///
+    /// # Safety
+    ///
+    /// `stream` must be a live `VSLStreamStatePtr` created by `vslNewStream*` (and not yet deleted). The call advances its state, so no other thread may use the same stream during the call (VSL streams are not synchronised).
+    /// `method` must be a method constant valid for this distribution; `n` must be non-negative.
+    /// `r` must be valid for writes of `n` consecutive elements (contents need not be initialised; all `n` are overwritten on success); no Rust reference to that buffer may be live during the call.
+    /// Parameters: `scale > 0`; `displacement` any finite value.
+    /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_cauchy(
         method: c_int,
         stream: VSLStreamStatePtr,
@@ -859,6 +907,15 @@ pub trait RngFloat: Copy + 'static {
         displacement: Self,
         scale: Self,
     ) -> c_int;
+    /// Raw `rng_weibull` call.
+    ///
+    /// # Safety
+    ///
+    /// `stream` must be a live `VSLStreamStatePtr` created by `vslNewStream*` (and not yet deleted). The call advances its state, so no other thread may use the same stream during the call (VSL streams are not synchronised).
+    /// `method` must be a method constant valid for this distribution; `n` must be non-negative.
+    /// `r` must be valid for writes of `n` consecutive elements (contents need not be initialised; all `n` are overwritten on success); no Rust reference to that buffer may be live during the call.
+    /// Parameters: `alpha > 0` (shape) and `beta > 0` (scale); `displacement` any finite value.
+    /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_weibull(
         method: c_int,
         stream: VSLStreamStatePtr,
@@ -868,6 +925,15 @@ pub trait RngFloat: Copy + 'static {
         displacement: Self,
         beta: Self,
     ) -> c_int;
+    /// Raw `rng_gamma` call.
+    ///
+    /// # Safety
+    ///
+    /// `stream` must be a live `VSLStreamStatePtr` created by `vslNewStream*` (and not yet deleted). The call advances its state, so no other thread may use the same stream during the call (VSL streams are not synchronised).
+    /// `method` must be a method constant valid for this distribution; `n` must be non-negative.
+    /// `r` must be valid for writes of `n` consecutive elements (contents need not be initialised; all `n` are overwritten on success); no Rust reference to that buffer may be live during the call.
+    /// Parameters: `alpha > 0` (shape) and `beta > 0` (scale); `displacement` any finite value.
+    /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_gamma(
         method: c_int,
         stream: VSLStreamStatePtr,
@@ -877,6 +943,15 @@ pub trait RngFloat: Copy + 'static {
         displacement: Self,
         beta: Self,
     ) -> c_int;
+    /// Raw `rng_beta` call.
+    ///
+    /// # Safety
+    ///
+    /// `stream` must be a live `VSLStreamStatePtr` created by `vslNewStream*` (and not yet deleted). The call advances its state, so no other thread may use the same stream during the call (VSL streams are not synchronised).
+    /// `method` must be a method constant valid for this distribution; `n` must be non-negative.
+    /// `r` must be valid for writes of `n` consecutive elements (contents need not be initialised; all `n` are overwritten on success); no Rust reference to that buffer may be live during the call.
+    /// Parameters: `p > 0`, `q > 0` and `scale > 0`; `displacement` any finite value.
+    /// A non-zero return is the VSL status; `r` may be partially written on failure.
     #[allow(clippy::too_many_arguments)]
     unsafe fn rng_beta(
         method: c_int,
@@ -888,6 +963,15 @@ pub trait RngFloat: Copy + 'static {
         displacement: Self,
         scale: Self,
     ) -> c_int;
+    /// Raw `rng_gumbel` call.
+    ///
+    /// # Safety
+    ///
+    /// `stream` must be a live `VSLStreamStatePtr` created by `vslNewStream*` (and not yet deleted). The call advances its state, so no other thread may use the same stream during the call (VSL streams are not synchronised).
+    /// `method` must be a method constant valid for this distribution; `n` must be non-negative.
+    /// `r` must be valid for writes of `n` consecutive elements (contents need not be initialised; all `n` are overwritten on success); no Rust reference to that buffer may be live during the call.
+    /// Parameters: `scale > 0`; `displacement` any finite value.
+    /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_gumbel(
         method: c_int,
         stream: VSLStreamStatePtr,
@@ -896,6 +980,15 @@ pub trait RngFloat: Copy + 'static {
         displacement: Self,
         scale: Self,
     ) -> c_int;
+    /// Raw `rng_laplace` call.
+    ///
+    /// # Safety
+    ///
+    /// `stream` must be a live `VSLStreamStatePtr` created by `vslNewStream*` (and not yet deleted). The call advances its state, so no other thread may use the same stream during the call (VSL streams are not synchronised).
+    /// `method` must be a method constant valid for this distribution; `n` must be non-negative.
+    /// `r` must be valid for writes of `n` consecutive elements (contents need not be initialised; all `n` are overwritten on success); no Rust reference to that buffer may be live during the call.
+    /// Parameters: `scale > 0`; `displacement` any finite value.
+    /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_laplace(
         method: c_int,
         stream: VSLStreamStatePtr,
@@ -904,6 +997,15 @@ pub trait RngFloat: Copy + 'static {
         displacement: Self,
         scale: Self,
     ) -> c_int;
+    /// Raw `rng_rayleigh` call.
+    ///
+    /// # Safety
+    ///
+    /// `stream` must be a live `VSLStreamStatePtr` created by `vslNewStream*` (and not yet deleted). The call advances its state, so no other thread may use the same stream during the call (VSL streams are not synchronised).
+    /// `method` must be a method constant valid for this distribution; `n` must be non-negative.
+    /// `r` must be valid for writes of `n` consecutive elements (contents need not be initialised; all `n` are overwritten on success); no Rust reference to that buffer may be live during the call.
+    /// Parameters: `scale > 0`; `displacement` any finite value.
+    /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_rayleigh(
         method: c_int,
         stream: VSLStreamStatePtr,
@@ -912,6 +1014,15 @@ pub trait RngFloat: Copy + 'static {
         displacement: Self,
         scale: Self,
     ) -> c_int;
+    /// Raw `rng_chi_square` call.
+    ///
+    /// # Safety
+    ///
+    /// `stream` must be a live `VSLStreamStatePtr` created by `vslNewStream*` (and not yet deleted). The call advances its state, so no other thread may use the same stream during the call (VSL streams are not synchronised).
+    /// `method` must be a method constant valid for this distribution; `n` must be non-negative.
+    /// `r` must be valid for writes of `n` consecutive elements (contents need not be initialised; all `n` are overwritten on success); no Rust reference to that buffer may be live during the call.
+    /// Parameters: `ndf > 0` (degrees of freedom).
+    /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_chi_square(
         method: c_int,
         stream: VSLStreamStatePtr,
@@ -919,6 +1030,15 @@ pub trait RngFloat: Copy + 'static {
         r: *mut Self,
         ndf: c_int,
     ) -> c_int;
+    /// Raw `rng_gaussian_mv` call.
+    ///
+    /// # Safety
+    ///
+    /// `stream` must be a live `VSLStreamStatePtr` (not yet deleted) and not used by another thread during the call.
+    /// `method` must be valid for the multivariate Gaussian generator; `n` is the number of vectors (non-negative) and `dimen >= 1` the dimension.
+    /// `r` must be valid for writes of `n * dimen` elements, laid out as `n` consecutive vectors of length `dimen`.
+    /// `mean` must be valid for reads of `dimen` elements. `cov_factor` must be valid for reads of the Cholesky-style factor `T` of the covariance, stored per `mstorage` (full `dimen x dimen`, packed triangular `dimen * (dimen + 1) / 2`, or diagonal `dimen`), with `mstorage` one of the matching `VSL_MATRIX_STORAGE_*` constants.
+    /// `r`, `mean` and `cov_factor` must not overlap. A non-zero return is the VSL status; `r` may be partially written on failure.
     #[allow(clippy::too_many_arguments)]
     unsafe fn rng_gaussian_mv(
         method: c_int,

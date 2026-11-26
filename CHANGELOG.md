@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.3.15 - 2026-11-26 (allocated by pm-assist; docs only)
+
+### Changed
+
+- `# Safety` sections for the `blas` (scalar, compact, packed, jit), `sparse` and `rng` unsafe trait methods, stating real preconditions; sizes verified against the installed oneMKL headers or by measurement are marked, the rest are marked unverified (continues the 0.3.14 docs; no behaviour change).
+
 ## 0.3.14 - 2026-11-26 (allocated by pm-assist; docs only)
 
 ### Changed

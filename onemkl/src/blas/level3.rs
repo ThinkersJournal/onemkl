@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! BLAS Level 3: matrix-matrix operations.
 //!
 //! Routines are grouped by operand structure:

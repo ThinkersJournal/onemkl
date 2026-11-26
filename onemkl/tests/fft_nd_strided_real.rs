@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "fft")]
 
 //! N-D real FFT (out-of-place, CCE output) over strided layouts on both

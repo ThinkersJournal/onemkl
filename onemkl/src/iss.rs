@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Iterative sparse solvers — Conjugate Gradient (CG) and Flexible
 //! GMRES (FGMRES) via oneMKL's RCI (reverse-communication interface).
 //!

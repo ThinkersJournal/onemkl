@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Scalar-typed dispatch traits for BLAS.
 //!
 //! These traits associate each Rust scalar with the matching `cblas_*`

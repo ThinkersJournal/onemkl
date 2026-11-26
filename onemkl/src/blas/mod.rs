@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Basic Linear Algebra Subprograms (BLAS).
 //!
 //! oneMKL implements the standard CBLAS interface across Levels 1, 2, and 3,

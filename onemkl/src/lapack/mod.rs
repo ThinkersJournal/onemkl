@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! LAPACK linear algebra routines.
 //!
 //! Built on the LAPACKE C interface (`LAPACKE_*`), which handles workspace

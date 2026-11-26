@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Run an int8 × uint8 → int32 GEMM as in quantized DL inference.
 //! `A` is signed activations, `B` is unsigned weights, `C` is the
 //! int32 accumulator. Demonstrates the `gemm_s8u8_s32` API with a

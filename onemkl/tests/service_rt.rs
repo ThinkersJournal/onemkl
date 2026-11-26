@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "link-rt")]
 
 //! Single dynamic library (`link-rt`): choose the layers at run time.

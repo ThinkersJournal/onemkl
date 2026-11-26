@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Unified error types for the safe oneMKL wrapper.
 //!
 //! oneMKL surfaces failure information through several different mechanisms:

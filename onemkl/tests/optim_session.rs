@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "optim")]
 
 //! Step-by-step TRNLS session API and `?trnlsp_check`.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "fft")]
 
 //! N-D in-place real FFT (CCE spectrum written over the padded real

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Service routines: version info, threading control, memory tracking,
 //! verbose mode, and overall library lifecycle.
 

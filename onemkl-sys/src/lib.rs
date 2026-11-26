@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Raw FFI bindings to the C interface of Intel oneAPI Math Kernel Library
 //! (oneMKL).
 //!

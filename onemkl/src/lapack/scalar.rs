@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Scalar-typed dispatch traits for LAPACK (via the LAPACKE C interface).
 
 use core::ffi::{c_char, c_int};

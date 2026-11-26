@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Extended Eigensolver — the FEAST contour-integration eigensolver.
 //!
 //! FEAST finds all eigenvalues and eigenvectors of a Hermitian /

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "fft")]
 
 //! Batched, strided 1-D complex FFT (`DFTI_NUMBER_OF_TRANSFORMS`,

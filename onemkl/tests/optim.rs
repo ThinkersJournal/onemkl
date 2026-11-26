@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "optim")]
 
 //! Verify trust-region NLLS solvers with closure callbacks.

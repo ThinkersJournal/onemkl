@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "blas")]
 
 //! Verify the expanded BLAS Level 2 surface against hand-computed values.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "blas")]
 
 //! Compact TRSM / POTRF / GETRFNP against hand-computed results.

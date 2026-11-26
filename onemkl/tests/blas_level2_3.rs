@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "blas")]
 
 //! Verify BLAS Level 2 and Level 3 wrappers against hand-computed values.

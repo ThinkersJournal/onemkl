@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! PDE support — trigonometric transforms (DCT / DST) used in
 //! spectral PDE solvers and signal processing.
 //!

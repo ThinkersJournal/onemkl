@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Verify service routines: version, threading, memory.
 
 use onemkl::service;

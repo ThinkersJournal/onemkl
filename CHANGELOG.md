@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.4.3 - 2026-11-26 (allocated by pm-assist; SPDX headers, comments only)
+
+### Changed
+
+- `SPDX-License-Identifier: MIT OR Apache-2.0` header on the 111 hand-written `.rs` files; `THIRD-PARTY-NOTICES.md` and an origin header on `onemkl-sys/src/vendored_bindings.rs` (bindgen output derived from Intel headers: not under this repository's licence, so it carries no SPDX line). Comments and docs only; no behaviour change.
+
 ## 0.4.2 - 2026-11-26 (allocated by pm-assist; HOTFIX: Windows build of fft.rs)
 
 ### Fixed

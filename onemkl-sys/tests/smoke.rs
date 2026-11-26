@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! End-to-end check: bindings compile, link, and a trivial MKL call works.
 
 use std::ffi::CStr;

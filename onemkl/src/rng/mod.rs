@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Random number generation via the Vector Statistical Library (VSL).
 //!
 //! oneMKL's VSL exposes a family of basic pseudo-random number

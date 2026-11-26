@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "fft")]
 
 //! 1-D real FFT in the packed storage formats (CCS, PACK, PERM),

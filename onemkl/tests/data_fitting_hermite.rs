@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "data-fitting")]
 
 //! `CubicSpline1d::hermite` must honour the supplied derivatives at every

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Inspector-Executor Sparse BLAS — sparse linear algebra with reusable
 //! handles.
 //!

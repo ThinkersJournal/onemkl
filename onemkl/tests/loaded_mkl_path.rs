@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Which MKL copy did this process actually load? A stale MKL earlier on
 //! `LD_LIBRARY_PATH` (or `PATH` on Windows) wins silently. Linux only here:
 //! reads `/proc/self/maps`. Windows (`GetModuleFileNameW`) is not implemented.

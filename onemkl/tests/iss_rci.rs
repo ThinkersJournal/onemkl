@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "iss")]
 
 //! Verify the user-driven RCI surface (CgSession / FgmresSession).

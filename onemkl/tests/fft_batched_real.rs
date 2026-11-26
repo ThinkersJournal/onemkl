@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "fft")]
 
 //! Batched out-of-place 1-D real FFT (real <-> CCE complex) with

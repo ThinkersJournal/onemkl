@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! BLAS / LAPACK enumeration types.
 //!
 //! These wrap the C-level `CBLAS_*` enums in idiomatic Rust types. Each

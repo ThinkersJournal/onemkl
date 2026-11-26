@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "lapack")]
 
 //! Verify the packed LAPACK driver wrappers.

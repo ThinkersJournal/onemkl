@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! CBWR must be set before MKL's first dispatch, so this file holds a
 //! single test that runs in its own process. It needs `blas` only to
 //! force a dispatch.

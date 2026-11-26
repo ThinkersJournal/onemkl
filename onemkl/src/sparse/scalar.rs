@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Scalar dispatch trait for Inspector-Executor Sparse BLAS.
 
 use core::ffi::c_int;

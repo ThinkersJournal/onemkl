@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Summary statistics — `vsl?SS*` task family.
 //!
 //! Computes per-variable statistics (mean, variance, min, max, sum)

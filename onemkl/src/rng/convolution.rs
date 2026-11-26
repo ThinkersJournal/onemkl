@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! 1-D convolution and correlation tasks (`vsl?Conv*` / `vsl?Corr*`).
 //!
 //! The simplest entry points are [`convolve_1d`] and [`correlate_1d`],

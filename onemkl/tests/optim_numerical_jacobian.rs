@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "optim")]
 
 //! `numerical_jacobian` (djacobi RCI): what the closure sees and the result.

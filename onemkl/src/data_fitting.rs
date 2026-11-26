@@ -612,7 +612,7 @@ impl<T: DataFittingScalar> Drop for CubicSpline1d<T> {
 
 /// A piecewise-linear interpolant (`DF_PP_LINEAR`, default spline type,
 /// no boundary or internal conditions: the combination oneMKL 2026.2
-/// accepts, measured with `tools/size-probes/df_types.c`). `x` must be
+/// accepts, measured with `tools/size-probes/df_probe3.c` (added with the Data Fitting facts note)). `x` must be
 /// strictly increasing.
 pub struct LinearSpline1d<T: DataFittingScalar> {
     task: DFTaskPtr,

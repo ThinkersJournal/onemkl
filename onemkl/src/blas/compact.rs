@@ -844,7 +844,13 @@ pub fn getrfnp<T: CompactFactorScalar>(
 /// Householder scalars as a compact buffer of `min(m, n) x 1` vectors with
 /// leading dimension `min(m, n)`; its length is checked against
 /// [`get_size`]. The workspace is allocated internally from MKL's
-/// workspace query. Returns MKL's `info`. Wraps `mkl_*geqrf_compact`.
+/// workspace query. Returns MKL's `info`. Wraps `mkl_*geqrf_compact`, whose
+/// arguments it takes one for one (layout, m, n, ap, ldap, taup, format,
+/// num_matrices).
+#[allow(
+    clippy::too_many_arguments,
+    reason = "mirrors the oneMKL C signature mkl_?geqrf_compact argument for argument"
+)]
 pub fn geqrf<T: CompactFactorScalar>(
     layout: Layout,
     m: usize,

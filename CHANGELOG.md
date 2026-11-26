@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.4.5 - 2026-11-26 (allocated by pm-assist; additive: interpolate_derivatives, find_cells)
+
+### Added
+
+- `data_fitting::CubicSpline1d::interpolate_derivatives` (value and derivatives at sites, `dorder` selection) and `find_cells` (`DF_CELL`, MKL's 1-based cell indices converted to 0-based); additive.
+
 ## 0.4.4 - 2026-11-26 (allocated by pm-assist; build script guard for ilp64 with vendored bindings, CI job)
 
 ### Changed

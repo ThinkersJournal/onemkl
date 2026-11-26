@@ -461,6 +461,105 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         Ok(out)
     }
 
+    /// Evaluate derivatives of the spline at `sites`. `orders` lists the
+    /// derivative orders wanted (`0` is the function value, up to `3` for a
+    /// cubic); the result holds one vector per entry of `orders`, in the
+    /// order requested, each with one value per site. Duplicate orders are
+    /// rejected.
+    pub fn interpolate_derivatives(&self, sites: &[T], orders: &[usize]) -> Result<Vec<Vec<T>>>
+    where
+        T: Default + Copy,
+    {
+        let max_order = sys::DF_PP_CUBIC as usize - 1;
+        let mut flags = [0 as c_int; sys::DF_PP_CUBIC as usize];
+        for &o in orders {
+            if o > max_order {
+                return Err(Error::InvalidArgument(
+                    "derivative order exceeds the spline degree (3 for a cubic)",
+                ));
+            }
+            if flags[o] != 0 {
+                return Err(Error::InvalidArgument("duplicate derivative order"));
+            }
+            flags[o] = 1;
+        }
+        if orders.is_empty() {
+            return Ok(Vec::new());
+        }
+        let nsite: c_int = sites
+            .len()
+            .try_into()
+            .map_err(|_| Error::DimensionOverflow)?;
+        let nd = orders.len();
+        let mut out: Vec<T> = vec![T::default(); sites.len() * nd];
+        let status = unsafe {
+            T::df_interpolate_1d(
+                self.task,
+                sys::DF_INTERP as c_int,
+                sys::DF_METHOD_PP as c_int,
+                nsite,
+                sites.as_ptr(),
+                sys::DF_NO_HINT as c_int,
+                flags.len() as c_int,
+                flags.as_ptr(),
+                ptr::null(),
+                out.as_mut_ptr(),
+                sys::DF_NO_HINT as c_int,
+                ptr::null_mut(),
+            )
+        };
+        check_df(status)?;
+        // MKL orders the requested derivatives ascending; map back to
+        // the caller's request order.
+        let mut ascending: Vec<usize> = orders.to_vec();
+        ascending.sort_unstable();
+        let result = orders
+            .iter()
+            .map(|o| {
+                let col = ascending.iter().position(|a| a == o).unwrap();
+                (0..sites.len()).map(|i| out[i * nd + col]).collect()
+            })
+            .collect();
+        Ok(result)
+    }
+
+    /// For each site, the index (0-based) of the knot interval
+    /// `[x[k], x[k+1])` that contains it, as reported by MKL's cell
+    /// search. MKL reports cells 1-based; this returns them 0-based.
+    pub fn find_cells(&self, sites: &[T]) -> Result<Vec<usize>>
+    where
+        T: Default,
+    {
+        let nsite: c_int = sites
+            .len()
+            .try_into()
+            .map_err(|_| Error::DimensionOverflow)?;
+        let mut vals: Vec<T> = (0..sites.len()).map(|_| T::default()).collect();
+        let mut cells: Vec<c_int> = vec![0; sites.len()];
+        let dorder: [c_int; 1] = [1];
+        let status = unsafe {
+            T::df_interpolate_1d(
+                self.task,
+                sys::DF_CELL as c_int,
+                sys::DF_METHOD_PP as c_int,
+                nsite,
+                sites.as_ptr(),
+                sys::DF_NO_HINT as c_int,
+                1,
+                dorder.as_ptr(),
+                ptr::null(),
+                vals.as_mut_ptr(),
+                sys::DF_NO_HINT as c_int,
+                cells.as_mut_ptr(),
+            )
+        };
+        check_df(status)?;
+        Ok(cells
+            .into_iter()
+            .map(|c| (c as usize).saturating_sub(1))
+            .collect())
+    }
+
     /// Integrate the spline over `[a, b]` for each pair `(a, b)` in
     /// `(left, right)`. Returns one result per pair.
     pub fn integrate(&self, left: &[T], right: &[T]) -> Result<Vec<T>>

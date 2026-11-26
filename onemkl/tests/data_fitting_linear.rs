@@ -3,7 +3,7 @@
 
 //! `LinearSpline1d` (`DF_PP_LINEAR`, default type, no boundary or internal
 //! conditions: the combination that constructs on oneMKL 2026.2, see
-//! `tools/size-probes/df_probe3.c` (added with the Data Fitting facts note)).
+//! `tools/size-probes/df_probe3.c`).
 
 use approx::assert_abs_diff_eq;
 

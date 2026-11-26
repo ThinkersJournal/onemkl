@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "fft")]
 
 //! `DFTI_WORKSPACE` on complex and real plans: the mode is applied at plan

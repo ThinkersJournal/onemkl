@@ -352,6 +352,13 @@ pub fn tbsv<T: BlasScalar>(
 ///
 /// `ap` is a packed triangular matrix of `n*(n+1)/2` elements following
 /// the CBLAS packed-storage convention (see oneMKL reference).
+///
+/// Takes the arguments of `cblas_?tpmv` one for one (layout, uplo, trans,
+/// diag, n, ap, x, incx), which is why it has eight.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "mirrors the oneMKL C signature cblas_?tpmv argument for argument"
+)]
 pub fn tpmv<T: BlasScalar>(
     layout: crate::Layout,
     uplo: UpLo,
@@ -380,6 +387,13 @@ pub fn tpmv<T: BlasScalar>(
 }
 
 /// Packed triangular solve.
+///
+/// Takes the arguments of `cblas_?tpsv` one for one (layout, uplo, trans,
+/// diag, n, ap, x, incx), which is why it has eight.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "mirrors the oneMKL C signature cblas_?tpsv argument for argument"
+)]
 pub fn tpsv<T: BlasScalar>(
     layout: crate::Layout,
     uplo: UpLo,

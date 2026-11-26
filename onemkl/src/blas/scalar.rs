@@ -219,6 +219,10 @@ pub trait BlasScalar: Scalar {
     ///
     /// # Safety
     /// `ap` is a packed triangular matrix of `n*(n+1)/2` elements.
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?tpmv argument for argument"
+    )]
     unsafe fn cblas_tpmv(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -234,6 +238,10 @@ pub trait BlasScalar: Scalar {
     ///
     /// # Safety
     /// As [`cblas_tpmv`](Self::cblas_tpmv).
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?tpsv argument for argument"
+    )]
     unsafe fn cblas_tpsv(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,

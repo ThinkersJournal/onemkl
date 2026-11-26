@@ -121,6 +121,12 @@ jobs:
         run: |
           source /opt/intel/oneapi/setvars.sh
           cargo clippy -p onemkl --lib
+      - name: Hidden too_many_arguments (source allows overridden, report only)
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          touch onemkl/src/lib.rs
+          n=$(cargo clippy -p onemkl --lib -- --force-warn clippy::too_many_arguments 2>&1 | grep -c 'too many arguments' || true)
+          echo "too_many_arguments with the source allows overridden: $n (ROADMAP row W1)" | tee -a "$GITHUB_STEP_SUMMARY"
 
   deny:
     name: cargo deny (advisories, licences, bans, sources)

@@ -265,6 +265,14 @@ impl<T: PardisoScalar> Pardiso<T> {
 
     /// Solve with multiple right-hand sides simultaneously. `b` and
     /// `x` are interpreted as `n × nrhs` column-major matrices.
+    ///
+    /// Public since 0.1.0 with this argument list (`n`, `nrhs`, `a`, `ia`,
+    /// `ja`, `b`, `x`: the per-call subset of the oneMKL `pardiso` arguments;
+    /// the handle, `maxfct`, `mnum`, `mtype`, `iparm`, ... live in `self`).
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "stable public surface, published since 0.1.0; changing the signature breaks consumers"
+    )]
     pub fn solve_multi(
         &mut self,
         n: usize,

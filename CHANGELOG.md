@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.4.7 - 2026-11-26 (allocated by pm-assist; additive: FftWorkspace, DFTI_WORKSPACE)
+
+### Added
+
+- `fft::FftWorkspace` and `FftPlan::complex_nd_with_workspace` / `RealFftPlan::real_nd_with_workspace` / `workspace()` (`DFTI_WORKSPACE`); additive. ROADMAP records that `DFTI_ORDERING` is accepted but gave identical results (nothing observable to wrap).
+
 ## 0.4.6 - 2026-11-26 (allocated by pm-assist; docs and tools: guard-page probes, verified-extent docs)
 
 ### Changed

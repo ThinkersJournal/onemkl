@@ -99,7 +99,7 @@ pub fn eigh_real_dense<T: FeastReal>(
     // info == 0 → success.
     // info == 1 → "no eigenvalue found" (warning); treat as success-with-empty.
     // info > 1 → genuine failure.
-    if info > 1 || info < 0 {
+    if !(0..=1).contains(&info) {
         return Err(Error::LapackComputationFailure { info });
     }
     let m = m_actual.max(0) as usize;
@@ -171,7 +171,7 @@ pub fn eigh_complex_dense<T: FeastComplex>(
     // info == 0 → success.
     // info == 1 → "no eigenvalue found" (warning); treat as success-with-empty.
     // info > 1 → genuine failure.
-    if info > 1 || info < 0 {
+    if !(0..=1).contains(&info) {
         return Err(Error::LapackComputationFailure { info });
     }
     let m = m_actual.max(0) as usize;
@@ -614,7 +614,7 @@ fn finish_real_result<T: FeastReal>(
     epsout: T,
     loop_count: c_int,
 ) -> Result<FeastResult<T, T>> {
-    if info > 1 || info < 0 {
+    if !(0..=1).contains(&info) {
         return Err(Error::LapackComputationFailure { info });
     }
     let m = m_actual.max(0) as usize;
@@ -642,7 +642,7 @@ fn finish_complex_result<T: FeastComplex>(
     epsout: T::Real,
     loop_count: c_int,
 ) -> Result<FeastResult<T, T::Real>> {
-    if info > 1 || info < 0 {
+    if !(0..=1).contains(&info) {
         return Err(Error::LapackComputationFailure { info });
     }
     let m = m_actual.max(0) as usize;
@@ -667,6 +667,15 @@ fn finish_complex_result<T: FeastComplex>(
 #[allow(missing_docs)]
 pub trait FeastReal: Copy + 'static {
     fn zero() -> Self;
+    /// Raw `feast_dense_real` call.
+    ///
+    /// # Safety
+    ///
+    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `c_int` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the search interval, `emin < emax`).
+    /// `a` must be valid for reads of `lda * n` elements (column-major, `lda >= n` pointed to by `lda`), at least the triangle selected by `uplo`; real symmetric (or Hermitian per the type).
+    /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
+    /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
+    /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `a`: n * n (uplo = F), `e`: m0, `x`: n * m0, `res`: m0 elements, n = 20, m0 = 10, via `dfeast_syev`; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn feast_dense_real(
         uplo: *const c_char,
@@ -686,6 +695,15 @@ pub trait FeastReal: Copy + 'static {
         info: *mut c_int,
     );
 
+    /// Raw `feast_csr_real` call.
+    ///
+    /// # Safety
+    ///
+    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `c_int` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the search interval, `emin < emax`).
+    /// `sa`, `isa`, `jsa` describe an `n x n` CSR matrix (1-based, as FEAST requires): `isa` must hold `n + 1` entries, `jsa` and `sa` `isa[n] - 1` entries; only the triangle selected by `uplo` is read; `sa`, `isa`, `jsa` must be readable for those lengths.
+    /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
+    /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
+    /// Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn feast_csr_real(
         uplo: *const c_char,
@@ -706,6 +724,15 @@ pub trait FeastReal: Copy + 'static {
         info: *mut c_int,
     );
 
+    /// Raw `feast_banded_real` call.
+    ///
+    /// # Safety
+    ///
+    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `c_int` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the search interval, `emin < emax`).
+    /// `a` must be valid for reads of `lda * n` elements in LAPACK band storage with `kla` (pointed to) super/sub-diagonals, `lda >= kla + 1`.
+    /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
+    /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
+    /// Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn feast_banded_real(
         uplo: *const c_char,
@@ -726,6 +753,15 @@ pub trait FeastReal: Copy + 'static {
         info: *mut c_int,
     );
 
+    /// Raw `feast_dense_gen_real` call.
+    ///
+    /// # Safety
+    ///
+    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `c_int` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the search interval, `emin < emax`).
+    /// `a` and `b` must be valid for reads of `lda * n` and `ldb * n` elements (column-major, `lda`, `ldb >= n`), `b` symmetric positive definite; only the triangle selected by `uplo` is read.
+    /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
+    /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
+    /// Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn feast_dense_gen_real(
         uplo: *const c_char,
@@ -882,6 +918,15 @@ pub trait FeastComplex: Copy + 'static {
     /// and the search interval `[emin, emax]`).
     type Real: FeastReal;
     fn zero_complex() -> Self;
+    /// Raw `feast_dense_complex` call.
+    ///
+    /// # Safety
+    ///
+    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `c_int` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the real search interval, `emin < emax`).
+    /// `a` must be valid for reads of `lda * n` elements (column-major, `lda >= n`), the Hermitian matrix; at least the triangle selected by `uplo` is read.
+    /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
+    /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
+    /// Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn feast_dense_complex(
         uplo: *const c_char,
@@ -901,6 +946,15 @@ pub trait FeastComplex: Copy + 'static {
         info: *mut c_int,
     );
 
+    /// Raw `feast_csr_complex` call.
+    ///
+    /// # Safety
+    ///
+    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `c_int` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the real search interval, `emin < emax`).
+    /// `sa`, `isa`, `jsa` describe an `n x n` Hermitian CSR matrix (1-based): `isa` holds `n + 1` entries, `jsa` and `sa` `isa[n] - 1` entries; only the triangle selected by `uplo` is read.
+    /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
+    /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
+    /// Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn feast_csr_complex(
         uplo: *const c_char,
@@ -921,6 +975,15 @@ pub trait FeastComplex: Copy + 'static {
         info: *mut c_int,
     );
 
+    /// Raw `feast_banded_complex` call.
+    ///
+    /// # Safety
+    ///
+    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `c_int` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the real search interval, `emin < emax`).
+    /// `a` must be valid for reads of `lda * n` elements in LAPACK band storage with `kla` (pointed to) super/sub-diagonals, `lda >= kla + 1`.
+    /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
+    /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
+    /// Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn feast_banded_complex(
         uplo: *const c_char,
@@ -941,6 +1004,15 @@ pub trait FeastComplex: Copy + 'static {
         info: *mut c_int,
     );
 
+    /// Raw `feast_dense_gen_complex` call.
+    ///
+    /// # Safety
+    ///
+    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `c_int` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the real search interval, `emin < emax`).
+    /// `a` and `b` must be valid for reads of `lda * n` and `ldb * n` elements (column-major, `lda`, `ldb >= n`), `b` Hermitian positive definite; only the triangle selected by `uplo` is read.
+    /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
+    /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
+    /// Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn feast_dense_gen_complex(
         uplo: *const c_char,

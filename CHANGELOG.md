@@ -26,7 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- Whole tree formatted with `cargo fmt --all` (mechanical, no behaviour change; 86 files).
+- **BREAKING:** `optim::solve_trnls_bounded` takes the bounds as one `optim::TrnlsBounds { lower, upper }` argument instead of two separate slices (clippy `too_many_arguments`; pre-1.0, so a minor-as-major bump). Migration: `solve_trnls_bounded(n, m, &mut x, &lower, &upper, opts, f, j)` becomes `solve_trnls_bounded(n, m, &mut x, TrnlsBounds { lower: &lower, upper: &upper }, opts, f, j)`.
+- Every `unsafe` trait method now has a `# Safety` section stating its real preconditions (extents, leading dimensions, aliasing, pointer retention, status handling); sizes verified against the installed oneMKL headers or by measurement are marked, the rest are marked unverified. `blas::packed` docs now say `gemm_pack_get_size` returns bytes.
+- Whole tree formatted with `cargo fmt --all`; 29 clippy lints fixed with no behaviour change (`larfg` and `heevr` take `T: Default` in the generics instead of a where clause).
 
 ### Added
 

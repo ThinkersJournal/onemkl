@@ -82,6 +82,13 @@ impl TrigTransformType {
 /// Scalar types supported by the trig transform routines.
 #[allow(missing_docs)]
 pub trait TrigTransformScalar: Copy + Default + 'static {
+    /// Raw `init_trig_transform` call.
+    ///
+    /// # Safety
+    ///
+    /// `n` must point to one readable `c_int` (the number of intervals, `n >= 2`) and `tt_type` to one readable `c_int` (a `MKL_*_TRANSFORM` constant). `ipar` must be valid for writes of the 128-entry integer parameter array and `dpar` for writes of the double/float parameter array MKL specifies for the transform (at least `5 * n / 2 + 2` elements; **verified** by guard-page probe, n = 64, oneMKL 2026.2, Linux x86_64: the smallest `dpar` for which init+commit+forward+backward did not fault was `n/2 + 2` (sine), `n + 2` (cosine), `3n/2 + 2` (both staggered types) and `5n/2 + 2` (both staggered2 types), so `5n/2 + 2` is the tight bound over all types; the smallest `ipar` was 15 entries, and the documented 128-entry length is kept as the safe size). `stat` must point to one writable `c_int`.
+    /// Despite the `*mut` types `n` and `tt_type` are only read. The arrays must not overlap. A non-zero `*stat` reports an MKL error and the arrays must not be used further. The MKL library must be linked and usable.
+    /// Transform-type constants `MKL_SINE_TRANSFORM`..`MKL_STAGGERED2_SINE_TRANSFORM` (0..=5) are declared in `mkl_trig_transforms.h`. The requirement `n >= 2` is unverified.
     unsafe fn init_trig_transform(
         n: *mut c_int,
         tt_type: *mut c_int,
@@ -89,6 +96,12 @@ pub trait TrigTransformScalar: Copy + Default + 'static {
         dpar: *mut Self,
         stat: *mut c_int,
     );
+    /// Raw `commit_trig_transform` call.
+    ///
+    /// # Safety
+    ///
+    /// `f` must be valid for reads of the grid values the transform defines (**verified** by the same probe: `n + 1` elements for the sine, cosine and staggered types, `n` elements for the staggered2 types, n = 64) and `handle` valid for a write of one `DFTI_DESCRIPTOR_HANDLE`. `ipar` and `dpar` must be the arrays initialised by `init_trig_transform` for the same `n` and transform type, unmodified except as MKL allows (sizes as there); `stat` must point to one writable `c_int`.
+    /// On success `*handle` is owned by the caller and must be released with `free_trig_transform` exactly once; `*handle` must not be used after a failed commit. The MKL library must be linked and usable.
     unsafe fn commit_trig_transform(
         f: *mut Self,
         handle: *mut DFTI_DESCRIPTOR_HANDLE,
@@ -96,6 +109,12 @@ pub trait TrigTransformScalar: Copy + Default + 'static {
         dpar: *mut Self,
         stat: *mut c_int,
     );
+    /// Raw `forward_trig_transform` call.
+    ///
+    /// # Safety
+    ///
+    /// `f` must be valid for reads and writes of the same number of grid elements used in `commit_trig_transform` (it is transformed in place); `handle`, `ipar`, `dpar` must be the live handle and arrays from the matching `commit_trig_transform` (handle not yet freed), and `stat` must point to one writable `c_int`.
+    /// No other reference to `f` may be live during the call, and no other thread may use `handle`, `ipar` or `dpar`. The MKL library must be linked and usable.
     unsafe fn forward_trig_transform(
         f: *mut Self,
         handle: *mut DFTI_DESCRIPTOR_HANDLE,
@@ -103,6 +122,12 @@ pub trait TrigTransformScalar: Copy + Default + 'static {
         dpar: *mut Self,
         stat: *mut c_int,
     );
+    /// Raw `backward_trig_transform` call.
+    ///
+    /// # Safety
+    ///
+    /// `f` must be valid for reads and writes of the same number of grid elements used in `commit_trig_transform` (it is transformed in place); `handle`, `ipar`, `dpar` must be the live handle and arrays from the matching `commit_trig_transform` (handle not yet freed), and `stat` must point to one writable `c_int`.
+    /// No other reference to `f` may be live during the call, and no other thread may use `handle`, `ipar` or `dpar`. The MKL library must be linked and usable.
     unsafe fn backward_trig_transform(
         f: *mut Self,
         handle: *mut DFTI_DESCRIPTOR_HANDLE,
@@ -1413,7 +1438,9 @@ impl<T: HelmholtzScalar> SphericalPatchHelmholtz<T> {
         if np < 2 || nt < 2 {
             return Err(Error::InvalidArgument("np and nt must be at least 2"));
         }
-        if !(ap < bp) || !(0.0 < at && at < bt && bt < core::f64::consts::PI) {
+        if ap.partial_cmp(&bp) != Some(core::cmp::Ordering::Less)
+            || !(0.0 < at && at < bt && bt < core::f64::consts::PI)
+        {
             return Err(Error::InvalidArgument("need ap < bp and 0 < at < bt < pi"));
         }
         let np_i: c_int = np.try_into().map_err(|_| Error::DimensionOverflow)?;

@@ -701,7 +701,7 @@ unsafe extern "C" fn xerbla_trampoline(name: *const c_char, num: *const c_int, l
         // of exactly `len` bytes.
         let bytes = unsafe { slice::from_raw_parts(name as *const u8, len as usize) };
         String::from_utf8_lossy(bytes)
-            .trim_end_matches(|c: char| c == ' ' || c == '\0')
+            .trim_end_matches([' ', '\0'])
             .to_owned()
     };
     // SAFETY: MKL passes a valid pointer to the argument position.
@@ -773,7 +773,7 @@ unsafe extern "C" fn progress_trampoline(
         // SAFETY: Fortran-style, `stage_len` bytes, not NUL-terminated.
         let bytes = unsafe { slice::from_raw_parts(stage as *const u8, stage_len as usize) };
         String::from_utf8_lossy(bytes)
-            .trim_end_matches(|c: char| c == ' ' || c == '\0')
+            .trim_end_matches([' ', '\0'])
             .to_owned()
     };
     let t = if thread.is_null() {

@@ -5,7 +5,7 @@
 use approx::assert_abs_diff_eq;
 
 use onemkl::optim::{
-    TrnlsBoundedSession, TrnlsOptions, TrnlsSession, TrnlsStep, solve_trnls_bounded,
+    TrnlsBoundedSession, TrnlsBounds, TrnlsOptions, TrnlsSession, TrnlsStep, solve_trnls_bounded,
 };
 
 // Fit y = a + b*x through (1, 2) and (2, 3): solution a = b = 1.
@@ -87,8 +87,10 @@ fn bounded_session_respects_the_bound_and_matches_the_closure_solver() {
         2,
         2,
         &mut x,
-        &lo,
-        &hi,
+        TrnlsBounds {
+            lower: &lo,
+            upper: &hi,
+        },
         TrnlsOptions::default(),
         residual,
         |_, j| jacobian(j),

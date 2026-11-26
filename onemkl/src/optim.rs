@@ -130,7 +130,7 @@ where
                 return Err(Error::LapackComputationFailure { info: status });
             }
             match rci {
-                -1 | -2 | -3 | -4 | -5 | -6 => break,
+                -6..=-1 => break,
                 0 => break,
                 1 => residual(x, &mut fvec),
                 2 => jacobian(x, &mut fjac),
@@ -163,14 +163,23 @@ where
     result
 }
 
+/// Element-wise bounds `lower[i] ≤ x[i] ≤ upper[i]` for
+/// [`solve_trnls_bounded`]; both slices must have length `n`.
+#[derive(Debug, Clone, Copy)]
+pub struct TrnlsBounds<'a> {
+    /// Lower bounds, length `n`.
+    pub lower: &'a [f64],
+    /// Upper bounds, length `n`.
+    pub upper: &'a [f64],
+}
+
 /// Bound-constrained trust-region NLLS solver. Adds element-wise
 /// lower / upper bound enforcement: `lower[i] ≤ x[i] ≤ upper[i]`.
 pub fn solve_trnls_bounded<R, J>(
     n: usize,
     m: usize,
     x: &mut [f64],
-    lower: &[f64],
-    upper: &[f64],
+    bounds: TrnlsBounds<'_>,
     opts: TrnlsOptions,
     mut residual: R,
     mut jacobian: J,
@@ -179,6 +188,7 @@ where
     R: FnMut(&[f64], &mut [f64]),
     J: FnMut(&[f64], &mut [f64]),
 {
+    let TrnlsBounds { lower, upper } = bounds;
     if x.len() != n || lower.len() != n || upper.len() != n {
         return Err(Error::InvalidArgument(
             "x, lower, and upper must each have length n",
@@ -219,7 +229,7 @@ where
                 return Err(Error::LapackComputationFailure { info: status });
             }
             match rci {
-                -1 | -2 | -3 | -4 | -5 | -6 => break,
+                -6..=-1 => break,
                 0 => break,
                 1 => residual(x, &mut fvec),
                 2 => jacobian(x, &mut fjac),

@@ -1724,7 +1724,7 @@ pub fn syevr<T: RealLapackScalar + Default>(
 /// Hermitian eigensolver via RRR. Complex-only. Eigenvalues are
 /// real (stored in `Self::Real`); eigenvectors are complex.
 #[allow(clippy::too_many_arguments)]
-pub fn heevr<T: ComplexLapackScalar>(
+pub fn heevr<T: ComplexLapackScalar + Default>(
     jobz: Job,
     range: EigenRange<T::Real>,
     uplo: UpLo,
@@ -1733,7 +1733,6 @@ pub fn heevr<T: ComplexLapackScalar>(
 ) -> Result<RrrEigResult<T, T::Real>>
 where
     T::Real: Default,
-    T: Default,
 {
     let n = ensure_square(a)?;
     let n_i = dim_to_mkl_int(n)?;
@@ -2243,15 +2242,12 @@ pub fn iter_refine_posv_c64(
 /// holds the rest of the source vector. On return `alpha` is replaced
 /// by the reflected leading element; `x` holds the lower part of the
 /// reflector vector `v` (with the implicit leading `1` not stored).
-pub fn larfg<T: LapackScalar>(
+pub fn larfg<T: LapackScalar + Default>(
     n: usize,
     alpha: &mut T,
     x: &mut [T],
     incx: i32,
-) -> Result<HouseholderReflector<T>>
-where
-    T: Default,
-{
+) -> Result<HouseholderReflector<T>> {
     if n == 0 {
         return Err(Error::InvalidArgument("n must be ≥ 1"));
     }
@@ -2413,7 +2409,19 @@ pub fn larfb<T: LapackScalar>(
 pub trait ComplexAuxScalar: Copy + 'static {
     /// The matching real scalar (`f32` for `Complex32`, `f64` for `Complex64`).
     type Real: Copy + 'static;
+    /// Raw `lapacke_lacgv` call.
+    ///
+    /// # Safety
+    ///
+    /// `x` must be valid for reads and writes of `1 + (n - 1) * |incx|` elements with `incx != 0`; it is conjugated in place. No Rust reference to `x` may be live.
+    /// The returned value is LAPACK's `info` (0 success, negative `-i` argument `i` invalid, positive numerical failure); outputs may be partly overwritten on non-zero. The MKL library must be linked and usable.
     unsafe fn lapacke_lacgv(n: core::ffi::c_int, x: *mut Self, incx: core::ffi::c_int) -> i32;
+    /// Raw `lapacke_lacrm` call.
+    ///
+    /// # Safety
+    ///
+    /// `a` is a complex `m x n` matrix and `b` a real `n x n` matrix, `c` the complex `m x n` result (`C = A * B`). Per `layout`, `a`, `b`, `c` must be valid for `lda * n` / `ldb * n` / `ldc * n` elements (column-major, `ld* >= rows`) or `lda * m` / `ldb * n` / `ldc * m` (row-major, `ld* >= cols`). `c` must not overlap `a` or `b`.
+    /// The returned value is LAPACK's `info` (0 success, negative `-i` argument `i` invalid, positive numerical failure); outputs may be partly overwritten on non-zero. The MKL library must be linked and usable.
     #[allow(clippy::too_many_arguments)]
     unsafe fn lapacke_lacrm(
         layout: core::ffi::c_int,
@@ -2534,6 +2542,12 @@ pub fn lacrm<T: ComplexAuxScalar>(
 /// [`syconv`] (real and complex *symmetric*, not Hermitian).
 #[allow(missing_docs)]
 pub trait SymConvScalar: Copy + 'static {
+    /// Raw `lapacke_sytrf` call.
+    ///
+    /// # Safety
+    ///
+    /// `a` must be valid for reads and writes of `lda * n` elements (`lda >= max(1, n)`), the symmetric matrix with the triangle selected by `uplo` referenced; it is overwritten with the block-diagonal and multiplier factors. `ipiv` must be valid for writes of `n` `c_int` entries. `a` and `ipiv` must not overlap.
+    /// The returned value is LAPACK's `info` (0 success, negative `-i` argument `i` invalid, positive numerical failure); outputs may be partly overwritten on non-zero. The MKL library must be linked and usable.
     unsafe fn lapacke_sytrf(
         layout: core::ffi::c_int,
         uplo: core::ffi::c_char,
@@ -2542,6 +2556,12 @@ pub trait SymConvScalar: Copy + 'static {
         lda: core::ffi::c_int,
         ipiv: *mut core::ffi::c_int,
     ) -> i32;
+    /// Raw `lapacke_syconv` call.
+    ///
+    /// # Safety
+    ///
+    /// `a` and `ipiv` must be the output of a successful `lapacke_sytrf` with the same `uplo` and `n` (`a`: `lda * n` elements, `ipiv`: `n` entries, readable). `a` is converted in place (`way` is `C` convert or `R` revert); `e` must be valid for writes of `n` elements (off-diagonal entries of the block diagonal). `a`, `e` and `ipiv` must not overlap.
+    /// The returned value is LAPACK's `info` (0 success, negative `-i` argument `i` invalid, positive numerical failure); outputs may be partly overwritten on non-zero. The MKL library must be linked and usable.
     #[allow(clippy::too_many_arguments)]
     unsafe fn lapacke_syconv(
         layout: core::ffi::c_int,

@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased (version to be allocated by pm-assist)
+
+### Fixed
+
+- Windows build: `fft::check_dfti` passed a 4-byte `c_long` status to `Error::DftiStatus(i64)` (E0308 on `x86_64-pc-windows-msvc`; 0.4.1 does not compile there). The status is now widened explicitly, and every DFTI length, stride and count in `fft` is typed `onemkl_sys::MKL_LONG` (the interface layer's own `MKL_LONG`) instead of `c_long`, which differs under `ilp64` on Windows.
+
+### Added
+
+- CI: a `cargo check` job for `x86_64-pc-windows-msvc`, `x86_64-apple-darwin` and `aarch64-apple-darwin` from a Linux runner (vendored bindings), so a platform-only type error is caught before main.
+
 ## 0.4.1 - 2026-11-26 (allocated by pm-assist; lint waivers, no behaviour change)
 
 ### Changed

@@ -492,7 +492,7 @@ impl<T: SparseScalar> SparseMatrix<T> {
         if block_size == 0 {
             return Err(Error::InvalidArgument("block_size must be > 0"));
         }
-        if rows % block_size != 0 || cols % block_size != 0 {
+        if !rows.is_multiple_of(block_size) || !cols.is_multiple_of(block_size) {
             return Err(Error::InvalidArgument(
                 "rows and cols must be multiples of block_size",
             ));
@@ -1087,11 +1087,25 @@ fn transposed_shape(op: Operation, rows: usize, cols: usize) -> (usize, usize) {
 /// Real-only sparse routines, currently the QR family.
 #[allow(missing_docs)]
 pub trait RealSparseScalar: SparseScalar {
+    /// Raw `sparse_qr_factorize` call.
+    ///
+    /// # Safety
+    ///
+    /// `a` must be a live, square or tall handle created by `sparse_create_*`, not yet destroyed, and already `mkl_sparse_order`-ed as MKL requires for QR.
+    /// `alt_values` may be null; if not it must point to `nnz` values (same structure as `a`) valid for reads, and must stay valid and unchanged until the matching `sparse_qr_solve` calls that pass it have completed.
+    /// The MKL library must be linked and usable. The returned status is MKL's; on a non-success status `*a` must not be used.
     unsafe fn sparse_qr_factorize(
         a: sparse_matrix_t,
         alt_values: *mut Self,
     ) -> sparse_status_t::Type;
 
+    /// Raw `sparse_qr_solve` call.
+    ///
+    /// # Safety
+    ///
+    /// `a` must be the live handle previously passed to a successful `sparse_qr_factorize`, with the same `alt_values` pointer (or null) as in that call.
+    /// `b` is a dense `rows(op(A)) x columns` matrix and `x` a dense `cols(op(A)) x columns` matrix, both per `layout` with leading dimensions `ldb`/`ldx` at least the row-major row length or column-major column length. `b` must be valid for reads and `x` for writes of the whole strided extent, and `x` and `b` must not overlap.
+    /// The MKL library must be linked and usable. The returned status is MKL's; on a non-success status `*a` must not be used.
     #[allow(clippy::too_many_arguments)]
     unsafe fn sparse_qr_solve(
         op: sparse_operation_t::Type,

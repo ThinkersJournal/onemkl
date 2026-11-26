@@ -68,6 +68,13 @@ pub trait JitGemmScalar: Copy + 'static {
     /// Function-pointer type the kernel returns to.
     type Kernel: Copy;
 
+    /// Raw `jit_create` call.
+    ///
+    /// # Safety
+    ///
+    /// `jitter` must be valid for a write of one `*mut c_void`; on success it receives an opaque JIT handle the caller must release with `mkl_jit_destroy` exactly once. On a non-success status `*jitter` must not be used.
+    /// `layout`, `transa`, `transb` must be valid MKL enumerators; `m`, `n`, `k` non-negative; `lda`, `ldb`, `ldc` must satisfy the usual GEMM leading-dimension constraints for the chosen layout because the kernel does no checking. `alpha` and `beta` are baked into the kernel.
+    /// The MKL library must be linked and usable.
     #[allow(clippy::too_many_arguments)]
     unsafe fn jit_create(
         jitter: *mut *mut core::ffi::c_void,
@@ -84,10 +91,22 @@ pub trait JitGemmScalar: Copy + 'static {
         ldc: c_int,
     ) -> sys::mkl_jit_status_t::Type;
 
+    /// Raw `jit_get_kernel` call.
+    ///
+    /// # Safety
+    ///
+    /// `jitter` must be a live handle from a successful `jit_create` that has not been destroyed. The returned function pointer is valid only while that handle is alive and must not be called after `mkl_jit_destroy`. Returns `None` if MKL has no kernel (the generic fallback is then not available through this pointer).
+    /// The MKL library must be linked and usable.
     unsafe fn jit_get_kernel(jitter: *const core::ffi::c_void) -> Option<Self::Kernel>;
 
     /// Call the kernel: `c ← alpha · op(a) · op(b) + beta · c` with
     /// the parameters baked in at JIT time.
+    ///
+    /// # Safety
+    ///
+    /// `kernel` must have been obtained from `jit_get_kernel` for this same `jitter` (not destroyed), and `jitter` is the handle it was created for.
+    /// `a`, `b` and `c` must point to matrices whose shapes, `trans*` and leading dimensions equal the ones baked in at `jit_create`: `a` readable, `b` readable (despite the `*mut` type MKL does not write them), `c` readable when `beta != 0` and writable. `c` must not overlap `a` or `b`, and no Rust reference to `c` may be live during the call.
+    /// The kernel performs no argument validation. The MKL library must be linked and usable.
     unsafe fn invoke_kernel(
         kernel: Self::Kernel,
         jitter: *mut core::ffi::c_void,

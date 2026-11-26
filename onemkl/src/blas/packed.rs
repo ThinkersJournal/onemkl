@@ -61,6 +61,12 @@ impl PackIdentifier {
 /// Real scalar types supported by the pack / compute GEMM API.
 #[allow(missing_docs)]
 pub trait PackedGemmScalar: Copy + 'static {
+    /// Raw `gemm_pack_get_size` call.
+    ///
+    /// # Safety
+    ///
+    /// No pointers. `identifier` must be `CblasAMatrix` or `CblasBMatrix` and `m`, `n`, `k` the GEMM dimensions (non-negative). The returned size is a **byte** count (the wrapper allocates it as bytes; unverified against MKL docs, but for `m = n = k = 100` `f64` it returned 5017728, far above the 80000 bytes of the matrix, so it includes blocking padding); callers must size `dest` of `gemm_pack` with at least this many bytes. The prototype `size_t cblas_?gemm_pack_get_size(CBLAS_IDENTIFIER, MKL_INT, MKL_INT, MKL_INT)` is in `mkl_cblas.h`.
+    /// The MKL library must be linked and usable.
     unsafe fn gemm_pack_get_size(
         identifier: sys::CBLAS_IDENTIFIER::Type,
         m: c_int,
@@ -68,6 +74,13 @@ pub trait PackedGemmScalar: Copy + 'static {
         k: c_int,
     ) -> usize;
 
+    /// Raw `gemm_pack` call.
+    ///
+    /// # Safety
+    ///
+    /// `src` must be valid for reads of the matrix `identifier` selects (`A`: `m x k`, `B`: `k x n`, after `trans`) with leading dimension `ld` per `layout`: `ld * cols` elements (column-major, `ld >= rows`) or `ld * rows` (row-major, `ld >= cols`).
+    /// `dest` must be valid for writes of at least `gemm_pack_get_size(identifier, m, n, k)` bytes and suitably aligned as MKL requires (at least `Self` alignment; MKL recommends 64 bytes); it must not overlap `src`. `alpha` is folded into the packed data.
+    /// The MKL library must be linked and usable.
     #[allow(clippy::too_many_arguments)]
     unsafe fn gemm_pack(
         layout: sys::CBLAS_LAYOUT::Type,
@@ -82,6 +95,13 @@ pub trait PackedGemmScalar: Copy + 'static {
         dest: *mut Self,
     );
 
+    /// Raw `gemm_compute` call.
+    ///
+    /// # Safety
+    ///
+    /// `a` and `b` are either ordinary matrices or buffers produced by `gemm_pack` with the same `layout`, dimensions and operand `identifier`, matching `transa`/`transb` (`CblasPacked` for a packed operand); a packed buffer must not have been freed, resized or modified since packing, and the `alpha` used when packing is the one applied.
+    /// For an unpacked operand the usual extent rule holds: `ld * cols` (column-major) or `ld * rows` (row-major) elements, `ld` at least the row/column length. `c` is `m x n` with `ldc`, read when `beta != 0` and written; it must be valid for `ldc * n` (column-major) or `ldc * m` (row-major) elements and must not overlap `a` or `b`.
+    /// The MKL library must be linked and usable.
     #[allow(clippy::too_many_arguments)]
     unsafe fn gemm_compute(
         layout: sys::CBLAS_LAYOUT::Type,

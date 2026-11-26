@@ -28,6 +28,15 @@ use crate::error::{Error, Result};
 /// Real scalar types supported by the summary-statistics task family.
 #[allow(missing_docs)]
 pub trait SsScalar: Copy + Default + 'static {
+    /// Raw `ss_new_task` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be valid for a write of one `VSLSSTaskPtr`. `p`, `n` and `xstorage` must each point to one readable `c_int` (dimension `p >= 1`, observation count `n >= 1`, and a `VSL_SS_MATRIX_STORAGE_*` constant); they are read during the call.
+    /// `x` must point to the `p x n` observation matrix, `p * n` elements, stored per `*xstorage`. `w` may be null (equal weights) or point to `n` weights. `indices` may be null or point to `p` entries of 0/1 selecting which variables are used.
+    /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
+    /// On a non-zero return `*task` must not be used. A non-zero return is the VSL status. The MKL library must be linked and usable.
+    /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `x`: p * n and `w`: n elements, row storage; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn ss_new_task(
         task: *mut VSLSSTaskPtr,
@@ -39,8 +48,26 @@ pub trait SsScalar: Copy + Default + 'static {
         indices: *const c_int,
     ) -> c_int;
 
+    /// Raw `ss_edit_task` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
+    /// `parameter` must be a `VSL_SS_ED_*` constant that expects a `Self`-typed address (or the matching integer type, which this method does not provide); `address` must point to storage of the extent MKL documents for that parameter (for example `p` elements for a per-variable vector, `p * p` for a covariance matrix).
+    /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
+    /// A non-zero return is the VSL status. The MKL library must be linked and usable.
+    /// Extents not listed as verified in this block are unverified (from MKL documentation).
     unsafe fn ss_edit_task(task: VSLSSTaskPtr, parameter: c_int, address: *const Self) -> c_int;
 
+    /// Raw `ss_edit_moments` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
+    /// `mean`, `r2m`, `r3m`, `r4m`, `c2m`, `c3m` and `c4m` are output vectors of `p` elements each (the task dimension); each pointer must be non-null and valid for writes of `p` elements when the corresponding estimate is requested in `ss_compute`, and the buffers must not overlap each other or the task data.
+    /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
+    /// A non-zero return is the VSL status. The MKL library must be linked and usable.
+    /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `mean` and `r2m` (raw 2nd moment): p elements each; note 2C_MOM needs the 2R_MOM output registered, status -4007 otherwise; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn ss_edit_moments(
         task: VSLSSTaskPtr,
@@ -53,8 +80,25 @@ pub trait SsScalar: Copy + Default + 'static {
         c4m: *mut Self,
     ) -> c_int;
 
+    /// Raw `ss_compute` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
+    /// All pointers previously registered with the task via `ss_new_task` and the `ss_edit_*` calls must still be valid per their own contracts. `estimates` must be a bitwise OR of `VSL_SS_*` estimate flags for which the corresponding output buffers were registered; otherwise MKL writes through unset pointers. `method` must be a valid `VSL_SS_METHOD_*`.
+    /// A non-zero return is the VSL status. The MKL library must be linked and usable.
+    /// Extents not listed as verified in this block are unverified (from MKL documentation).
     unsafe fn ss_compute(task: VSLSSTaskPtr, estimates: u64, method: c_int) -> c_int;
 
+    /// Raw `ss_edit_quantiles` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
+    /// `quant_order_n` points to one `c_int` (number of quantile orders `m`); `quant_orders` points to `m` values in `[0, 1]`; `quants_out` must be valid for writes of `p * m` elements; `order_stats_out` and `order_stats_storage` may be null together, otherwise `order_stats_out` must be valid for writes of `p * n` elements stored per `*order_stats_storage`.
+    /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
+    /// A non-zero return is the VSL status. The MKL library must be linked and usable.
+    /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `quants_out`: p * q elements; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn ss_edit_quantiles(
         task: VSLSSTaskPtr,
@@ -65,6 +109,15 @@ pub trait SsScalar: Copy + Default + 'static {
         order_stats_storage: *const c_int,
     ) -> c_int;
 
+    /// Raw `ss_edit_stream_quantiles` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
+    /// `quant_order_n` points to one `c_int` (`m`); `quant_orders` points to `m` values in `[0, 1]`; `quants_out` must be valid for writes of `p * m` elements; `params_n` points to one `c_int` (the number of parameters, at least 1) and `params` to that many values (the accuracy parameter).
+    /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
+    /// A non-zero return is the VSL status. The MKL library must be linked and usable.
+    /// Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn ss_edit_stream_quantiles(
         task: VSLSSTaskPtr,
@@ -75,6 +128,15 @@ pub trait SsScalar: Copy + Default + 'static {
         params: *const Self,
     ) -> c_int;
 
+    /// Raw `ss_edit_robust_covariance` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
+    /// `cov_storage` points to one `c_int` giving the storage of `cov_out` (a `VSL_SS_MATRIX_STORAGE_*`); `n_params` points to one `c_int` and `params` to that many parameters; `mean_out` must be valid for writes of `p` elements and `cov_out` of `p * p` elements (or the packed size for packed storage).
+    /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
+    /// A non-zero return is the VSL status. The MKL library must be linked and usable.
+    /// Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn ss_edit_robust_covariance(
         task: VSLSSTaskPtr,
@@ -85,6 +147,15 @@ pub trait SsScalar: Copy + Default + 'static {
         cov_out: *mut Self,
     ) -> c_int;
 
+    /// Raw `ss_edit_outliers_detection` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
+    /// `n_params` points to one `c_int` and `params` to that many parameters (3 as MKL documents); `weights_out` must be valid for writes of `n` elements (one weight per observation).
+    /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
+    /// A non-zero return is the VSL status. The MKL library must be linked and usable.
+    /// Extents not listed as verified in this block are unverified (from MKL documentation).
     unsafe fn ss_edit_outliers_detection(
         task: VSLSSTaskPtr,
         n_params: *const c_int,
@@ -92,6 +163,15 @@ pub trait SsScalar: Copy + Default + 'static {
         weights_out: *mut Self,
     ) -> c_int;
 
+    /// Raw `ss_edit_missing_values` call.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
+    /// `n_params`/`params`, `init_estimates_n`/`init_estimates`, `prior_n`/`prior` and `simul_vals_n`/`estimates_n` are (count, data) pairs: each count points to one `c_int` and the paired data to that many `Self` values (null where MKL allows a default). `simul_vals_out` must be valid for writes of `simul_vals * p` elements and `estimates_out` of the estimates the task defines (the mean `p` and covariance `p * p` as requested).
+    /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
+    /// A non-zero return is the VSL status. The MKL library must be linked and usable.
+    /// Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments)]
     unsafe fn ss_edit_missing_values(
         task: VSLSSTaskPtr,

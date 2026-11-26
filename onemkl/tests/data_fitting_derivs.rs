@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "data-fitting")]
 
 //! Derivative evaluation and cell search on 1-D cubic splines.

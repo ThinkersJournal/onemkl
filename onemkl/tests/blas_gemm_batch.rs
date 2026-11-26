@@ -5,7 +5,7 @@
 use approx::assert_abs_diff_eq;
 use num_complex::Complex64;
 
-use onemkl::blas::extensions::{gemm_batch, GemmBatchGroup};
+use onemkl::blas::extensions::{GemmBatchGroup, gemm_batch};
 use onemkl::{Layout, Transpose};
 
 #[test]
@@ -87,18 +87,36 @@ fn two_groups_different_shapes() {
 
     let mut groups = [
         GemmBatchGroup::<f64> {
-            transa: Transpose::NoTrans, transb: Transpose::NoTrans,
-            m: 2, n: 2, k: 2,
-            alpha: 1.0, lda: 2, ldb: 2, beta: 0.0, ldc: 2,
+            transa: Transpose::NoTrans,
+            transb: Transpose::NoTrans,
+            m: 2,
+            n: 2,
+            k: 2,
+            alpha: 1.0,
+            lda: 2,
+            ldb: 2,
+            beta: 0.0,
+            ldc: 2,
             group_size: 1,
-            a_array: &a0_ptrs, b_array: &b0_ptrs, c_array: &c0_ptrs,
+            a_array: &a0_ptrs,
+            b_array: &b0_ptrs,
+            c_array: &c0_ptrs,
         },
         GemmBatchGroup::<f64> {
-            transa: Transpose::NoTrans, transb: Transpose::NoTrans,
-            m: 1, n: 1, k: 1,
-            alpha: 1.0, lda: 1, ldb: 1, beta: 0.0, ldc: 1,
+            transa: Transpose::NoTrans,
+            transb: Transpose::NoTrans,
+            m: 1,
+            n: 1,
+            k: 1,
+            alpha: 1.0,
+            lda: 1,
+            ldb: 1,
+            beta: 0.0,
+            ldc: 1,
             group_size: 1,
-            a_array: &a1_ptrs, b_array: &b1_ptrs, c_array: &c1_ptrs,
+            a_array: &a1_ptrs,
+            b_array: &b1_ptrs,
+            c_array: &c1_ptrs,
         },
     ];
 
@@ -130,11 +148,20 @@ fn array_length_mismatch_rejected() {
     let b_ptrs: [*const f64; 1] = [b.as_ptr()];
     let c_ptrs: [*mut f64; 1] = [c.as_mut_ptr()];
     let mut groups = [GemmBatchGroup::<f64> {
-        transa: Transpose::NoTrans, transb: Transpose::NoTrans,
-        m: 2, n: 2, k: 2,
-        alpha: 1.0, lda: 2, ldb: 2, beta: 0.0, ldc: 2,
+        transa: Transpose::NoTrans,
+        transb: Transpose::NoTrans,
+        m: 2,
+        n: 2,
+        k: 2,
+        alpha: 1.0,
+        lda: 2,
+        ldb: 2,
+        beta: 0.0,
+        ldc: 2,
         group_size: 2, // claims 2 GEMMs
-        a_array: &a_ptrs, b_array: &b_ptrs, c_array: &c_ptrs,
+        a_array: &a_ptrs,
+        b_array: &b_ptrs,
+        c_array: &c_ptrs,
     }];
     let r = gemm_batch(Layout::RowMajor, &mut groups);
     assert!(r.is_err());
@@ -150,14 +177,20 @@ fn complex_z_gemm_batch() {
     let b_ptrs: [*const Complex64; 1] = [b.as_ptr()];
     let c_ptrs: [*mut Complex64; 1] = [c.as_mut_ptr()];
     let mut groups = [GemmBatchGroup::<Complex64> {
-        transa: Transpose::NoTrans, transb: Transpose::NoTrans,
-        m: 1, n: 1, k: 1,
+        transa: Transpose::NoTrans,
+        transb: Transpose::NoTrans,
+        m: 1,
+        n: 1,
+        k: 1,
         alpha: Complex64::new(1.0, 0.0),
-        lda: 1, ldb: 1,
+        lda: 1,
+        ldb: 1,
         beta: Complex64::new(0.0, 0.0),
         ldc: 1,
         group_size: 1,
-        a_array: &a_ptrs, b_array: &b_ptrs, c_array: &c_ptrs,
+        a_array: &a_ptrs,
+        b_array: &b_ptrs,
+        c_array: &c_ptrs,
     }];
     gemm_batch(Layout::RowMajor, &mut groups).unwrap();
     assert_abs_diff_eq!(c[0].re, 0.0, epsilon = 1e-12);

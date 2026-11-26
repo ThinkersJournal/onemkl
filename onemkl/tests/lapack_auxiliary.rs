@@ -5,8 +5,8 @@
 use approx::assert_abs_diff_eq;
 
 use onemkl::lapack::{
-    gecon, geqrf, getrf, syconv, sytrf, SyconvWay, lacgv, lacpy, lacrm, lange, larfb, larfg, larft, laswp, LacpyPart, MatrixNorm,
-    ReflectorDirection, ReflectorStorage,
+    LacpyPart, MatrixNorm, ReflectorDirection, ReflectorStorage, SyconvWay, gecon, geqrf, getrf,
+    lacgv, lacpy, lacrm, lange, larfb, larfg, larft, laswp, syconv, sytrf,
 };
 use onemkl::matrix::{MatrixMut, MatrixRef};
 use onemkl::{Layout, Side, Transpose, UpLo};
@@ -24,11 +24,7 @@ fn lacpy_full_matrix() {
 #[test]
 fn lacpy_upper_triangle_only() {
     // 3×3 source: rows are [1, 2, 3], [4, 5, 6], [7, 8, 9].
-    let a = vec![
-        1.0_f64, 2.0, 3.0,
-        4.0, 5.0, 6.0,
-        7.0, 8.0, 9.0,
-    ];
+    let a = vec![1.0_f64, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
     let mut b = vec![100.0_f64; 9];
     let a_ref = MatrixRef::new(&a, 3, 3, Layout::RowMajor).unwrap();
     let mut b_view = MatrixMut::new(&mut b, 3, 3, Layout::RowMajor).unwrap();
@@ -161,8 +157,14 @@ fn larft_and_larfb_reproduce_the_qr_r_factor() {
     {
         let v_ref = MatrixRef::new(&v, 3, 2, Layout::ColMajor).unwrap();
         let mut t_view = MatrixMut::new(&mut t, 2, 2, Layout::ColMajor).unwrap();
-        larft(ReflectorDirection::Forward, ReflectorStorage::Columnwise, &v_ref, &tau, &mut t_view)
-            .unwrap();
+        larft(
+            ReflectorDirection::Forward,
+            ReflectorStorage::Columnwise,
+            &v_ref,
+            &tau,
+            &mut t_view,
+        )
+        .unwrap();
     }
     // Diagonal of T is tau.
     assert_abs_diff_eq!(t[0], tau[0], epsilon = 1e-12);
@@ -208,14 +210,27 @@ fn lacgv_conjugates_a_strided_complex_vector() {
 fn lacrm_multiplies_complex_by_real() {
     use num_complex::Complex64 as C;
     // A = [[1+i, 2],[0, 3-i]], B = [[1,2],[3,4]] (row-major).
-    let a = vec![C::new(1.0, 1.0), C::new(2.0, 0.0), C::new(0.0, 0.0), C::new(3.0, -1.0)];
+    let a = vec![
+        C::new(1.0, 1.0),
+        C::new(2.0, 0.0),
+        C::new(0.0, 0.0),
+        C::new(3.0, -1.0),
+    ];
     let b = vec![1.0_f64, 2.0, 3.0, 4.0];
     let mut c = vec![C::new(0.0, 0.0); 4];
     let a_ref = MatrixRef::new(&a, 2, 2, Layout::RowMajor).unwrap();
     let b_ref = MatrixRef::new(&b, 2, 2, Layout::RowMajor).unwrap();
     let mut c_view = MatrixMut::new(&mut c, 2, 2, Layout::RowMajor).unwrap();
     lacrm(&a_ref, &b_ref, &mut c_view).unwrap();
-    assert_eq!(c, vec![C::new(7.0, 1.0), C::new(10.0, 2.0), C::new(9.0, -3.0), C::new(12.0, -4.0)]);
+    assert_eq!(
+        c,
+        vec![
+            C::new(7.0, 1.0),
+            C::new(10.0, 2.0),
+            C::new(9.0, -3.0),
+            C::new(12.0, -4.0)
+        ]
+    );
 }
 
 /// Zero diagonal forces Bunch-Kaufman to take 2x2 pivots.
@@ -238,16 +253,41 @@ fn syconv_roundtrip(uplo: UpLo, layout: Layout) {
         }
     }
     let mut ipiv = vec![0_i32; n];
-    sytrf(uplo, &mut MatrixMut::new(&mut a, n, n, layout).unwrap(), &mut ipiv).unwrap();
-    assert!(ipiv.iter().any(|&p| p < 0), "expected a 2x2 pivot, ipiv = {ipiv:?}");
+    sytrf(
+        uplo,
+        &mut MatrixMut::new(&mut a, n, n, layout).unwrap(),
+        &mut ipiv,
+    )
+    .unwrap();
+    assert!(
+        ipiv.iter().any(|&p| p < 0),
+        "expected a 2x2 pivot, ipiv = {ipiv:?}"
+    );
 
     let factored = a.clone();
     let mut e = vec![0.0_f64; n];
-    syconv(uplo, SyconvWay::Convert, &mut MatrixMut::new(&mut a, n, n, layout).unwrap(), &ipiv, &mut e).unwrap();
+    syconv(
+        uplo,
+        SyconvWay::Convert,
+        &mut MatrixMut::new(&mut a, n, n, layout).unwrap(),
+        &ipiv,
+        &mut e,
+    )
+    .unwrap();
     assert_ne!(a, factored, "Convert must change the buffer");
-    assert!(e.iter().any(|&x| x != 0.0), "2x2 pivot must leave off-diagonal D entries in e: {e:?}");
+    assert!(
+        e.iter().any(|&x| x != 0.0),
+        "2x2 pivot must leave off-diagonal D entries in e: {e:?}"
+    );
 
-    syconv(uplo, SyconvWay::Revert, &mut MatrixMut::new(&mut a, n, n, layout).unwrap(), &ipiv, &mut e).unwrap();
+    syconv(
+        uplo,
+        SyconvWay::Revert,
+        &mut MatrixMut::new(&mut a, n, n, layout).unwrap(),
+        &ipiv,
+        &mut e,
+    )
+    .unwrap();
     assert_eq!(a, factored, "Revert must restore the sytrf storage exactly");
 }
 

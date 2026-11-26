@@ -4,7 +4,7 @@
 
 use approx::assert_abs_diff_eq;
 
-use onemkl::iss::{solve_cg, solve_fgmres, IssOptions, IssStopReason};
+use onemkl::iss::{IssOptions, IssStopReason, solve_cg, solve_fgmres};
 
 #[test]
 fn cg_solves_3x3_spd() {
@@ -18,7 +18,11 @@ fn cg_solves_3x3_spd() {
         out[2] = -v[1] + 4.0 * v[2];
     };
     let res = solve_cg(&b, &mut x, IssOptions::default(), mat_vec).unwrap();
-    assert!(res.iterations <= 3, "CG took {} iterations on 3x3 SPD", res.iterations);
+    assert!(
+        res.iterations <= 3,
+        "CG took {} iterations on 3x3 SPD",
+        res.iterations
+    );
     assert_eq!(res.stop_reason, IssStopReason::Converged);
     assert!(res.final_residual_norm <= res.initial_residual_norm);
     assert_abs_diff_eq!(x[0], 1.0, epsilon = 1e-8);

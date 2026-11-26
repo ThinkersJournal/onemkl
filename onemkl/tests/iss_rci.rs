@@ -4,8 +4,8 @@
 
 use approx::assert_abs_diff_eq;
 
-use onemkl::iss::{CgSession, FgmresSession, IssOptions, IssStopReason, RciAction};
 use onemkl::Error;
+use onemkl::iss::{CgSession, FgmresSession, IssOptions, IssStopReason, RciAction};
 
 #[test]
 fn cg_session_solves_3x3_spd() {

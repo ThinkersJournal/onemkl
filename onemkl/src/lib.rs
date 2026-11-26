@@ -178,7 +178,10 @@ pub mod prelude {
     pub use crate::sparse::{IndexBase, MatrixType, Operation, SparseMatrix, SparseScalar};
 
     #[cfg(feature = "fft")]
-    pub use crate::fft::{FftPlan, FftPlanOutOfPlace, BatchedFftPlan, BatchedRealFftPlan, PackedRealFftPlan, RealFftPlan, RealPackedFormat};
+    pub use crate::fft::{
+        BatchedFftPlan, BatchedRealFftPlan, FftPlan, FftPlanOutOfPlace, PackedRealFftPlan,
+        RealFftPlan, RealPackedFormat,
+    };
 
     #[cfg(feature = "rng")]
     pub use crate::rng::{BasicRng, Stream};

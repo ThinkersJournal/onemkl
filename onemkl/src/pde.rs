@@ -114,26 +114,38 @@ pub trait TrigTransformScalar: Copy + Default + 'static {
 
 impl TrigTransformScalar for f32 {
     unsafe fn init_trig_transform(
-        n: *mut c_int, tt_type: *mut c_int,
-        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+        n: *mut c_int,
+        tt_type: *mut c_int,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     ) {
         unsafe { sys::s_init_trig_transform(n, tt_type, ipar, dpar, stat) }
     }
     unsafe fn commit_trig_transform(
-        f: *mut Self, handle: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+        f: *mut Self,
+        handle: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     ) {
         unsafe { sys::s_commit_trig_transform(f, handle, ipar, dpar, stat) }
     }
     unsafe fn forward_trig_transform(
-        f: *mut Self, handle: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+        f: *mut Self,
+        handle: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     ) {
         unsafe { sys::s_forward_trig_transform(f, handle, ipar, dpar, stat) }
     }
     unsafe fn backward_trig_transform(
-        f: *mut Self, handle: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+        f: *mut Self,
+        handle: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     ) {
         unsafe { sys::s_backward_trig_transform(f, handle, ipar, dpar, stat) }
     }
@@ -141,26 +153,38 @@ impl TrigTransformScalar for f32 {
 
 impl TrigTransformScalar for f64 {
     unsafe fn init_trig_transform(
-        n: *mut c_int, tt_type: *mut c_int,
-        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+        n: *mut c_int,
+        tt_type: *mut c_int,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     ) {
         unsafe { sys::d_init_trig_transform(n, tt_type, ipar, dpar, stat) }
     }
     unsafe fn commit_trig_transform(
-        f: *mut Self, handle: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+        f: *mut Self,
+        handle: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     ) {
         unsafe { sys::d_commit_trig_transform(f, handle, ipar, dpar, stat) }
     }
     unsafe fn forward_trig_transform(
-        f: *mut Self, handle: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+        f: *mut Self,
+        handle: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     ) {
         unsafe { sys::d_forward_trig_transform(f, handle, ipar, dpar, stat) }
     }
     unsafe fn backward_trig_transform(
-        f: *mut Self, handle: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+        f: *mut Self,
+        handle: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     ) {
         unsafe { sys::d_backward_trig_transform(f, handle, ipar, dpar, stat) }
     }
@@ -301,11 +325,7 @@ impl<T: TrigTransformScalar> Drop for TrigTransform<T> {
         if !self.handle.is_null() {
             let mut stat: c_int = 0;
             unsafe {
-                sys::free_trig_transform(
-                    &mut self.handle,
-                    self.ipar.as_mut_ptr(),
-                    &mut stat,
-                );
+                sys::free_trig_transform(&mut self.handle, self.ipar.as_mut_ptr(), &mut stat);
             }
         }
     }
@@ -345,59 +365,114 @@ pub trait HelmholtzScalar: Copy + Default + 'static {
     fn to_f64(self) -> f64;
     fn from_f64(v: f64) -> Self;
     unsafe fn init_2d(
-        ax: *const Self, bx: *const Self, ay: *const Self, by: *const Self,
-        nx: *const c_int, ny: *const c_int, bc: *const core::ffi::c_char,
-        q: *const Self, ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+        ax: *const Self,
+        bx: *const Self,
+        ay: *const Self,
+        by: *const Self,
+        nx: *const c_int,
+        ny: *const c_int,
+        bc: *const core::ffi::c_char,
+        q: *const Self,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     );
     unsafe fn commit_2d(
-        f: *mut Self, bd_ax: *const Self, bd_bx: *const Self,
-        bd_ay: *const Self, bd_by: *const Self,
-        handle: *mut DFTI_DESCRIPTOR_HANDLE, ipar: *mut c_int,
-        dpar: *mut Self, stat: *mut c_int,
+        f: *mut Self,
+        bd_ax: *const Self,
+        bd_bx: *const Self,
+        bd_ay: *const Self,
+        bd_by: *const Self,
+        handle: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     );
     unsafe fn solve_2d(
-        f: *mut Self, bd_ax: *const Self, bd_bx: *const Self,
-        bd_ay: *const Self, bd_by: *const Self,
-        handle: *mut DFTI_DESCRIPTOR_HANDLE, ipar: *mut c_int,
-        dpar: *const Self, stat: *mut c_int,
+        f: *mut Self,
+        bd_ax: *const Self,
+        bd_bx: *const Self,
+        bd_ay: *const Self,
+        bd_by: *const Self,
+        handle: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int,
+        dpar: *const Self,
+        stat: *mut c_int,
     );
     unsafe fn init_3d(
-        lim: [*const Self; 6], n: [*const c_int; 3], bc: *const core::ffi::c_char,
-        q: *const Self, ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+        lim: [*const Self; 6],
+        n: [*const c_int; 3],
+        bc: *const core::ffi::c_char,
+        q: *const Self,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     );
     unsafe fn commit_3d(
-        f: *mut Self, bd: [*const Self; 6],
-        xh: *mut DFTI_DESCRIPTOR_HANDLE, yh: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+        f: *mut Self,
+        bd: [*const Self; 6],
+        xh: *mut DFTI_DESCRIPTOR_HANDLE,
+        yh: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     );
     unsafe fn solve_3d(
-        f: *mut Self, bd: [*const Self; 6],
-        xh: *mut DFTI_DESCRIPTOR_HANDLE, yh: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int, dpar: *const Self, stat: *mut c_int,
+        f: *mut Self,
+        bd: [*const Self; 6],
+        xh: *mut DFTI_DESCRIPTOR_HANDLE,
+        yh: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int,
+        dpar: *const Self,
+        stat: *mut c_int,
     );
     unsafe fn init_sph(
-        lim: [*const Self; 4], np: *const c_int, nt: *const c_int, q: *const Self,
-        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+        lim: [*const Self; 4],
+        np: *const c_int,
+        nt: *const c_int,
+        q: *const Self,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     );
     unsafe fn commit_sph(
-        f: *mut Self, h1: *mut DFTI_DESCRIPTOR_HANDLE, h2: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+        f: *mut Self,
+        h1: *mut DFTI_DESCRIPTOR_HANDLE,
+        h2: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     );
     unsafe fn solve_sph(
-        f: *mut Self, h1: *mut DFTI_DESCRIPTOR_HANDLE, h2: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+        f: *mut Self,
+        h1: *mut DFTI_DESCRIPTOR_HANDLE,
+        h2: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     );
     unsafe fn init_sph_np(
-        lim: [*const Self; 4], np: *const c_int, nt: *const c_int, q: *const Self,
-        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+        lim: [*const Self; 4],
+        np: *const c_int,
+        nt: *const c_int,
+        q: *const Self,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     );
     unsafe fn commit_sph_np(
-        f: *mut Self, h: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+        f: *mut Self,
+        h: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     );
     unsafe fn solve_sph_np(
-        f: *mut Self, h: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+        f: *mut Self,
+        h: *mut DFTI_DESCRIPTOR_HANDLE,
+        ipar: *mut c_int,
+        dpar: *mut Self,
+        stat: *mut c_int,
     );
     unsafe fn free_sph_np(h: *mut DFTI_DESCRIPTOR_HANDLE, ipar: *mut c_int, stat: *mut c_int);
 }
@@ -405,101 +480,199 @@ pub trait HelmholtzScalar: Copy + Default + 'static {
 macro_rules! impl_helmholtz_scalar {
     ($t:ty, $init:ident, $commit:ident, $solve:ident, $init3:ident, $commit3:ident, $solve3:ident, $inits:ident, $commits:ident, $solves:ident, $initn:ident, $commitn:ident, $solven:ident) => {
         impl HelmholtzScalar for $t {
-            fn to_f64(self) -> f64 { self as f64 }
-            fn from_f64(v: f64) -> Self { v as $t }
+            fn to_f64(self) -> f64 {
+                self as f64
+            }
+            fn from_f64(v: f64) -> Self {
+                v as $t
+            }
             unsafe fn init_2d(
-                ax: *const Self, bx: *const Self, ay: *const Self, by: *const Self,
-                nx: *const c_int, ny: *const c_int, bc: *const core::ffi::c_char,
-                q: *const Self, ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+                ax: *const Self,
+                bx: *const Self,
+                ay: *const Self,
+                by: *const Self,
+                nx: *const c_int,
+                ny: *const c_int,
+                bc: *const core::ffi::c_char,
+                q: *const Self,
+                ipar: *mut c_int,
+                dpar: *mut Self,
+                stat: *mut c_int,
             ) {
                 unsafe { sys::$init(ax, bx, ay, by, nx, ny, bc, q, ipar, dpar, stat) }
             }
             unsafe fn commit_2d(
-                f: *mut Self, bd_ax: *const Self, bd_bx: *const Self,
-                bd_ay: *const Self, bd_by: *const Self,
-                handle: *mut DFTI_DESCRIPTOR_HANDLE, ipar: *mut c_int,
-                dpar: *mut Self, stat: *mut c_int,
+                f: *mut Self,
+                bd_ax: *const Self,
+                bd_bx: *const Self,
+                bd_ay: *const Self,
+                bd_by: *const Self,
+                handle: *mut DFTI_DESCRIPTOR_HANDLE,
+                ipar: *mut c_int,
+                dpar: *mut Self,
+                stat: *mut c_int,
             ) {
                 unsafe { sys::$commit(f, bd_ax, bd_bx, bd_ay, bd_by, handle, ipar, dpar, stat) }
             }
             unsafe fn solve_2d(
-                f: *mut Self, bd_ax: *const Self, bd_bx: *const Self,
-                bd_ay: *const Self, bd_by: *const Self,
-                handle: *mut DFTI_DESCRIPTOR_HANDLE, ipar: *mut c_int,
-                dpar: *const Self, stat: *mut c_int,
+                f: *mut Self,
+                bd_ax: *const Self,
+                bd_bx: *const Self,
+                bd_ay: *const Self,
+                bd_by: *const Self,
+                handle: *mut DFTI_DESCRIPTOR_HANDLE,
+                ipar: *mut c_int,
+                dpar: *const Self,
+                stat: *mut c_int,
             ) {
                 unsafe { sys::$solve(f, bd_ax, bd_bx, bd_ay, bd_by, handle, ipar, dpar, stat) }
             }
             unsafe fn init_3d(
-                l: [*const Self; 6], n: [*const c_int; 3], bc: *const core::ffi::c_char,
-                q: *const Self, ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+                l: [*const Self; 6],
+                n: [*const c_int; 3],
+                bc: *const core::ffi::c_char,
+                q: *const Self,
+                ipar: *mut c_int,
+                dpar: *mut Self,
+                stat: *mut c_int,
             ) {
                 unsafe {
-                    sys::$init3(l[0], l[1], l[2], l[3], l[4], l[5], n[0], n[1], n[2], bc, q, ipar, dpar, stat)
+                    sys::$init3(
+                        l[0], l[1], l[2], l[3], l[4], l[5], n[0], n[1], n[2], bc, q, ipar, dpar,
+                        stat,
+                    )
                 }
             }
             unsafe fn commit_3d(
-                f: *mut Self, b: [*const Self; 6],
-                xh: *mut DFTI_DESCRIPTOR_HANDLE, yh: *mut DFTI_DESCRIPTOR_HANDLE,
-                ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+                f: *mut Self,
+                b: [*const Self; 6],
+                xh: *mut DFTI_DESCRIPTOR_HANDLE,
+                yh: *mut DFTI_DESCRIPTOR_HANDLE,
+                ipar: *mut c_int,
+                dpar: *mut Self,
+                stat: *mut c_int,
             ) {
                 unsafe {
-                    sys::$commit3(f, b[0], b[1], b[2], b[3], b[4], b[5], xh, yh, ipar, dpar, stat)
+                    sys::$commit3(
+                        f, b[0], b[1], b[2], b[3], b[4], b[5], xh, yh, ipar, dpar, stat,
+                    )
                 }
             }
             unsafe fn solve_3d(
-                f: *mut Self, b: [*const Self; 6],
-                xh: *mut DFTI_DESCRIPTOR_HANDLE, yh: *mut DFTI_DESCRIPTOR_HANDLE,
-                ipar: *mut c_int, dpar: *const Self, stat: *mut c_int,
+                f: *mut Self,
+                b: [*const Self; 6],
+                xh: *mut DFTI_DESCRIPTOR_HANDLE,
+                yh: *mut DFTI_DESCRIPTOR_HANDLE,
+                ipar: *mut c_int,
+                dpar: *const Self,
+                stat: *mut c_int,
             ) {
                 unsafe {
-                    sys::$solve3(f, b[0], b[1], b[2], b[3], b[4], b[5], xh, yh, ipar, dpar, stat)
+                    sys::$solve3(
+                        f, b[0], b[1], b[2], b[3], b[4], b[5], xh, yh, ipar, dpar, stat,
+                    )
                 }
             }
             unsafe fn init_sph(
-                l: [*const Self; 4], np: *const c_int, nt: *const c_int, q: *const Self,
-                ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+                l: [*const Self; 4],
+                np: *const c_int,
+                nt: *const c_int,
+                q: *const Self,
+                ipar: *mut c_int,
+                dpar: *mut Self,
+                stat: *mut c_int,
             ) {
                 unsafe { sys::$inits(l[0], l[1], l[2], l[3], np, nt, q, ipar, dpar, stat) }
             }
             unsafe fn commit_sph(
-                f: *mut Self, h1: *mut DFTI_DESCRIPTOR_HANDLE, h2: *mut DFTI_DESCRIPTOR_HANDLE,
-                ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+                f: *mut Self,
+                h1: *mut DFTI_DESCRIPTOR_HANDLE,
+                h2: *mut DFTI_DESCRIPTOR_HANDLE,
+                ipar: *mut c_int,
+                dpar: *mut Self,
+                stat: *mut c_int,
             ) {
                 unsafe { sys::$commits(f, h1, h2, ipar, dpar, stat) }
             }
             unsafe fn solve_sph(
-                f: *mut Self, h1: *mut DFTI_DESCRIPTOR_HANDLE, h2: *mut DFTI_DESCRIPTOR_HANDLE,
-                ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+                f: *mut Self,
+                h1: *mut DFTI_DESCRIPTOR_HANDLE,
+                h2: *mut DFTI_DESCRIPTOR_HANDLE,
+                ipar: *mut c_int,
+                dpar: *mut Self,
+                stat: *mut c_int,
             ) {
                 unsafe { sys::$solves(f, h1, h2, ipar, dpar, stat) }
             }
             unsafe fn init_sph_np(
-                l: [*const Self; 4], np: *const c_int, nt: *const c_int, q: *const Self,
-                ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+                l: [*const Self; 4],
+                np: *const c_int,
+                nt: *const c_int,
+                q: *const Self,
+                ipar: *mut c_int,
+                dpar: *mut Self,
+                stat: *mut c_int,
             ) {
                 unsafe { sys::$initn(l[0], l[1], l[2], l[3], np, nt, q, ipar, dpar, stat) }
             }
             unsafe fn commit_sph_np(
-                f: *mut Self, h: *mut DFTI_DESCRIPTOR_HANDLE,
-                ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+                f: *mut Self,
+                h: *mut DFTI_DESCRIPTOR_HANDLE,
+                ipar: *mut c_int,
+                dpar: *mut Self,
+                stat: *mut c_int,
             ) {
                 unsafe { sys::$commitn(f, h, ipar, dpar, stat) }
             }
             unsafe fn solve_sph_np(
-                f: *mut Self, h: *mut DFTI_DESCRIPTOR_HANDLE,
-                ipar: *mut c_int, dpar: *mut Self, stat: *mut c_int,
+                f: *mut Self,
+                h: *mut DFTI_DESCRIPTOR_HANDLE,
+                ipar: *mut c_int,
+                dpar: *mut Self,
+                stat: *mut c_int,
             ) {
                 unsafe { sys::$solven(f, h, ipar, dpar, stat) }
             }
-            unsafe fn free_sph_np(h: *mut DFTI_DESCRIPTOR_HANDLE, ipar: *mut c_int, stat: *mut c_int) {
+            unsafe fn free_sph_np(
+                h: *mut DFTI_DESCRIPTOR_HANDLE,
+                ipar: *mut c_int,
+                stat: *mut c_int,
+            ) {
                 unsafe { sys::free_sph_np(h, ipar, stat) }
             }
         }
     };
 }
-impl_helmholtz_scalar!(f32, s_init_helmholtz_2d, s_commit_helmholtz_2d, s_helmholtz_2d, s_init_helmholtz_3d, s_commit_helmholtz_3d, s_helmholtz_3d, s_init_sph_p, s_commit_sph_p, s_sph_p, s_init_sph_np, s_commit_sph_np, s_sph_np);
-impl_helmholtz_scalar!(f64, d_init_helmholtz_2d, d_commit_helmholtz_2d, d_helmholtz_2d, d_init_helmholtz_3d, d_commit_helmholtz_3d, d_helmholtz_3d, d_init_sph_p, d_commit_sph_p, d_sph_p, d_init_sph_np, d_commit_sph_np, d_sph_np);
+impl_helmholtz_scalar!(
+    f32,
+    s_init_helmholtz_2d,
+    s_commit_helmholtz_2d,
+    s_helmholtz_2d,
+    s_init_helmholtz_3d,
+    s_commit_helmholtz_3d,
+    s_helmholtz_3d,
+    s_init_sph_p,
+    s_commit_sph_p,
+    s_sph_p,
+    s_init_sph_np,
+    s_commit_sph_np,
+    s_sph_np
+);
+impl_helmholtz_scalar!(
+    f64,
+    d_init_helmholtz_2d,
+    d_commit_helmholtz_2d,
+    d_helmholtz_2d,
+    d_init_helmholtz_3d,
+    d_commit_helmholtz_3d,
+    d_helmholtz_3d,
+    d_init_sph_p,
+    d_commit_sph_p,
+    d_sph_p,
+    d_init_sph_np,
+    d_commit_sph_np,
+    d_sph_np
+);
 
 /// Index range of the unknown nodes along one axis of `n` intervals
 /// for the boundary pair `(lo, hi)`: Dirichlet nodes are fixed,
@@ -629,8 +802,17 @@ impl<T: HelmholtzScalar> Helmholtz2D<T> {
         let mut stat: c_int = 0;
         unsafe {
             T::init_2d(
-                &ax, &bx, &ay, &by, &nx_i, &ny_i, bc_c.as_ptr(), &q,
-                ipar.as_mut_ptr(), dpar.as_mut_ptr(), &mut stat,
+                &ax,
+                &bx,
+                &ay,
+                &by,
+                &nx_i,
+                &ny_i,
+                bc_c.as_ptr(),
+                &q,
+                ipar.as_mut_ptr(),
+                dpar.as_mut_ptr(),
+                &mut stat,
             );
         }
         check_tr(stat)?;
@@ -678,14 +860,24 @@ impl<T: HelmholtzScalar> Helmholtz2D<T> {
                 return Err(Error::InvalidArgument("boundary data slice too short"));
             }
         }
-        let g = |k: usize, idx: usize| move || if bd[k].is_empty() { T::default() } else { bd[k][idx] };
+        let g = |k: usize, idx: usize| {
+            move || {
+                if bd[k].is_empty() {
+                    T::default()
+                } else {
+                    bd[k][idx]
+                }
+            }
+        };
         let (ilo, ihi) = unknown_range(self.bc[0], self.bc[1], nx);
         let (jlo, jhi) = unknown_range(self.bc[2], self.bc[3], ny);
         // MKL applies no boundary lift: do it here (see the type docs).
         for j in jlo..=jhi {
             for i in ilo..=ihi {
-                let (sx, hx_) = axis_lift([self.bc[0], self.bc[1]], nx, i, self.hx, g(0, j), g(1, j));
-                let (sy, hy_) = axis_lift([self.bc[2], self.bc[3]], ny, j, self.hy, g(2, i), g(3, i));
+                let (sx, hx_) =
+                    axis_lift([self.bc[0], self.bc[1]], nx, i, self.hx, g(0, j), g(1, j));
+                let (sy, hy_) =
+                    axis_lift([self.bc[2], self.bc[3]], ny, j, self.hy, g(2, i), g(3, i));
                 let v = &mut f[i + j * w];
                 let r = v.to_f64() - sx - sy;
                 *v = T::from_f64(r / f64::from(1u32 << (hx_ + hy_)));
@@ -693,10 +885,14 @@ impl<T: HelmholtzScalar> Helmholtz2D<T> {
         }
         // A periodic axis repeats its first node in the last one.
         if self.bc[0] == Boundary::Periodic {
-            for j in 0..=ny { f[nx + j * w] = f[j * w]; }
+            for j in 0..=ny {
+                f[nx + j * w] = f[j * w];
+            }
         }
         if self.bc[2] == Boundary::Periodic {
-            for i in 0..=nx { f[i + ny * w] = f[i]; }
+            for i in 0..=nx {
+                f[i + ny * w] = f[i];
+            }
         }
         let zeros: Vec<T> = vec![T::default(); nx.max(ny) + 1];
         let zp = zeros.as_ptr();
@@ -705,9 +901,15 @@ impl<T: HelmholtzScalar> Helmholtz2D<T> {
             let mut probe: Vec<T> = f[..self.grid_len()].to_vec();
             unsafe {
                 T::commit_2d(
-                    probe.as_mut_ptr(), zp, zp, zp, zp,
-                    &mut self.handle, self.ipar.as_mut_ptr(),
-                    self.dpar.as_mut_ptr(), &mut stat,
+                    probe.as_mut_ptr(),
+                    zp,
+                    zp,
+                    zp,
+                    zp,
+                    &mut self.handle,
+                    self.ipar.as_mut_ptr(),
+                    self.dpar.as_mut_ptr(),
+                    &mut stat,
                 );
             }
             check_tr(stat)?;
@@ -715,9 +917,15 @@ impl<T: HelmholtzScalar> Helmholtz2D<T> {
         }
         unsafe {
             T::solve_2d(
-                f.as_mut_ptr(), zp, zp, zp, zp,
-                &mut self.handle, self.ipar.as_mut_ptr(),
-                self.dpar.as_ptr(), &mut stat,
+                f.as_mut_ptr(),
+                zp,
+                zp,
+                zp,
+                zp,
+                &mut self.handle,
+                self.ipar.as_mut_ptr(),
+                self.dpar.as_ptr(),
+                &mut stat,
             );
         }
         check_tr(stat)?;
@@ -725,11 +933,17 @@ impl<T: HelmholtzScalar> Helmholtz2D<T> {
         let hy2 = self.hy * self.hy;
         for j in 0..=ny {
             for i in 0..=nx {
-                let d = if i == 0 && self.bc[0] == Boundary::Dirichlet { Some(bd[0][j]) }
-                    else if i == nx && self.bc[1] == Boundary::Dirichlet { Some(bd[1][j]) }
-                    else if j == 0 && self.bc[2] == Boundary::Dirichlet { Some(bd[2][i]) }
-                    else if j == ny && self.bc[3] == Boundary::Dirichlet { Some(bd[3][i]) }
-                    else { None };
+                let d = if i == 0 && self.bc[0] == Boundary::Dirichlet {
+                    Some(bd[0][j])
+                } else if i == nx && self.bc[1] == Boundary::Dirichlet {
+                    Some(bd[1][j])
+                } else if j == 0 && self.bc[2] == Boundary::Dirichlet {
+                    Some(bd[2][i])
+                } else if j == ny && self.bc[3] == Boundary::Dirichlet {
+                    Some(bd[3][i])
+                } else {
+                    None
+                };
                 let v = &mut f[i + j * w];
                 *v = match d {
                     Some(d) => d,
@@ -790,27 +1004,40 @@ impl<T: HelmholtzScalar> Helmholtz3D<T> {
         q: T,
     ) -> Result<Self> {
         if [nx, ny, nz].iter().any(|&n| n < 4 || !n.is_multiple_of(2)) {
-            return Err(Error::InvalidArgument("nx, ny, nz must be even and at least 4"));
+            return Err(Error::InvalidArgument(
+                "nx, ny, nz must be even and at least 4",
+            ));
         }
         check_pairs(&bc)?;
         let nx_i: c_int = nx.try_into().map_err(|_| Error::DimensionOverflow)?;
         let ny_i: c_int = ny.try_into().map_err(|_| Error::DimensionOverflow)?;
         let nz_i: c_int = nz.try_into().map_err(|_| Error::DimensionOverflow)?;
         let bc_c: [core::ffi::c_char; 7] = [
-            bc[0].as_char() as _, bc[1].as_char() as _, bc[2].as_char() as _,
-            bc[3].as_char() as _, bc[4].as_char() as _, bc[5].as_char() as _, 0,
+            bc[0].as_char() as _,
+            bc[1].as_char() as _,
+            bc[2].as_char() as _,
+            bc[3].as_char() as _,
+            bc[4].as_char() as _,
+            bc[5].as_char() as _,
+            0,
         ];
         let mut ipar: Vec<c_int> = vec![0; 128];
         // MKL's 3-D dpar size is quadratic in the grid; cover the largest
         // face product generously (not MKL's documented formula).
-        let face = ((nx + 1) * (ny + 1)).max((ny + 1) * (nz + 1)).max((nx + 1) * (nz + 1));
+        let face = ((nx + 1) * (ny + 1))
+            .max((ny + 1) * (nz + 1))
+            .max((nx + 1) * (nz + 1));
         let mut dpar: Vec<T> = vec![T::default(); 7 * face + 40 * (nx + ny + nz) + 200];
         let mut stat: c_int = 0;
         unsafe {
             T::init_3d(
                 [&ax, &bx, &ay, &by, &az, &bz],
                 [&nx_i, &ny_i, &nz_i],
-                bc_c.as_ptr(), &q, ipar.as_mut_ptr(), dpar.as_mut_ptr(), &mut stat,
+                bc_c.as_ptr(),
+                &q,
+                ipar.as_mut_ptr(),
+                dpar.as_mut_ptr(),
+                &mut stat,
             );
         }
         check_tr(stat)?;
@@ -841,23 +1068,59 @@ impl<T: HelmholtzScalar> Helmholtz3D<T> {
         if f.len() < self.grid_len() {
             return Err(Error::InvalidArgument("grid buffer too small"));
         }
-        let need = [wy * (nz + 1), wy * (nz + 1), wx * (nz + 1), wx * (nz + 1), wx * wy, wx * wy];
+        let need = [
+            wy * (nz + 1),
+            wy * (nz + 1),
+            wx * (nz + 1),
+            wx * (nz + 1),
+            wx * wy,
+            wx * wy,
+        ];
         for k in 0..6 {
             if self.bc[k] != Boundary::Periodic && bd[k].len() < need[k] {
                 return Err(Error::InvalidArgument("boundary data slice too short"));
             }
         }
         let at = |i: usize, j: usize, k: usize| i + j * wx + k * wx * wy;
-        let g = |f_: usize, idx: usize| move || if bd[f_].is_empty() { T::default() } else { bd[f_][idx] };
+        let g = |f_: usize, idx: usize| {
+            move || {
+                if bd[f_].is_empty() {
+                    T::default()
+                } else {
+                    bd[f_][idx]
+                }
+            }
+        };
         let (ilo, ihi) = unknown_range(self.bc[0], self.bc[1], nx);
         let (jlo, jhi) = unknown_range(self.bc[2], self.bc[3], ny);
         let (klo, khi) = unknown_range(self.bc[4], self.bc[5], nz);
         for k in klo..=khi {
             for j in jlo..=jhi {
                 for i in ilo..=ihi {
-                    let (sx, hx_) = axis_lift([self.bc[0], self.bc[1]], nx, i, self.h[0], g(0, j + k * wy), g(1, j + k * wy));
-                    let (sy, hy_) = axis_lift([self.bc[2], self.bc[3]], ny, j, self.h[1], g(2, i + k * wx), g(3, i + k * wx));
-                    let (sz, hz_) = axis_lift([self.bc[4], self.bc[5]], nz, k, self.h[2], g(4, i + j * wx), g(5, i + j * wx));
+                    let (sx, hx_) = axis_lift(
+                        [self.bc[0], self.bc[1]],
+                        nx,
+                        i,
+                        self.h[0],
+                        g(0, j + k * wy),
+                        g(1, j + k * wy),
+                    );
+                    let (sy, hy_) = axis_lift(
+                        [self.bc[2], self.bc[3]],
+                        ny,
+                        j,
+                        self.h[1],
+                        g(2, i + k * wx),
+                        g(3, i + k * wx),
+                    );
+                    let (sz, hz_) = axis_lift(
+                        [self.bc[4], self.bc[5]],
+                        nz,
+                        k,
+                        self.h[2],
+                        g(4, i + j * wx),
+                        g(5, i + j * wx),
+                    );
                     let v = &mut f[at(i, j, k)];
                     let r = v.to_f64() - sx - sy - sz;
                     *v = T::from_f64(r / f64::from(1u32 << (hx_ + hy_ + hz_)));
@@ -866,13 +1129,25 @@ impl<T: HelmholtzScalar> Helmholtz3D<T> {
         }
         // A periodic axis repeats its first node in the last one.
         if self.bc[0] == Boundary::Periodic {
-            for k in 0..=nz { for j in 0..=ny { f[at(nx, j, k)] = f[at(0, j, k)]; } }
+            for k in 0..=nz {
+                for j in 0..=ny {
+                    f[at(nx, j, k)] = f[at(0, j, k)];
+                }
+            }
         }
         if self.bc[2] == Boundary::Periodic {
-            for k in 0..=nz { for i in 0..=nx { f[at(i, ny, k)] = f[at(i, 0, k)]; } }
+            for k in 0..=nz {
+                for i in 0..=nx {
+                    f[at(i, ny, k)] = f[at(i, 0, k)];
+                }
+            }
         }
         if self.bc[4] == Boundary::Periodic {
-            for j in 0..=ny { for i in 0..=nx { f[at(i, j, nz)] = f[at(i, j, 0)]; } }
+            for j in 0..=ny {
+                for i in 0..=nx {
+                    f[at(i, j, nz)] = f[at(i, j, 0)];
+                }
+            }
         }
         let zeros: Vec<T> = vec![T::default(); wx.max(wy) * (nz + 1).max(wx.max(wy))];
         let zp = [zeros.as_ptr(); 6];
@@ -881,8 +1156,13 @@ impl<T: HelmholtzScalar> Helmholtz3D<T> {
             let mut probe: Vec<T> = f[..self.grid_len()].to_vec();
             unsafe {
                 T::commit_3d(
-                    probe.as_mut_ptr(), zp, &mut self.xh, &mut self.yh,
-                    self.ipar.as_mut_ptr(), self.dpar.as_mut_ptr(), &mut stat,
+                    probe.as_mut_ptr(),
+                    zp,
+                    &mut self.xh,
+                    &mut self.yh,
+                    self.ipar.as_mut_ptr(),
+                    self.dpar.as_mut_ptr(),
+                    &mut stat,
                 );
             }
             check_tr(stat)?;
@@ -890,8 +1170,13 @@ impl<T: HelmholtzScalar> Helmholtz3D<T> {
         }
         unsafe {
             T::solve_3d(
-                f.as_mut_ptr(), zp, &mut self.xh, &mut self.yh,
-                self.ipar.as_mut_ptr(), self.dpar.as_ptr(), &mut stat,
+                f.as_mut_ptr(),
+                zp,
+                &mut self.xh,
+                &mut self.yh,
+                self.ipar.as_mut_ptr(),
+                self.dpar.as_ptr(),
+                &mut stat,
             );
         }
         check_tr(stat)?;
@@ -900,13 +1185,21 @@ impl<T: HelmholtzScalar> Helmholtz3D<T> {
         for k in 0..=nz {
             for j in 0..=ny {
                 for i in 0..=nx {
-                    let d = if i == 0 && self.bc[0] == Boundary::Dirichlet { Some(bd[0][j + k * wy]) }
-                        else if i == nx && self.bc[1] == Boundary::Dirichlet { Some(bd[1][j + k * wy]) }
-                        else if j == 0 && self.bc[2] == Boundary::Dirichlet { Some(bd[2][i + k * wx]) }
-                        else if j == ny && self.bc[3] == Boundary::Dirichlet { Some(bd[3][i + k * wx]) }
-                        else if k == 0 && self.bc[4] == Boundary::Dirichlet { Some(bd[4][i + j * wx]) }
-                        else if k == nz && self.bc[5] == Boundary::Dirichlet { Some(bd[5][i + j * wx]) }
-                        else { None };
+                    let d = if i == 0 && self.bc[0] == Boundary::Dirichlet {
+                        Some(bd[0][j + k * wy])
+                    } else if i == nx && self.bc[1] == Boundary::Dirichlet {
+                        Some(bd[1][j + k * wy])
+                    } else if j == 0 && self.bc[2] == Boundary::Dirichlet {
+                        Some(bd[2][i + k * wx])
+                    } else if j == ny && self.bc[3] == Boundary::Dirichlet {
+                        Some(bd[3][i + k * wx])
+                    } else if k == 0 && self.bc[4] == Boundary::Dirichlet {
+                        Some(bd[4][i + j * wx])
+                    } else if k == nz && self.bc[5] == Boundary::Dirichlet {
+                        Some(bd[5][i + j * wx])
+                    } else {
+                        None
+                    };
                     let v = &mut f[at(i, j, k)];
                     *v = match d {
                         Some(d) => d,
@@ -926,7 +1219,12 @@ impl<T: HelmholtzScalar> Drop for Helmholtz3D<T> {
         }
         let mut stat: c_int = 0;
         unsafe {
-            sys::free_helmholtz_3d(&mut self.xh, &mut self.yh, self.ipar.as_mut_ptr(), &mut stat);
+            sys::free_helmholtz_3d(
+                &mut self.xh,
+                &mut self.yh,
+                self.ipar.as_mut_ptr(),
+                &mut stat,
+            );
         }
     }
 }
@@ -979,8 +1277,13 @@ impl<T: HelmholtzScalar> SphericalHelmholtz<T> {
         let mut stat: c_int = 0;
         unsafe {
             T::init_sph(
-                [&lim[0], &lim[1], &lim[2], &lim[3]], &np_i, &nt_i, &q,
-                ipar.as_mut_ptr(), dpar.as_mut_ptr(), &mut stat,
+                [&lim[0], &lim[1], &lim[2], &lim[3]],
+                &np_i,
+                &nt_i,
+                &q,
+                ipar.as_mut_ptr(),
+                dpar.as_mut_ptr(),
+                &mut stat,
             );
         }
         check_tr(stat)?;
@@ -1010,7 +1313,11 @@ impl<T: HelmholtzScalar> SphericalHelmholtz<T> {
         let w = np + 1;
         let ht = core::f64::consts::PI / nt as f64;
         for j in 0..=nt {
-            let weight = if j == 0 || j == nt { 1.0 } else { (j as f64 * ht).sin() };
+            let weight = if j == 0 || j == nt {
+                1.0
+            } else {
+                (j as f64 * ht).sin()
+            };
             for i in 0..=np {
                 let v = &mut f[i + j * w];
                 *v = T::from_f64(-ht * ht * weight * v.to_f64());
@@ -1021,8 +1328,12 @@ impl<T: HelmholtzScalar> SphericalHelmholtz<T> {
             let mut probe: Vec<T> = f[..self.grid_len()].to_vec();
             unsafe {
                 T::commit_sph(
-                    probe.as_mut_ptr(), &mut self.h1, &mut self.h2,
-                    self.ipar.as_mut_ptr(), self.dpar.as_mut_ptr(), &mut stat,
+                    probe.as_mut_ptr(),
+                    &mut self.h1,
+                    &mut self.h2,
+                    self.ipar.as_mut_ptr(),
+                    self.dpar.as_mut_ptr(),
+                    &mut stat,
                 );
             }
             check_tr(stat)?;
@@ -1030,8 +1341,12 @@ impl<T: HelmholtzScalar> SphericalHelmholtz<T> {
         }
         unsafe {
             T::solve_sph(
-                f.as_mut_ptr(), &mut self.h1, &mut self.h2,
-                self.ipar.as_mut_ptr(), self.dpar.as_mut_ptr(), &mut stat,
+                f.as_mut_ptr(),
+                &mut self.h1,
+                &mut self.h2,
+                self.ipar.as_mut_ptr(),
+                self.dpar.as_mut_ptr(),
+                &mut stat,
             );
         }
         check_tr(stat)
@@ -1045,7 +1360,12 @@ impl<T: HelmholtzScalar> Drop for SphericalHelmholtz<T> {
         }
         let mut stat: c_int = 0;
         unsafe {
-            sys::free_sph_p(&mut self.h1, &mut self.h2, self.ipar.as_mut_ptr(), &mut stat);
+            sys::free_sph_p(
+                &mut self.h1,
+                &mut self.h2,
+                self.ipar.as_mut_ptr(),
+                &mut stat,
+            );
         }
     }
 }
@@ -1098,14 +1418,24 @@ impl<T: HelmholtzScalar> SphericalPatchHelmholtz<T> {
         }
         let np_i: c_int = np.try_into().map_err(|_| Error::DimensionOverflow)?;
         let nt_i: c_int = nt.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let lim = [T::from_f64(ap), T::from_f64(bp), T::from_f64(at), T::from_f64(bt)];
+        let lim = [
+            T::from_f64(ap),
+            T::from_f64(bp),
+            T::from_f64(at),
+            T::from_f64(bt),
+        ];
         let mut ipar: Vec<c_int> = vec![0; 128];
         let mut dpar: Vec<T> = vec![T::default(); 4 * (5 * np / 2 + nt + 10) + 200];
         let mut stat: c_int = 0;
         unsafe {
             T::init_sph_np(
-                [&lim[0], &lim[1], &lim[2], &lim[3]], &np_i, &nt_i, &q,
-                ipar.as_mut_ptr(), dpar.as_mut_ptr(), &mut stat,
+                [&lim[0], &lim[1], &lim[2], &lim[3]],
+                &np_i,
+                &nt_i,
+                &q,
+                ipar.as_mut_ptr(),
+                dpar.as_mut_ptr(),
+                &mut stat,
             );
         }
         check_tr(stat)?;
@@ -1146,10 +1476,18 @@ impl<T: HelmholtzScalar> SphericalPatchHelmholtz<T> {
             let c = ht * ht / (sj * hp * hp);
             for i in 1..np {
                 let mut v = -ht * ht * sj * g[i + j * w];
-                if j == 1 { v += sm * g[i]; }
-                if j == nt - 1 { v += sp * g[i + nt * w]; }
-                if i == 1 { v += c * g[j * w]; }
-                if i == np - 1 { v += c * g[np + j * w]; }
+                if j == 1 {
+                    v += sm * g[i];
+                }
+                if j == nt - 1 {
+                    v += sp * g[i + nt * w];
+                }
+                if i == 1 {
+                    v += c * g[j * w];
+                }
+                if i == np - 1 {
+                    v += c * g[np + j * w];
+                }
                 rhs[i + j * w] = T::from_f64(v);
             }
         }
@@ -1157,13 +1495,25 @@ impl<T: HelmholtzScalar> SphericalPatchHelmholtz<T> {
         if !self.committed {
             let mut probe = rhs.clone();
             unsafe {
-                T::commit_sph_np(probe.as_mut_ptr(), &mut self.h, self.ipar.as_mut_ptr(), self.dpar.as_mut_ptr(), &mut stat);
+                T::commit_sph_np(
+                    probe.as_mut_ptr(),
+                    &mut self.h,
+                    self.ipar.as_mut_ptr(),
+                    self.dpar.as_mut_ptr(),
+                    &mut stat,
+                );
             }
             check_tr(stat)?;
             self.committed = true;
         }
         unsafe {
-            T::solve_sph_np(rhs.as_mut_ptr(), &mut self.h, self.ipar.as_mut_ptr(), self.dpar.as_mut_ptr(), &mut stat);
+            T::solve_sph_np(
+                rhs.as_mut_ptr(),
+                &mut self.h,
+                self.ipar.as_mut_ptr(),
+                self.dpar.as_mut_ptr(),
+                &mut stat,
+            );
         }
         check_tr(stat)?;
         for j in 1..nt {

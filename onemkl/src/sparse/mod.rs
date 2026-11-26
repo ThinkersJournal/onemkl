@@ -34,9 +34,8 @@ use core::marker::PhantomData;
 use core::ptr;
 
 use onemkl_sys::{
-    self as sys, matrix_descr, sparse_diag_type_t, sparse_fill_mode_t,
-    sparse_index_base_t, sparse_layout_t, sparse_matrix_t, sparse_matrix_type_t,
-    sparse_operation_t, sparse_status_t,
+    self as sys, matrix_descr, sparse_diag_type_t, sparse_fill_mode_t, sparse_index_base_t,
+    sparse_layout_t, sparse_matrix_t, sparse_matrix_type_t, sparse_operation_t, sparse_status_t,
 };
 
 use crate::error::{Error, Result, SparseStatus};
@@ -318,9 +317,7 @@ impl<T: SparseScalar> SparseMatrix<T> {
         values: Vec<T>,
     ) -> Result<Self> {
         if row_ptr.len() != rows + 1 {
-            return Err(Error::InvalidArgument(
-                "row_ptr must have length rows + 1",
-            ));
+            return Err(Error::InvalidArgument("row_ptr must have length rows + 1"));
         }
         if col_idx.len() != values.len() {
             return Err(Error::InvalidArgument(
@@ -383,7 +380,10 @@ impl<T: SparseScalar> SparseMatrix<T> {
         }
         let m: i32 = rows.try_into().map_err(|_| Error::DimensionOverflow)?;
         let n: i32 = cols.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let nnz: i32 = values.len().try_into().map_err(|_| Error::DimensionOverflow)?;
+        let nnz: i32 = values
+            .len()
+            .try_into()
+            .map_err(|_| Error::DimensionOverflow)?;
 
         let mut row_box = row_indx.into_boxed_slice();
         let mut col_box = col_indx.into_boxed_slice();
@@ -511,9 +511,15 @@ impl<T: SparseScalar> SparseMatrix<T> {
             ));
         }
         // MKL takes rows/cols in block units, not element units.
-        let m: i32 = block_rows.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let n: i32 = block_cols.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let bs: i32 = block_size.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let m: i32 = block_rows
+            .try_into()
+            .map_err(|_| Error::DimensionOverflow)?;
+        let n: i32 = block_cols
+            .try_into()
+            .map_err(|_| Error::DimensionOverflow)?;
+        let bs: i32 = block_size
+            .try_into()
+            .map_err(|_| Error::DimensionOverflow)?;
 
         let mut row_ptr_box = row_ptr.into_boxed_slice();
         let mut col_idx_box = col_idx.into_boxed_slice();
@@ -689,8 +695,7 @@ impl<T: SparseScalar> SparseMatrix<T> {
     /// transposes. Wraps `mkl_sparse_convert_csr`.
     pub fn convert_csr(&self, op: Operation) -> Result<Self> {
         let mut dest: sparse_matrix_t = ptr::null_mut();
-        let status =
-            unsafe { sys::mkl_sparse_convert_csr(self.handle, op.as_sys(), &mut dest) };
+        let status = unsafe { sys::mkl_sparse_convert_csr(self.handle, op.as_sys(), &mut dest) };
         check_sparse(status)?;
         let (rows, cols) = transposed_shape(op, self.rows, self.cols);
         Ok(Self::new_mkl_owned(dest, rows, cols))
@@ -700,8 +705,7 @@ impl<T: SparseScalar> SparseMatrix<T> {
     /// `mkl_sparse_convert_csc`.
     pub fn convert_csc(&self, op: Operation) -> Result<Self> {
         let mut dest: sparse_matrix_t = ptr::null_mut();
-        let status =
-            unsafe { sys::mkl_sparse_convert_csc(self.handle, op.as_sys(), &mut dest) };
+        let status = unsafe { sys::mkl_sparse_convert_csc(self.handle, op.as_sys(), &mut dest) };
         check_sparse(status)?;
         let (rows, cols) = transposed_shape(op, self.rows, self.cols);
         Ok(Self::new_mkl_owned(dest, rows, cols))
@@ -711,8 +715,7 @@ impl<T: SparseScalar> SparseMatrix<T> {
     /// `mkl_sparse_convert_coo`.
     pub fn convert_coo(&self, op: Operation) -> Result<Self> {
         let mut dest: sparse_matrix_t = ptr::null_mut();
-        let status =
-            unsafe { sys::mkl_sparse_convert_coo(self.handle, op.as_sys(), &mut dest) };
+        let status = unsafe { sys::mkl_sparse_convert_coo(self.handle, op.as_sys(), &mut dest) };
         check_sparse(status)?;
         let (rows, cols) = transposed_shape(op, self.rows, self.cols);
         Ok(Self::new_mkl_owned(dest, rows, cols))
@@ -726,8 +729,9 @@ impl<T: SparseScalar> SparseMatrix<T> {
         block_layout: BlockLayout,
         op: Operation,
     ) -> Result<Self> {
-        let bs: core::ffi::c_int =
-            block_size.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let bs: core::ffi::c_int = block_size
+            .try_into()
+            .map_err(|_| Error::DimensionOverflow)?;
         let mut dest: sparse_matrix_t = ptr::null_mut();
         let status = unsafe {
             sys::mkl_sparse_convert_bsr(
@@ -765,9 +769,8 @@ impl<T: SparseScalar> SparseMatrix<T> {
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
         let descr_inner = descr.into().inner;
-        let status = unsafe {
-            sys::mkl_sparse_set_mv_hint(self.handle, op.as_sys(), descr_inner, calls)
-        };
+        let status =
+            unsafe { sys::mkl_sparse_set_mv_hint(self.handle, op.as_sys(), descr_inner, calls) };
         check_sparse(status)
     }
 
@@ -814,25 +817,18 @@ impl<T: SparseScalar> SparseMatrix<T> {
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
         let descr_inner = descr.into().inner;
-        let status = unsafe {
-            sys::mkl_sparse_set_sv_hint(self.handle, op.as_sys(), descr_inner, calls)
-        };
+        let status =
+            unsafe { sys::mkl_sparse_set_sv_hint(self.handle, op.as_sys(), descr_inner, calls) };
         check_sparse(status)
     }
 
     /// `C ← op(self) + alpha · other`, returning a freshly-allocated
     /// sparse matrix `C` whose storage is owned by MKL. Wraps
     /// `mkl_sparse_*_add`.
-    pub fn add(
-        &self,
-        op: Operation,
-        alpha: T,
-        other: &Self,
-    ) -> Result<Self> {
+    pub fn add(&self, op: Operation, alpha: T, other: &Self) -> Result<Self> {
         let mut dest: sparse_matrix_t = ptr::null_mut();
-        let status = unsafe {
-            T::sparse_add(op.as_sys(), self.handle, alpha, other.handle, &mut dest)
-        };
+        let status =
+            unsafe { T::sparse_add(op.as_sys(), self.handle, alpha, other.handle, &mut dest) };
         check_sparse(status)?;
         let (rows, cols) = transposed_shape(op, self.rows, self.cols);
         Ok(Self::new_mkl_owned(dest, rows, cols))
@@ -852,9 +848,7 @@ impl<T: SparseScalar> SparseMatrix<T> {
             Operation::Trans | Operation::ConjTrans => self.cols,
         };
         let mut dest: sparse_matrix_t = ptr::null_mut();
-        let status = unsafe {
-            sys::mkl_sparse_syrk(op.as_sys(), self.handle, &mut dest)
-        };
+        let status = unsafe { sys::mkl_sparse_syrk(op.as_sys(), self.handle, &mut dest) };
         check_sparse(status)?;
         Ok(Self::new_mkl_owned(dest, dim, dim))
     }
@@ -867,12 +861,7 @@ impl<T: SparseScalar> SparseMatrix<T> {
     /// by `descr_b` (use [`MatrixDescr::symmetric`] for real or
     /// [`MatrixDescr::hermitian`] for complex). Common in GNN
     /// message passing and reduced-order model construction.
-    pub fn sypr(
-        &self,
-        op: Operation,
-        b: &Self,
-        descr_b: impl Into<MatrixDescr>,
-    ) -> Result<Self> {
+    pub fn sypr(&self, op: Operation, b: &Self, descr_b: impl Into<MatrixDescr>) -> Result<Self> {
         let dim = match op {
             Operation::NoTrans => self.rows,
             Operation::Trans | Operation::ConjTrans => self.cols,
@@ -905,9 +894,8 @@ impl<T: SparseScalar> SparseMatrix<T> {
         };
         let result_cols = other.cols;
         let mut dest: sparse_matrix_t = ptr::null_mut();
-        let status = unsafe {
-            sys::mkl_sparse_spmm(op.as_sys(), self.handle, other.handle, &mut dest)
-        };
+        let status =
+            unsafe { sys::mkl_sparse_spmm(op.as_sys(), self.handle, other.handle, &mut dest) };
         check_sparse(status)?;
         Ok(Self::new_mkl_owned(dest, result_rows, result_cols))
     }
@@ -939,8 +927,7 @@ impl<T: SparseScalar> SparseMatrix<T> {
             DenseLayout::RowMajor => result_rows.saturating_mul(ldc),
             DenseLayout::ColMajor => result_cols.saturating_mul(ldc),
         };
-        let ldc_i: core::ffi::c_int =
-            ldc.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let ldc_i: core::ffi::c_int = ldc.try_into().map_err(|_| Error::DimensionOverflow)?;
         let mut out: Vec<T> = (0..needed).map(|_| T::default()).collect();
         let status = unsafe {
             T::sparse_spmmd(
@@ -1137,9 +1124,7 @@ impl RealSparseScalar for f32 {
         b: *const f32,
         ldb: core::ffi::c_int,
     ) -> sparse_status_t::Type {
-        unsafe {
-            sys::mkl_sparse_s_qr_solve(op, a, alt_values, layout, columns, x, ldx, b, ldb)
-        }
+        unsafe { sys::mkl_sparse_s_qr_solve(op, a, alt_values, layout, columns, x, ldx, b, ldb) }
     }
 }
 impl RealSparseScalar for f64 {
@@ -1160,9 +1145,7 @@ impl RealSparseScalar for f64 {
         b: *const f64,
         ldb: core::ffi::c_int,
     ) -> sparse_status_t::Type {
-        unsafe {
-            sys::mkl_sparse_d_qr_solve(op, a, alt_values, layout, columns, x, ldx, b, ldb)
-        }
+        unsafe { sys::mkl_sparse_d_qr_solve(op, a, alt_values, layout, columns, x, ldx, b, ldb) }
     }
 }
 
@@ -1175,9 +1158,7 @@ impl<T: RealSparseScalar> SparseMatrix<T> {
         let descr_inner = descr.into().inner;
         let status = unsafe { sys::mkl_sparse_qr_reorder(self.handle, descr_inner) };
         check_sparse(status)?;
-        let status = unsafe {
-            T::sparse_qr_factorize(self.handle, core::ptr::null_mut())
-        };
+        let status = unsafe { T::sparse_qr_factorize(self.handle, core::ptr::null_mut()) };
         check_sparse(status)
     }
 

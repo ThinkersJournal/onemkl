@@ -154,9 +154,7 @@ pub fn omatcopy2<T: BlasScalar>(
     strideb: usize,
 ) -> Result<()> {
     if stridea == 0 || strideb == 0 {
-        return Err(Error::InvalidArgument(
-            "matcopy2 strides must be non-zero",
-        ));
+        return Err(Error::InvalidArgument("matcopy2 strides must be non-zero"));
     }
     unsafe {
         T::mkl_omatcopy2(
@@ -244,7 +242,10 @@ fn check_matcopy_in(
         Layout::ColMajor => (rows, cols),
     };
     if ld < contiguous {
-        return Err(invalid_arg_for(name, "leading dimension is smaller than the contiguous dimension"));
+        return Err(invalid_arg_for(
+            name,
+            "leading dimension is smaller than the contiguous dimension",
+        ));
     }
     if rows == 0 || cols == 0 {
         return Ok(());
@@ -254,7 +255,10 @@ fn check_matcopy_in(
         .and_then(|v| v.checked_add(contiguous))
         .ok_or(Error::DimensionOverflow)?;
     if buf_len < needed {
-        return Err(invalid_arg_for(name, "buffer too small for declared dimensions"));
+        return Err(invalid_arg_for(
+            name,
+            "buffer too small for declared dimensions",
+        ));
     }
     Ok(())
 }
@@ -463,10 +467,7 @@ pub fn gemm_batch_strided<T: BlasScalar>(
 /// Each `A` pointer must point to at least `lda * (op==NoTrans ? K :
 /// M)` (or appropriate) elements; same for `B` and `C`. The lifetime
 /// of the underlying buffers must extend through the call.
-pub fn gemm_batch<T: BlasScalar>(
-    layout: Layout,
-    groups: &mut [GemmBatchGroup<T>],
-) -> Result<()> {
+pub fn gemm_batch<T: BlasScalar>(layout: Layout, groups: &mut [GemmBatchGroup<T>]) -> Result<()> {
     if groups.is_empty() {
         return Ok(());
     }
@@ -550,10 +551,7 @@ pub fn gemm_batch<T: BlasScalar>(
 ///
 /// Each pointer must point to a buffer of the appropriate size for
 /// the operation; lifetimes must extend through the call.
-pub fn gemv_batch<T: BlasScalar>(
-    layout: Layout,
-    groups: &mut [GemvBatchGroup<T>],
-) -> Result<()> {
+pub fn gemv_batch<T: BlasScalar>(layout: Layout, groups: &mut [GemvBatchGroup<T>]) -> Result<()> {
     if groups.is_empty() {
         return Ok(());
     }
@@ -627,10 +625,7 @@ pub fn gemv_batch<T: BlasScalar>(
 /// Each pointer must point to a buffer of the appropriate size for
 /// the operation; lifetimes must extend through the call. Each `B`
 /// matrix is overwritten with the solution `X`.
-pub fn trsm_batch<T: BlasScalar>(
-    layout: Layout,
-    groups: &mut [TrsmBatchGroup<T>],
-) -> Result<()> {
+pub fn trsm_batch<T: BlasScalar>(layout: Layout, groups: &mut [TrsmBatchGroup<T>]) -> Result<()> {
     if groups.is_empty() {
         return Ok(());
     }

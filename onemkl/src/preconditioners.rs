@@ -40,9 +40,7 @@ pub fn ilu0(n: usize, a: &[f64], ia: &[i32], ja: &[i32]) -> Result<Vec<f64>> {
         ));
     }
     if a.len() != ja.len() {
-        return Err(Error::InvalidArgument(
-            "a and ja must have the same length",
-        ));
+        return Err(Error::InvalidArgument("a and ja must have the same length"));
     }
     let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let mut alu = vec![0.0_f64; a.len()];
@@ -106,20 +104,14 @@ pub fn ilut(
         ));
     }
     if a.len() != ja.len() {
-        return Err(Error::InvalidArgument(
-            "a and ja must have the same length",
-        ));
+        return Err(Error::InvalidArgument("a and ja must have the same length"));
     }
     if max_fill < 0 {
-        return Err(Error::InvalidArgument(
-            "max_fill must be non-negative",
-        ));
+        return Err(Error::InvalidArgument("max_fill must be non-negative"));
     }
     let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let mf = max_fill as usize;
-    let max_nnz = (2 * mf + 1) * n
-        - mf.checked_mul(mf + 1).ok_or(Error::DimensionOverflow)?
-        + 1;
+    let max_nnz = (2 * mf + 1) * n - mf.checked_mul(mf + 1).ok_or(Error::DimensionOverflow)? + 1;
     let mut alut = vec![0.0_f64; max_nnz];
     let mut jalut = vec![0_i32; max_nnz];
     let mut ialut = vec![0_i32; n + 1];
@@ -127,9 +119,9 @@ pub fn ilut(
     // come from oneMKL's recommended settings.
     let mut ipar: [c_int; 128] = [0; 128];
     let mut dpar: [f64; 128] = [0.0; 128];
-    ipar[1] = 6;     // stdout for diagnostics
-    ipar[5] = 1;     // produce error messages
-    ipar[30] = 1;    // replace zero pivots
+    ipar[1] = 6; // stdout for diagnostics
+    ipar[5] = 1; // produce error messages
+    ipar[30] = 1; // replace zero pivots
     dpar[30] = 1.0e-16; // pivot replacement threshold
     dpar[31] = 1.0e-10; // pivot replacement value
     let mut ierr: c_int = 0;
@@ -172,13 +164,7 @@ pub fn ilut(
 ///
 /// `v` is the input vector. Returns a freshly allocated solution
 /// vector of length `n`.
-pub fn apply_ilu(
-    n: usize,
-    alu: &[f64],
-    ia: &[i32],
-    ja: &[i32],
-    v: &[f64],
-) -> Result<Vec<f64>> {
+pub fn apply_ilu(n: usize, alu: &[f64], ia: &[i32], ja: &[i32], v: &[f64]) -> Result<Vec<f64>> {
     if ia.len() != n + 1 {
         return Err(Error::InvalidArgument(
             "ia must have length n + 1 for CSR storage",
@@ -271,14 +257,10 @@ fn check_sparse(status: sys::sparse_status_t::Type) -> Result<()> {
         Ok(())
     } else {
         let s = match status {
-            sys::sparse_status_t::SPARSE_STATUS_NOT_INITIALIZED => {
-                SparseStatus::NotInitialized
-            }
+            sys::sparse_status_t::SPARSE_STATUS_NOT_INITIALIZED => SparseStatus::NotInitialized,
             sys::sparse_status_t::SPARSE_STATUS_ALLOC_FAILED => SparseStatus::AllocFailed,
             sys::sparse_status_t::SPARSE_STATUS_INVALID_VALUE => SparseStatus::InvalidValue,
-            sys::sparse_status_t::SPARSE_STATUS_EXECUTION_FAILED => {
-                SparseStatus::ExecutionFailed
-            }
+            sys::sparse_status_t::SPARSE_STATUS_EXECUTION_FAILED => SparseStatus::ExecutionFailed,
             sys::sparse_status_t::SPARSE_STATUS_INTERNAL_ERROR => SparseStatus::InternalError,
             sys::sparse_status_t::SPARSE_STATUS_NOT_SUPPORTED => SparseStatus::NotSupported,
             other => SparseStatus::Unknown(other as i32),

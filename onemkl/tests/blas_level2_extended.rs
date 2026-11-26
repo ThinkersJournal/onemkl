@@ -6,8 +6,8 @@ use approx::assert_abs_diff_eq;
 use num_complex::Complex64;
 
 use onemkl::blas::level2::{
-    ger, gerc, geru, hemv, her, her2, hpmv, hpr, hpr2, sbmv, spmv, spr, spr2, symv,
-    syr, syr2, tpmv, tpsv, trmv, trsv,
+    ger, gerc, geru, hemv, her, her2, hpmv, hpr, hpr2, sbmv, spmv, spr, spr2, symv, syr, syr2,
+    tpmv, tpsv, trmv, trsv,
 };
 use onemkl::matrix::{MatrixMut, MatrixRef};
 use onemkl::{Diag, Layout, Transpose, UpLo};
@@ -58,7 +58,15 @@ fn trmv_upper_no_trans() {
     let a_buf = [1.0_f64, 2.0, 3.0, 99.0, 4.0, 5.0, 99.0, 99.0, 6.0];
     let a = MatrixRef::new(&a_buf, 3, 3, Layout::RowMajor).unwrap();
     let mut x = vec![1.0_f64, 1.0, 1.0];
-    trmv(UpLo::Upper, Transpose::NoTrans, Diag::NonUnit, &a, &mut x, 1).unwrap();
+    trmv(
+        UpLo::Upper,
+        Transpose::NoTrans,
+        Diag::NonUnit,
+        &a,
+        &mut x,
+        1,
+    )
+    .unwrap();
     assert_abs_diff_eq!(x[0], 6.0, epsilon = 1e-12);
     assert_abs_diff_eq!(x[1], 9.0, epsilon = 1e-12);
     assert_abs_diff_eq!(x[2], 6.0, epsilon = 1e-12);
@@ -70,7 +78,15 @@ fn trsv_upper_no_trans_inverse() {
     let a_buf = [1.0_f64, 2.0, 3.0, 99.0, 4.0, 5.0, 99.0, 99.0, 6.0];
     let a = MatrixRef::new(&a_buf, 3, 3, Layout::RowMajor).unwrap();
     let mut b = vec![6.0_f64, 9.0, 6.0];
-    trsv(UpLo::Upper, Transpose::NoTrans, Diag::NonUnit, &a, &mut b, 1).unwrap();
+    trsv(
+        UpLo::Upper,
+        Transpose::NoTrans,
+        Diag::NonUnit,
+        &a,
+        &mut b,
+        1,
+    )
+    .unwrap();
     assert_abs_diff_eq!(b[0], 1.0, epsilon = 1e-12);
     assert_abs_diff_eq!(b[1], 1.0, epsilon = 1e-12);
     assert_abs_diff_eq!(b[2], 1.0, epsilon = 1e-12);
@@ -83,9 +99,8 @@ fn trmv_lower_unit_diag() {
     // x = [1, 2, 3]
     // A * x = [1, 2*1 + 2 = 4, 3*1 + 4*2 + 3 = 14]
     let a_buf = [
-        99.0_f64, 99.0, 99.0,  // diagonal "1"s implicit when Diag::Unit
-        2.0, 99.0, 99.0,
-        3.0, 4.0, 99.0,
+        99.0_f64, 99.0, 99.0, // diagonal "1"s implicit when Diag::Unit
+        2.0, 99.0, 99.0, 3.0, 4.0, 99.0,
     ];
     let a = MatrixRef::new(&a_buf, 3, 3, Layout::RowMajor).unwrap();
     let mut x = vec![1.0_f64, 2.0, 3.0];
@@ -136,7 +151,16 @@ fn syr2_rank2_update() {
     let mut a_buf = vec![0.0_f64; 4];
     {
         let mut a = MatrixMut::new(&mut a_buf, 2, 2, Layout::RowMajor).unwrap();
-        syr2(UpLo::Upper, 1.0, &[1.0_f64, 0.0], 1, &[0.0_f64, 1.0], 1, &mut a).unwrap();
+        syr2(
+            UpLo::Upper,
+            1.0,
+            &[1.0_f64, 0.0],
+            1,
+            &[0.0_f64, 1.0],
+            1,
+            &mut a,
+        )
+        .unwrap();
     }
     assert_abs_diff_eq!(a_buf[0], 0.0, epsilon = 1e-12);
     assert_abs_diff_eq!(a_buf[1], 1.0, epsilon = 1e-12);
@@ -151,8 +175,10 @@ fn hemv_complex_upper() {
     // x = [1, 1]
     // A * x = [2 + 1+i, conj(1+i) + 3] = [3+i, 4-i]
     let a_buf = [
-        Complex64::new(2.0, 0.0), Complex64::new(1.0, 1.0),
-        Complex64::new(99.0, 99.0), Complex64::new(3.0, 0.0),
+        Complex64::new(2.0, 0.0),
+        Complex64::new(1.0, 1.0),
+        Complex64::new(99.0, 99.0),
+        Complex64::new(3.0, 0.0),
     ];
     let a = MatrixRef::new(&a_buf, 2, 2, Layout::RowMajor).unwrap();
     let x = vec![Complex64::new(1.0, 0.0); 2];
@@ -239,9 +265,9 @@ fn sbmv_with_one_offdiagonal() {
     //   For Upper, k=1: row 0 = [_, 2, 4]; row 1 = [1, 3, 5]
     // (column-major lda = k+1 = 2; lda*n = 6 elements)
     let band = [
-        99.0_f64, 1.0,  // col 0: garbage diag-1, then diag
-        2.0, 3.0,       // col 1: super, diag
-        4.0, 5.0,       // col 2: super, diag
+        99.0_f64, 1.0, // col 0: garbage diag-1, then diag
+        2.0, 3.0, // col 1: super, diag
+        4.0, 5.0, // col 2: super, diag
     ];
     let a = MatrixRef::with_lda(&band, 2, 3, Layout::ColMajor, 2).unwrap();
     let x = vec![1.0_f64, 1.0, 1.0];
@@ -264,7 +290,19 @@ fn spmv_packed_symmetric() {
     let ap = vec![1.0_f64, 2.0, 4.0, 3.0, 5.0, 6.0];
     let x = vec![1.0_f64, 1.0, 1.0];
     let mut y = vec![0.0_f64; 3];
-    spmv(Layout::ColMajor, UpLo::Upper, 3, 1.0, &ap, &x, 1, 0.0, &mut y, 1).unwrap();
+    spmv(
+        Layout::ColMajor,
+        UpLo::Upper,
+        3,
+        1.0,
+        &ap,
+        &x,
+        1,
+        0.0,
+        &mut y,
+        1,
+    )
+    .unwrap();
     assert_abs_diff_eq!(y[0], 6.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[1], 11.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[2], 14.0, epsilon = 1e-12);
@@ -276,7 +314,16 @@ fn spr_packed_rank1() {
     // After: A_upper = [[1, 2], [_, 4]]
     // Column-major upper packed for n=2: [a00, a01, a11]
     let mut ap = vec![0.0_f64; 3];
-    spr(Layout::ColMajor, UpLo::Upper, 2, 1.0, &[1.0_f64, 2.0], 1, &mut ap).unwrap();
+    spr(
+        Layout::ColMajor,
+        UpLo::Upper,
+        2,
+        1.0,
+        &[1.0_f64, 2.0],
+        1,
+        &mut ap,
+    )
+    .unwrap();
     assert_abs_diff_eq!(ap[0], 1.0, epsilon = 1e-12);
     assert_abs_diff_eq!(ap[1], 2.0, epsilon = 1e-12);
     assert_abs_diff_eq!(ap[2], 4.0, epsilon = 1e-12);

@@ -174,9 +174,7 @@ impl Stream {
             ));
         }
         let mut handle: VSLStreamStatePtr = ptr::null_mut();
-        let status = unsafe {
-            sys::vslNewStream(&mut handle, brng.as_brng(), seed)
-        };
+        let status = unsafe { sys::vslNewStream(&mut handle, brng.as_brng(), seed) };
         check_vsl(status)?;
         Ok(Self { handle })
     }
@@ -230,9 +228,7 @@ impl Stream {
     /// resulting stream draws every `nstreams`-th element of the
     /// original sequence.
     pub fn leapfrog(&mut self, leap_index: c_int, nstreams: c_int) -> Result<()> {
-        let status = unsafe {
-            sys::vslLeapfrogStream(self.handle, leap_index, nstreams)
-        };
+        let status = unsafe { sys::vslLeapfrogStream(self.handle, leap_index, nstreams) };
         check_vsl(status)
     }
 
@@ -251,23 +247,14 @@ impl Stream {
     /// Fill `out` with samples uniformly distributed on `[a, b)`.
     pub fn uniform<T: RngFloat>(&mut self, out: &mut [T], a: T, b: T) -> Result<()> {
         let n = dim_to_mkl_int(out.len())?;
-        let status = unsafe {
-            T::rng_uniform(0, self.handle, n, out.as_mut_ptr(), a, b)
-        };
+        let status = unsafe { T::rng_uniform(0, self.handle, n, out.as_mut_ptr(), a, b) };
         check_vsl(status)
     }
 
     /// Fill `out` with samples from `Normal(mean, sigma)`.
-    pub fn gaussian<T: RngFloat>(
-        &mut self,
-        out: &mut [T],
-        mean: T,
-        sigma: T,
-    ) -> Result<()> {
+    pub fn gaussian<T: RngFloat>(&mut self, out: &mut [T], mean: T, sigma: T) -> Result<()> {
         let n = dim_to_mkl_int(out.len())?;
-        let status = unsafe {
-            T::rng_gaussian(0, self.handle, n, out.as_mut_ptr(), mean, sigma)
-        };
+        let status = unsafe { T::rng_gaussian(0, self.handle, n, out.as_mut_ptr(), mean, sigma) };
         check_vsl(status)
     }
 
@@ -281,9 +268,8 @@ impl Stream {
         beta: T,
     ) -> Result<()> {
         let n = dim_to_mkl_int(out.len())?;
-        let status = unsafe {
-            T::rng_exponential(0, self.handle, n, out.as_mut_ptr(), displacement, beta)
-        };
+        let status =
+            unsafe { T::rng_exponential(0, self.handle, n, out.as_mut_ptr(), displacement, beta) };
         check_vsl(status)
     }
 
@@ -301,23 +287,24 @@ impl Stream {
         let n = dim_to_mkl_int(out.len())?;
         let status = unsafe {
             T::rng_lognormal(
-                0, self.handle, n, out.as_mut_ptr(), mean, sigma, displacement, scale,
+                0,
+                self.handle,
+                n,
+                out.as_mut_ptr(),
+                mean,
+                sigma,
+                displacement,
+                scale,
             )
         };
         check_vsl(status)
     }
 
     /// Fill `out` with samples from `Cauchy(displacement, scale)`.
-    pub fn cauchy<T: RngFloat>(
-        &mut self,
-        out: &mut [T],
-        displacement: T,
-        scale: T,
-    ) -> Result<()> {
+    pub fn cauchy<T: RngFloat>(&mut self, out: &mut [T], displacement: T, scale: T) -> Result<()> {
         let n = dim_to_mkl_int(out.len())?;
-        let status = unsafe {
-            T::rng_cauchy(0, self.handle, n, out.as_mut_ptr(), displacement, scale)
-        };
+        let status =
+            unsafe { T::rng_cauchy(0, self.handle, n, out.as_mut_ptr(), displacement, scale) };
         check_vsl(status)
     }
 
@@ -331,7 +318,15 @@ impl Stream {
     ) -> Result<()> {
         let n = dim_to_mkl_int(out.len())?;
         let status = unsafe {
-            T::rng_weibull(0, self.handle, n, out.as_mut_ptr(), alpha, displacement, beta)
+            T::rng_weibull(
+                0,
+                self.handle,
+                n,
+                out.as_mut_ptr(),
+                alpha,
+                displacement,
+                beta,
+            )
         };
         check_vsl(status)
     }
@@ -346,7 +341,15 @@ impl Stream {
     ) -> Result<()> {
         let n = dim_to_mkl_int(out.len())?;
         let status = unsafe {
-            T::rng_gamma(0, self.handle, n, out.as_mut_ptr(), alpha, displacement, beta)
+            T::rng_gamma(
+                0,
+                self.handle,
+                n,
+                out.as_mut_ptr(),
+                alpha,
+                displacement,
+                beta,
+            )
         };
         check_vsl(status)
     }
@@ -362,7 +365,16 @@ impl Stream {
     ) -> Result<()> {
         let n = dim_to_mkl_int(out.len())?;
         let status = unsafe {
-            T::rng_beta(0, self.handle, n, out.as_mut_ptr(), p, q, displacement, scale)
+            T::rng_beta(
+                0,
+                self.handle,
+                n,
+                out.as_mut_ptr(),
+                p,
+                q,
+                displacement,
+                scale,
+            )
         };
         check_vsl(status)
     }
@@ -376,32 +388,20 @@ impl Stream {
     /// Gumbel-softmax trick for differentiable categorical sampling,
     /// negate the samples: draw `min_gumbel(0, 1)` then take `-x` to
     /// get `max_gumbel(0, 1)`.
-    pub fn gumbel<T: RngFloat>(
-        &mut self,
-        out: &mut [T],
-        displacement: T,
-        scale: T,
-    ) -> Result<()> {
+    pub fn gumbel<T: RngFloat>(&mut self, out: &mut [T], displacement: T, scale: T) -> Result<()> {
         let n = dim_to_mkl_int(out.len())?;
-        let status = unsafe {
-            T::rng_gumbel(0, self.handle, n, out.as_mut_ptr(), displacement, scale)
-        };
+        let status =
+            unsafe { T::rng_gumbel(0, self.handle, n, out.as_mut_ptr(), displacement, scale) };
         check_vsl(status)
     }
 
     /// Fill `out` with samples from `Laplace(displacement, scale)`
     /// (double-exponential). Common as a heavy-tailed prior and in
     /// L1-regularized models.
-    pub fn laplace<T: RngFloat>(
-        &mut self,
-        out: &mut [T],
-        displacement: T,
-        scale: T,
-    ) -> Result<()> {
+    pub fn laplace<T: RngFloat>(&mut self, out: &mut [T], displacement: T, scale: T) -> Result<()> {
         let n = dim_to_mkl_int(out.len())?;
-        let status = unsafe {
-            T::rng_laplace(0, self.handle, n, out.as_mut_ptr(), displacement, scale)
-        };
+        let status =
+            unsafe { T::rng_laplace(0, self.handle, n, out.as_mut_ptr(), displacement, scale) };
         check_vsl(status)
     }
 
@@ -413,9 +413,8 @@ impl Stream {
         scale: T,
     ) -> Result<()> {
         let n = dim_to_mkl_int(out.len())?;
-        let status = unsafe {
-            T::rng_rayleigh(0, self.handle, n, out.as_mut_ptr(), displacement, scale)
-        };
+        let status =
+            unsafe { T::rng_rayleigh(0, self.handle, n, out.as_mut_ptr(), displacement, scale) };
         check_vsl(status)
     }
 
@@ -423,9 +422,7 @@ impl Stream {
     /// `ndf` degrees of freedom.
     pub fn chi_square<T: RngFloat>(&mut self, out: &mut [T], ndf: i32) -> Result<()> {
         let n = dim_to_mkl_int(out.len())?;
-        let status = unsafe {
-            T::rng_chi_square(0, self.handle, n, out.as_mut_ptr(), ndf)
-        };
+        let status = unsafe { T::rng_chi_square(0, self.handle, n, out.as_mut_ptr(), ndf) };
         check_vsl(status)
     }
 
@@ -461,9 +458,7 @@ impl Stream {
             ));
         }
         if mean.len() != dimen {
-            return Err(Error::InvalidArgument(
-                "mean must have length dimen",
-            ));
+            return Err(Error::InvalidArgument("mean must have length dimen"));
         }
         if cov_factor.len() != storage.factor_len(dimen) {
             return Err(Error::InvalidArgument(
@@ -548,9 +543,7 @@ impl Stream {
             return Err(Error::InvalidArgument("alpha must be non-empty"));
         }
         if alpha.iter().any(|&a| !(a > 0.0)) {
-            return Err(Error::InvalidArgument(
-                "every alpha entry must be > 0",
-            ));
+            return Err(Error::InvalidArgument("every alpha entry must be > 0"));
         }
         if out.len() % k != 0 {
             return Err(Error::InvalidArgument(
@@ -586,36 +579,28 @@ impl Stream {
     /// Fill `out` with integers uniformly distributed on `[a, b)`.
     pub fn uniform_int(&mut self, out: &mut [i32], a: i32, b: i32) -> Result<()> {
         let n = dim_to_mkl_int(out.len())?;
-        let status = unsafe {
-            sys::viRngUniform(0, self.handle, n, out.as_mut_ptr(), a, b)
-        };
+        let status = unsafe { sys::viRngUniform(0, self.handle, n, out.as_mut_ptr(), a, b) };
         check_vsl(status)
     }
 
     /// Fill `out` with `Bernoulli(p)` samples (0 or 1).
     pub fn bernoulli(&mut self, out: &mut [i32], p: f64) -> Result<()> {
         let n = dim_to_mkl_int(out.len())?;
-        let status = unsafe {
-            sys::viRngBernoulli(0, self.handle, n, out.as_mut_ptr(), p)
-        };
+        let status = unsafe { sys::viRngBernoulli(0, self.handle, n, out.as_mut_ptr(), p) };
         check_vsl(status)
     }
 
     /// Fill `out` with `Binomial(ntrial, p)` samples.
     pub fn binomial(&mut self, out: &mut [i32], ntrial: i32, p: f64) -> Result<()> {
         let n = dim_to_mkl_int(out.len())?;
-        let status = unsafe {
-            sys::viRngBinomial(0, self.handle, n, out.as_mut_ptr(), ntrial, p)
-        };
+        let status = unsafe { sys::viRngBinomial(0, self.handle, n, out.as_mut_ptr(), ntrial, p) };
         check_vsl(status)
     }
 
     /// Fill `out` with `Poisson(lambda)` samples.
     pub fn poisson(&mut self, out: &mut [i32], lambda: f64) -> Result<()> {
         let n = dim_to_mkl_int(out.len())?;
-        let status = unsafe {
-            sys::viRngPoisson(0, self.handle, n, out.as_mut_ptr(), lambda)
-        };
+        let status = unsafe { sys::viRngPoisson(0, self.handle, n, out.as_mut_ptr(), lambda) };
         check_vsl(status)
     }
 
@@ -624,9 +609,7 @@ impl Stream {
     /// probability `p`.
     pub fn geometric(&mut self, out: &mut [i32], p: f64) -> Result<()> {
         let n = dim_to_mkl_int(out.len())?;
-        let status = unsafe {
-            sys::viRngGeometric(0, self.handle, n, out.as_mut_ptr(), p)
-        };
+        let status = unsafe { sys::viRngGeometric(0, self.handle, n, out.as_mut_ptr(), p) };
         check_vsl(status)
     }
 
@@ -663,9 +646,7 @@ impl Stream {
     /// count-data regression.
     pub fn neg_binomial(&mut self, out: &mut [i32], a: f64, p: f64) -> Result<()> {
         let n = dim_to_mkl_int(out.len())?;
-        let status = unsafe {
-            sys::viRngNegBinomial(0, self.handle, n, out.as_mut_ptr(), a, p)
-        };
+        let status = unsafe { sys::viRngNegBinomial(0, self.handle, n, out.as_mut_ptr(), a, p) };
         check_vsl(status)
     }
 
@@ -680,12 +661,7 @@ impl Stream {
     /// For LLM-style token sampling (one draw, position of the
     /// non-zero entry), use `ntrial = 1` and post-process — or build
     /// on top of this with a thin "categorical" helper.
-    pub fn multinomial(
-        &mut self,
-        out: &mut [i32],
-        ntrial: i32,
-        p: &[f64],
-    ) -> Result<()> {
+    pub fn multinomial(&mut self, out: &mut [i32], ntrial: i32, p: &[f64]) -> Result<()> {
         let k = p.len();
         if k == 0 {
             return Err(Error::InvalidArgument("p must be non-empty"));
@@ -841,61 +817,118 @@ impl Drop for Stream {
 #[allow(missing_docs)]
 pub trait RngFloat: Copy + 'static {
     unsafe fn rng_uniform(
-        method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-        r: *mut Self, a: Self, b: Self,
+        method: c_int,
+        stream: VSLStreamStatePtr,
+        n: onemkl_sys::MKL_INT,
+        r: *mut Self,
+        a: Self,
+        b: Self,
     ) -> c_int;
     unsafe fn rng_gaussian(
-        method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-        r: *mut Self, mean: Self, sigma: Self,
+        method: c_int,
+        stream: VSLStreamStatePtr,
+        n: onemkl_sys::MKL_INT,
+        r: *mut Self,
+        mean: Self,
+        sigma: Self,
     ) -> c_int;
     unsafe fn rng_exponential(
-        method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-        r: *mut Self, displacement: Self, beta: Self,
+        method: c_int,
+        stream: VSLStreamStatePtr,
+        n: onemkl_sys::MKL_INT,
+        r: *mut Self,
+        displacement: Self,
+        beta: Self,
     ) -> c_int;
     #[allow(clippy::too_many_arguments)]
     unsafe fn rng_lognormal(
-        method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
+        method: c_int,
+        stream: VSLStreamStatePtr,
+        n: onemkl_sys::MKL_INT,
         r: *mut Self,
-        mean: Self, sigma: Self, displacement: Self, scale: Self,
+        mean: Self,
+        sigma: Self,
+        displacement: Self,
+        scale: Self,
     ) -> c_int;
     unsafe fn rng_cauchy(
-        method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-        r: *mut Self, displacement: Self, scale: Self,
+        method: c_int,
+        stream: VSLStreamStatePtr,
+        n: onemkl_sys::MKL_INT,
+        r: *mut Self,
+        displacement: Self,
+        scale: Self,
     ) -> c_int;
     unsafe fn rng_weibull(
-        method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-        r: *mut Self, alpha: Self, displacement: Self, beta: Self,
+        method: c_int,
+        stream: VSLStreamStatePtr,
+        n: onemkl_sys::MKL_INT,
+        r: *mut Self,
+        alpha: Self,
+        displacement: Self,
+        beta: Self,
     ) -> c_int;
     unsafe fn rng_gamma(
-        method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-        r: *mut Self, alpha: Self, displacement: Self, beta: Self,
+        method: c_int,
+        stream: VSLStreamStatePtr,
+        n: onemkl_sys::MKL_INT,
+        r: *mut Self,
+        alpha: Self,
+        displacement: Self,
+        beta: Self,
     ) -> c_int;
     #[allow(clippy::too_many_arguments)]
     unsafe fn rng_beta(
-        method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-        r: *mut Self, p: Self, q: Self, displacement: Self, scale: Self,
+        method: c_int,
+        stream: VSLStreamStatePtr,
+        n: onemkl_sys::MKL_INT,
+        r: *mut Self,
+        p: Self,
+        q: Self,
+        displacement: Self,
+        scale: Self,
     ) -> c_int;
     unsafe fn rng_gumbel(
-        method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-        r: *mut Self, displacement: Self, scale: Self,
+        method: c_int,
+        stream: VSLStreamStatePtr,
+        n: onemkl_sys::MKL_INT,
+        r: *mut Self,
+        displacement: Self,
+        scale: Self,
     ) -> c_int;
     unsafe fn rng_laplace(
-        method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-        r: *mut Self, displacement: Self, scale: Self,
+        method: c_int,
+        stream: VSLStreamStatePtr,
+        n: onemkl_sys::MKL_INT,
+        r: *mut Self,
+        displacement: Self,
+        scale: Self,
     ) -> c_int;
     unsafe fn rng_rayleigh(
-        method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-        r: *mut Self, displacement: Self, scale: Self,
+        method: c_int,
+        stream: VSLStreamStatePtr,
+        n: onemkl_sys::MKL_INT,
+        r: *mut Self,
+        displacement: Self,
+        scale: Self,
     ) -> c_int;
     unsafe fn rng_chi_square(
-        method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-        r: *mut Self, ndf: c_int,
+        method: c_int,
+        stream: VSLStreamStatePtr,
+        n: onemkl_sys::MKL_INT,
+        r: *mut Self,
+        ndf: c_int,
     ) -> c_int;
     #[allow(clippy::too_many_arguments)]
     unsafe fn rng_gaussian_mv(
-        method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-        r: *mut Self, dimen: c_int, mstorage: c_int,
-        mean: *const Self, cov_factor: *const Self,
+        method: c_int,
+        stream: VSLStreamStatePtr,
+        n: onemkl_sys::MKL_INT,
+        r: *mut Self,
+        dimen: c_int,
+        mstorage: c_int,
+        mean: *const Self,
+        cov_factor: *const Self,
     ) -> c_int;
 }
 
@@ -911,91 +944,141 @@ macro_rules! impl_rng_float {
     ) => {
         impl RngFloat for $ty {
             unsafe fn rng_uniform(
-                method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-                r: *mut Self, a: Self, b: Self,
+                method: c_int,
+                stream: VSLStreamStatePtr,
+                n: onemkl_sys::MKL_INT,
+                r: *mut Self,
+                a: Self,
+                b: Self,
             ) -> c_int {
                 unsafe { sys::$uniform(method, stream, n, r, a, b) }
             }
             unsafe fn rng_gaussian(
-                method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-                r: *mut Self, mean: Self, sigma: Self,
+                method: c_int,
+                stream: VSLStreamStatePtr,
+                n: onemkl_sys::MKL_INT,
+                r: *mut Self,
+                mean: Self,
+                sigma: Self,
             ) -> c_int {
                 unsafe { sys::$gaussian(method, stream, n, r, mean, sigma) }
             }
             unsafe fn rng_exponential(
-                method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-                r: *mut Self, displacement: Self, beta: Self,
+                method: c_int,
+                stream: VSLStreamStatePtr,
+                n: onemkl_sys::MKL_INT,
+                r: *mut Self,
+                displacement: Self,
+                beta: Self,
             ) -> c_int {
                 unsafe { sys::$exp(method, stream, n, r, displacement, beta) }
             }
             unsafe fn rng_lognormal(
-                method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
+                method: c_int,
+                stream: VSLStreamStatePtr,
+                n: onemkl_sys::MKL_INT,
                 r: *mut Self,
-                mean: Self, sigma: Self, displacement: Self, scale: Self,
+                mean: Self,
+                sigma: Self,
+                displacement: Self,
+                scale: Self,
             ) -> c_int {
-                unsafe {
-                    sys::$logn(method, stream, n, r, mean, sigma, displacement, scale)
-                }
+                unsafe { sys::$logn(method, stream, n, r, mean, sigma, displacement, scale) }
             }
             unsafe fn rng_cauchy(
-                method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-                r: *mut Self, displacement: Self, scale: Self,
+                method: c_int,
+                stream: VSLStreamStatePtr,
+                n: onemkl_sys::MKL_INT,
+                r: *mut Self,
+                displacement: Self,
+                scale: Self,
             ) -> c_int {
                 unsafe { sys::$cauchy(method, stream, n, r, displacement, scale) }
             }
             unsafe fn rng_weibull(
-                method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-                r: *mut Self, alpha: Self, displacement: Self, beta: Self,
+                method: c_int,
+                stream: VSLStreamStatePtr,
+                n: onemkl_sys::MKL_INT,
+                r: *mut Self,
+                alpha: Self,
+                displacement: Self,
+                beta: Self,
             ) -> c_int {
                 unsafe { sys::$weibull(method, stream, n, r, alpha, displacement, beta) }
             }
             unsafe fn rng_gamma(
-                method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-                r: *mut Self, alpha: Self, displacement: Self, beta: Self,
+                method: c_int,
+                stream: VSLStreamStatePtr,
+                n: onemkl_sys::MKL_INT,
+                r: *mut Self,
+                alpha: Self,
+                displacement: Self,
+                beta: Self,
             ) -> c_int {
                 unsafe { sys::$gamma(method, stream, n, r, alpha, displacement, beta) }
             }
             unsafe fn rng_beta(
-                method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
+                method: c_int,
+                stream: VSLStreamStatePtr,
+                n: onemkl_sys::MKL_INT,
                 r: *mut Self,
-                p: Self, q: Self, displacement: Self, scale: Self,
+                p: Self,
+                q: Self,
+                displacement: Self,
+                scale: Self,
             ) -> c_int {
-                unsafe {
-                    sys::$beta(method, stream, n, r, p, q, displacement, scale)
-                }
+                unsafe { sys::$beta(method, stream, n, r, p, q, displacement, scale) }
             }
             unsafe fn rng_gumbel(
-                method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-                r: *mut Self, displacement: Self, scale: Self,
+                method: c_int,
+                stream: VSLStreamStatePtr,
+                n: onemkl_sys::MKL_INT,
+                r: *mut Self,
+                displacement: Self,
+                scale: Self,
             ) -> c_int {
                 unsafe { sys::$gumbel(method, stream, n, r, displacement, scale) }
             }
             unsafe fn rng_laplace(
-                method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-                r: *mut Self, displacement: Self, scale: Self,
+                method: c_int,
+                stream: VSLStreamStatePtr,
+                n: onemkl_sys::MKL_INT,
+                r: *mut Self,
+                displacement: Self,
+                scale: Self,
             ) -> c_int {
                 unsafe { sys::$laplace(method, stream, n, r, displacement, scale) }
             }
             unsafe fn rng_rayleigh(
-                method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-                r: *mut Self, displacement: Self, scale: Self,
+                method: c_int,
+                stream: VSLStreamStatePtr,
+                n: onemkl_sys::MKL_INT,
+                r: *mut Self,
+                displacement: Self,
+                scale: Self,
             ) -> c_int {
                 unsafe { sys::$rayleigh(method, stream, n, r, displacement, scale) }
             }
             unsafe fn rng_chi_square(
-                method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-                r: *mut Self, ndf: c_int,
+                method: c_int,
+                stream: VSLStreamStatePtr,
+                n: onemkl_sys::MKL_INT,
+                r: *mut Self,
+                ndf: c_int,
             ) -> c_int {
                 unsafe { sys::$chi_square(method, stream, n, r, ndf) }
             }
             unsafe fn rng_gaussian_mv(
-                method: c_int, stream: VSLStreamStatePtr, n: onemkl_sys::MKL_INT,
-                r: *mut Self, dimen: c_int, mstorage: c_int,
-                mean: *const Self, cov_factor: *const Self,
+                method: c_int,
+                stream: VSLStreamStatePtr,
+                n: onemkl_sys::MKL_INT,
+                r: *mut Self,
+                dimen: c_int,
+                mstorage: c_int,
+                mean: *const Self,
+                cov_factor: *const Self,
             ) -> c_int {
-                unsafe {
-                    sys::$gmv(method, stream, n, r, dimen, mstorage, mean, cov_factor)
-                }
+                unsafe { sys::$gmv(method, stream, n, r, dimen, mstorage, mean, cov_factor) }
             }
         }
     };
@@ -1003,24 +1086,36 @@ macro_rules! impl_rng_float {
 
 impl_rng_float!(
     f32,
-    uniform=vsRngUniform, gaussian=vsRngGaussian,
-    exponential=vsRngExponential, lognormal=vsRngLognormal,
-    cauchy=vsRngCauchy, weibull=vsRngWeibull,
-    gamma=vsRngGamma, beta=vsRngBeta,
-    gumbel=vsRngGumbel, laplace=vsRngLaplace,
-    rayleigh=vsRngRayleigh, chi_square=vsRngChiSquare,
-    gaussian_mv=vsRngGaussianMV,
+    uniform = vsRngUniform,
+    gaussian = vsRngGaussian,
+    exponential = vsRngExponential,
+    lognormal = vsRngLognormal,
+    cauchy = vsRngCauchy,
+    weibull = vsRngWeibull,
+    gamma = vsRngGamma,
+    beta = vsRngBeta,
+    gumbel = vsRngGumbel,
+    laplace = vsRngLaplace,
+    rayleigh = vsRngRayleigh,
+    chi_square = vsRngChiSquare,
+    gaussian_mv = vsRngGaussianMV,
 );
 
 impl_rng_float!(
     f64,
-    uniform=vdRngUniform, gaussian=vdRngGaussian,
-    exponential=vdRngExponential, lognormal=vdRngLognormal,
-    cauchy=vdRngCauchy, weibull=vdRngWeibull,
-    gamma=vdRngGamma, beta=vdRngBeta,
-    gumbel=vdRngGumbel, laplace=vdRngLaplace,
-    rayleigh=vdRngRayleigh, chi_square=vdRngChiSquare,
-    gaussian_mv=vdRngGaussianMV,
+    uniform = vdRngUniform,
+    gaussian = vdRngGaussian,
+    exponential = vdRngExponential,
+    lognormal = vdRngLognormal,
+    cauchy = vdRngCauchy,
+    weibull = vdRngWeibull,
+    gamma = vdRngGamma,
+    beta = vdRngBeta,
+    gumbel = vdRngGumbel,
+    laplace = vdRngLaplace,
+    rayleigh = vdRngRayleigh,
+    chi_square = vdRngChiSquare,
+    gaussian_mv = vdRngGaussianMV,
 );
 
 #[inline]

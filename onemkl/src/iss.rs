@@ -96,12 +96,7 @@ const RCI_NEED_PRECOND: c_int = 3;
 /// `b` is the right-hand side; `x` is the initial guess on entry and
 /// the converged solution on return. Returns the iteration count
 /// reported by `dcg_get`.
-pub fn solve_cg<F>(
-    b: &[f64],
-    x: &mut [f64],
-    opts: IssOptions,
-    mat_vec: F,
-) -> Result<IssResult>
+pub fn solve_cg<F>(b: &[f64], x: &mut [f64], opts: IssOptions, mat_vec: F) -> Result<IssResult>
 where
     F: FnMut(&[f64], &mut [f64]),
 {
@@ -122,9 +117,7 @@ where
     P: FnMut(&[f64], &mut [f64]),
 {
     if b.len() != x.len() {
-        return Err(Error::InvalidArgument(
-            "b and x must have the same length",
-        ));
+        return Err(Error::InvalidArgument("b and x must have the same length"));
     }
     let n = b.len();
     let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
@@ -258,9 +251,7 @@ where
     F: FnMut(&[f64], &mut [f64]),
 {
     if b.len() != x.len() {
-        return Err(Error::InvalidArgument(
-            "b and x must have the same length",
-        ));
+        return Err(Error::InvalidArgument("b and x must have the same length"));
     }
     let n = b.len();
     let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
@@ -485,9 +476,7 @@ impl CgSession {
         preconditioned: bool,
     ) -> Result<Self> {
         if b.len() != n || x.len() != n {
-            return Err(Error::InvalidArgument(
-                "b and x must each have length n",
-            ));
+            return Err(Error::InvalidArgument("b and x must each have length n"));
         }
         let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
         let mut ipar: [c_int; 128] = [0; 128];
@@ -642,16 +631,9 @@ pub struct FgmresSession {
 
 impl FgmresSession {
     /// Build a new FGMRES session. `b` and `x` must have length `n`.
-    pub fn new(
-        n: usize,
-        b: &[f64],
-        x: &[f64],
-        opts: IssOptions,
-    ) -> Result<Self> {
+    pub fn new(n: usize, b: &[f64], x: &[f64], opts: IssOptions) -> Result<Self> {
         if b.len() != n || x.len() != n {
-            return Err(Error::InvalidArgument(
-                "b and x must each have length n",
-            ));
+            return Err(Error::InvalidArgument("b and x must each have length n"));
         }
         let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
         let restart = opts.restart_length.min(n);
@@ -710,11 +692,7 @@ impl FgmresSession {
     }
 
     /// Advance the FGMRES iteration by one MKL step.
-    pub fn step<'a>(
-        &'a mut self,
-        b: &mut [f64],
-        x: &mut [f64],
-    ) -> Result<RciAction<'a>> {
+    pub fn step<'a>(&'a mut self, b: &mut [f64], x: &mut [f64]) -> Result<RciAction<'a>> {
         let mut rci: c_int = 0;
         unsafe {
             sys::dfgmres(

@@ -26,18 +26,27 @@ use crate::error::{Error, Result};
 pub trait DataFittingScalar: Copy + 'static {
     #[allow(clippy::too_many_arguments)]
     unsafe fn df_new_task_1d(
-        task: *mut DFTaskPtr, nx: c_int, x: *const Self, xhint: c_int,
-        ny: c_int, y: *const Self, yhint: c_int,
+        task: *mut DFTaskPtr,
+        nx: c_int,
+        x: *const Self,
+        xhint: c_int,
+        ny: c_int,
+        y: *const Self,
+        yhint: c_int,
     ) -> c_int;
     #[allow(clippy::too_many_arguments)]
     unsafe fn df_edit_pp_spline_1d(
-        task: DFTaskPtr, s_order: c_int, s_type: c_int, bc_type: c_int,
-        bc: *const Self, ic_type: c_int, ic: *const Self, scoeff: *const Self,
+        task: DFTaskPtr,
+        s_order: c_int,
+        s_type: c_int,
+        bc_type: c_int,
+        bc: *const Self,
+        ic_type: c_int,
+        ic: *const Self,
+        scoeff: *const Self,
         scoeffhint: c_int,
     ) -> c_int;
-    unsafe fn df_construct_1d(
-        task: DFTaskPtr, s_format: c_int, method: c_int,
-    ) -> c_int;
+    unsafe fn df_construct_1d(task: DFTaskPtr, s_format: c_int, method: c_int) -> c_int;
     #[allow(clippy::too_many_arguments)]
     unsafe fn df_interpolate_1d(
         task: DFTaskPtr,
@@ -77,26 +86,34 @@ macro_rules! impl_data_fitting_real {
     ) => {
         impl DataFittingScalar for $ty {
             unsafe fn df_new_task_1d(
-                task: *mut DFTaskPtr, nx: c_int, x: *const Self, xhint: c_int,
-                ny: c_int, y: *const Self, yhint: c_int,
+                task: *mut DFTaskPtr,
+                nx: c_int,
+                x: *const Self,
+                xhint: c_int,
+                ny: c_int,
+                y: *const Self,
+                yhint: c_int,
             ) -> c_int {
                 unsafe { sys::$new(task, nx, x, xhint, ny, y, yhint) }
             }
             unsafe fn df_edit_pp_spline_1d(
-                task: DFTaskPtr, s_order: c_int, s_type: c_int, bc_type: c_int,
-                bc: *const Self, ic_type: c_int, ic: *const Self,
-                scoeff: *const Self, scoeffhint: c_int,
+                task: DFTaskPtr,
+                s_order: c_int,
+                s_type: c_int,
+                bc_type: c_int,
+                bc: *const Self,
+                ic_type: c_int,
+                ic: *const Self,
+                scoeff: *const Self,
+                scoeffhint: c_int,
             ) -> c_int {
                 unsafe {
                     sys::$edit(
-                        task, s_order, s_type, bc_type, bc, ic_type, ic, scoeff,
-                        scoeffhint,
+                        task, s_order, s_type, bc_type, bc, ic_type, ic, scoeff, scoeffhint,
                     )
                 }
             }
-            unsafe fn df_construct_1d(
-                task: DFTaskPtr, s_format: c_int, method: c_int,
-            ) -> c_int {
+            unsafe fn df_construct_1d(task: DFTaskPtr, s_format: c_int, method: c_int) -> c_int {
                 unsafe { sys::$ctor(task, s_format, method) }
             }
             unsafe fn df_interpolate_1d(
@@ -115,8 +132,18 @@ macro_rules! impl_data_fitting_real {
             ) -> c_int {
                 unsafe {
                     sys::$interp(
-                        task, estimation_type, method, nsite, site, sitehint, ndorder,
-                        dorder, datahint, r, rhint, cell,
+                        task,
+                        estimation_type,
+                        method,
+                        nsite,
+                        site,
+                        sitehint,
+                        ndorder,
+                        dorder,
+                        datahint,
+                        r,
+                        rhint,
+                        cell,
                     )
                 }
             }
@@ -135,8 +162,8 @@ macro_rules! impl_data_fitting_real {
             ) -> c_int {
                 unsafe {
                     sys::$integ(
-                        task, method, nlim, llim, llimhint, rlim, rlimhint, ldatahint,
-                        rdatahint, r, rhint,
+                        task, method, nlim, llim, llimhint, rlim, rlimhint, ldatahint, rdatahint,
+                        r, rhint,
                     )
                 }
             }
@@ -146,15 +173,19 @@ macro_rules! impl_data_fitting_real {
 
 impl_data_fitting_real!(
     f32,
-    new_task=dfsNewTask1D, edit_spline=dfsEditPPSpline1D,
-    construct=dfsConstruct1D, interpolate=dfsInterpolate1D,
-    integrate=dfsIntegrate1D,
+    new_task = dfsNewTask1D,
+    edit_spline = dfsEditPPSpline1D,
+    construct = dfsConstruct1D,
+    interpolate = dfsInterpolate1D,
+    integrate = dfsIntegrate1D,
 );
 impl_data_fitting_real!(
     f64,
-    new_task=dfdNewTask1D, edit_spline=dfdEditPPSpline1D,
-    construct=dfdConstruct1D, interpolate=dfdInterpolate1D,
-    integrate=dfdIntegrate1D,
+    new_task = dfdNewTask1D,
+    edit_spline = dfdEditPPSpline1D,
+    construct = dfdConstruct1D,
+    interpolate = dfdInterpolate1D,
+    integrate = dfdIntegrate1D,
 );
 
 // Note: oneMKL's data-fitting routines expose only real (`?s` / `?d`)
@@ -278,9 +309,7 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         ic: Option<Vec<T>>,
     ) -> Result<Self> {
         if x.len() != y.len() {
-            return Err(Error::InvalidArgument(
-                "x and y must have the same length",
-            ));
+            return Err(Error::InvalidArgument("x and y must have the same length"));
         }
         let n = x.len();
         if n < 2 {
@@ -364,7 +393,10 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
     where
         T: Default,
     {
-        let nsite: c_int = sites.len().try_into().map_err(|_| Error::DimensionOverflow)?;
+        let nsite: c_int = sites
+            .len()
+            .try_into()
+            .map_err(|_| Error::DimensionOverflow)?;
         let mut out: Vec<T> = (0..sites.len()).map(|_| T::default()).collect();
         let dorder: [c_int; 1] = [1]; // request the function value (not derivatives)
         let status = unsafe {
@@ -398,7 +430,10 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
                 "left and right limit slices must have the same length",
             ));
         }
-        let nlim: c_int = left.len().try_into().map_err(|_| Error::DimensionOverflow)?;
+        let nlim: c_int = left
+            .len()
+            .try_into()
+            .map_err(|_| Error::DimensionOverflow)?;
         let mut out: Vec<T> = (0..left.len()).map(|_| T::default()).collect();
         let status = unsafe {
             T::df_integrate_1d(

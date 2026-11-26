@@ -64,10 +64,13 @@ fn omatcopy_transpose_real() {
     omatcopy(
         Layout::RowMajor,
         Transpose::Trans,
-        2, 3, // rows × cols of A
+        2,
+        3, // rows × cols of A
         1.0,
-        &a, 3,
-        &mut b, 2,
+        &a,
+        3,
+        &mut b,
+        2,
     )
     .unwrap();
     // Output (3x2 row-major): each row stride = ldb = 2.
@@ -87,10 +90,13 @@ fn omatcopy_no_trans_with_alpha() {
     omatcopy(
         Layout::RowMajor,
         Transpose::NoTrans,
-        2, 2,
+        2,
+        2,
         2.0,
-        &a, 2,
-        &mut b, 2,
+        &a,
+        2,
+        &mut b,
+        2,
     )
     .unwrap();
     assert_abs_diff_eq!(b[0], 2.0, epsilon = 1e-12);
@@ -109,10 +115,13 @@ fn omatcopy_conj_trans_complex() {
     omatcopy(
         Layout::RowMajor,
         Transpose::ConjTrans,
-        1, 2,
+        1,
+        2,
         Complex64::new(1.0, 0.0),
-        &a, 2,
-        &mut b, 1,
+        &a,
+        2,
+        &mut b,
+        1,
     )
     .unwrap();
     assert_abs_diff_eq!(b[0].re, 1.0, epsilon = 1e-12);
@@ -125,15 +134,7 @@ fn omatcopy_conj_trans_complex() {
 fn imatcopy_in_place_transpose_square() {
     // Square 2x2 transpose in place.
     let mut ab = [1.0_f64, 2.0, 3.0, 4.0];
-    imatcopy(
-        Layout::RowMajor,
-        Transpose::Trans,
-        2, 2,
-        1.0,
-        &mut ab,
-        2, 2,
-    )
-    .unwrap();
+    imatcopy(Layout::RowMajor, Transpose::Trans, 2, 2, 1.0, &mut ab, 2, 2).unwrap();
     // Original (row-major):  [[1, 2], [3, 4]]
     // Transposed:            [[1, 3], [2, 4]]
     assert_abs_diff_eq!(ab[0], 1.0, epsilon = 1e-12);
@@ -152,10 +153,16 @@ fn omatadd_two_matrices() {
         Layout::RowMajor,
         Transpose::NoTrans,
         Transpose::NoTrans,
-        2, 2,
-        1.0, &a, 2,
-        1.0, &b, 2,
-        &mut c, 2,
+        2,
+        2,
+        1.0,
+        &a,
+        2,
+        1.0,
+        &b,
+        2,
+        &mut c,
+        2,
     )
     .unwrap();
     assert_abs_diff_eq!(c[0], 11.0, epsilon = 1e-12);
@@ -176,10 +183,16 @@ fn omatadd_with_transpose() {
         Layout::RowMajor,
         Transpose::Trans,
         Transpose::NoTrans,
-        2, 2,
-        1.0, &a, 2,
-        1.0, &b, 2,
-        &mut c, 2,
+        2,
+        2,
+        1.0,
+        &a,
+        2,
+        1.0,
+        &b,
+        2,
+        &mut c,
+        2,
     )
     .unwrap();
     assert_abs_diff_eq!(c[0], 11.0, epsilon = 1e-12);

@@ -8,7 +8,7 @@ use onemkl::fft::RealFftPlan;
 
 fn main() {
     let n: usize = 64;
-    let freq_hz = 5.0;       // 5 cycles in n samples
+    let freq_hz = 5.0; // 5 cycles in n samples
     let sample_rate = n as f64;
 
     // Generate the signal.
@@ -20,12 +20,7 @@ fn main() {
         .collect();
 
     // Build a real FFT plan with 1/N backward scaling so IFFT(FFT(x)) = x.
-    let mut plan = RealFftPlan::<f64>::real_nd_with_scales(
-        &[n],
-        1.0,
-        1.0 / n as f64,
-    )
-    .unwrap();
+    let mut plan = RealFftPlan::<f64>::real_nd_with_scales(&[n], 1.0, 1.0 / n as f64).unwrap();
     let mut spectrum: Vec<Complex64> = vec![Complex64::new(0.0, 0.0); plan.complex_len()];
     plan.forward(&signal, &mut spectrum).unwrap();
 

@@ -139,9 +139,8 @@ pub fn set_verbose(flag: bool) {
 pub fn set_verbose_output_file(path: Option<&str>) -> Result<()> {
     let status = match path {
         Some(p) => {
-            let cstr = CString::new(p).map_err(|_| {
-                Error::InvalidArgument("verbose output path contains a NUL byte")
-            })?;
+            let cstr = CString::new(p)
+                .map_err(|_| Error::InvalidArgument("verbose output path contains a NUL byte"))?;
             unsafe { sys::MKL_Verbose_Output_File(cstr.as_ptr()) }
         }
         None => unsafe { sys::MKL_Verbose_Output_File(core::ptr::null()) },
@@ -257,18 +256,16 @@ impl<T> AlignedBuffer<T> {
     /// every element before reading.
     pub fn new_uninit(len: usize, alignment: usize) -> Result<Self> {
         if !alignment.is_power_of_two() {
-            return Err(Error::InvalidArgument(
-                "alignment must be a power of two",
-            ));
+            return Err(Error::InvalidArgument("alignment must be a power of two"));
         }
         if alignment < core::mem::align_of::<T>() {
             return Err(Error::InvalidArgument(
                 "alignment must be a multiple of align_of::<T>()",
             ));
         }
-        let bytes = len.checked_mul(core::mem::size_of::<T>()).ok_or(
-            Error::InvalidArgument("len * size_of::<T>() overflowed"),
-        )?;
+        let bytes = len
+            .checked_mul(core::mem::size_of::<T>())
+            .ok_or(Error::InvalidArgument("len * size_of::<T>() overflowed"))?;
         let ptr = unsafe { sys::MKL_malloc(bytes, alignment as c_int) };
         if ptr.is_null() {
             return Err(Error::AllocationFailure);
@@ -607,9 +604,9 @@ impl core::fmt::Display for CbwrError {
             Self::UnsupportedBranch => {
                 f.write_str("MKL_CBWR_Set: branch not supported by this CPU")
             }
-            Self::ModeLocked => f.write_str(
-                "MKL_CBWR_Set: mode can no longer change (MKL already dispatched)",
-            ),
+            Self::ModeLocked => {
+                f.write_str("MKL_CBWR_Set: mode can no longer change (MKL already dispatched)")
+            }
             Self::Other(c) => write!(f, "MKL_CBWR_Set: status {c}"),
         }
     }
@@ -779,7 +776,11 @@ unsafe extern "C" fn progress_trampoline(
             .trim_end_matches(|c: char| c == ' ' || c == '\0')
             .to_owned()
     };
-    let t = if thread.is_null() { 0 } else { unsafe { *thread } };
+    let t = if thread.is_null() {
+        0
+    } else {
+        unsafe { *thread }
+    };
     let st = if step.is_null() { 0 } else { unsafe { *step } };
     match std::panic::catch_unwind(|| handler(t, st, &stage_str)) {
         Ok(ProgressControl::Stop) => 1,
@@ -830,7 +831,5 @@ fn c_str_to_owned(p: *const c_char) -> String {
     }
     // SAFETY: MKL guarantees these strings are NUL-terminated and live
     // for the program's lifetime.
-    unsafe { CStr::from_ptr(p) }
-        .to_string_lossy()
-        .into_owned()
+    unsafe { CStr::from_ptr(p) }.to_string_lossy().into_owned()
 }

@@ -3,9 +3,9 @@
 //!
 //! Run with `cargo run --example solve_linear_system`.
 
+use onemkl::Layout;
 use onemkl::lapack::gesv;
 use onemkl::matrix::MatrixMut;
-use onemkl::Layout;
 
 fn main() {
     // A = [[ 2,  1,  1],
@@ -13,11 +13,7 @@ fn main() {
     //      [ 1,  0,  0]]
     // b = [4, 5, 6]
     // Solution by hand: x = [6, 15, -23].
-    let mut a = vec![
-        2.0_f64, 1.0, 1.0,
-        1.0, 3.0, 2.0,
-        1.0, 0.0, 0.0,
-    ];
+    let mut a = vec![2.0_f64, 1.0, 1.0, 1.0, 3.0, 2.0, 1.0, 0.0, 0.0];
     let mut b = vec![4.0_f64, 5.0, 6.0];
     let mut ipiv = vec![0_i32; 3];
 

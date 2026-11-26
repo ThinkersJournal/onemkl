@@ -4,7 +4,7 @@
 
 use approx::assert_abs_diff_eq;
 use onemkl::blas::compact::{
-    getrfnp, getrinp, gepack, geunpack, get_size, potrf, trsm, CompactFormat,
+    CompactFormat, gepack, get_size, getrfnp, getrinp, geunpack, potrf, trsm,
 };
 use onemkl::{Diag, Layout, Side, Transpose, UpLo};
 
@@ -33,8 +33,20 @@ fn trsm_solves_two_lower_systems() {
     let ap = pack(&a, 2, 2);
     let mut bp = pack(&b, 2, 1);
     trsm::<f64>(
-        Layout::ColMajor, Side::Left, UpLo::Lower, Transpose::NoTrans, Diag::NonUnit,
-        2, 1, 1.0, &ap, 2, &mut bp, 2, FMT, 2,
+        Layout::ColMajor,
+        Side::Left,
+        UpLo::Lower,
+        Transpose::NoTrans,
+        Diag::NonUnit,
+        2,
+        1,
+        1.0,
+        &ap,
+        2,
+        &mut bp,
+        2,
+        FMT,
+        2,
     )
     .unwrap();
     let x = unpack(&bp, 2, 2, 1);
@@ -108,8 +120,14 @@ fn getrinp_inverts_lu_factored_matrices() {
     // [[2,1],[1,2]]: inverse 1/3 * [[2,-1],[-1,2]].
     let a = vec![vec![4.0, 6.0, 3.0, 3.0], vec![2.0, 1.0, 1.0, 2.0]];
     let mut ap = pack(&a, 2, 2);
-    assert_eq!(getrfnp::<f64>(Layout::ColMajor, 2, 2, &mut ap, 2, FMT, 2).unwrap(), 0);
-    assert_eq!(getrinp::<f64>(Layout::ColMajor, 2, &mut ap, 2, FMT, 2).unwrap(), 0);
+    assert_eq!(
+        getrfnp::<f64>(Layout::ColMajor, 2, 2, &mut ap, 2, FMT, 2).unwrap(),
+        0
+    );
+    assert_eq!(
+        getrinp::<f64>(Layout::ColMajor, 2, &mut ap, 2, FMT, 2).unwrap(),
+        0
+    );
     let inv = unpack(&ap, 2, 2, 2);
     let want = [
         [-0.5, 1.0, 0.5, -2.0 / 3.0],

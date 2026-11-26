@@ -43,8 +43,17 @@ fn spsv_symmetric_packed() {
     let mut ap = vec![1.0_f64, 2.0, 1.0];
     let mut b = vec![3.0_f64, 3.0];
     let mut ipiv = vec![0_i32; 2];
-    spsv::<f64>(Layout::ColMajor, UpLo::Upper, 2, 1, &mut ap, &mut ipiv, &mut b, 2)
-        .unwrap();
+    spsv::<f64>(
+        Layout::ColMajor,
+        UpLo::Upper,
+        2,
+        1,
+        &mut ap,
+        &mut ipiv,
+        &mut b,
+        2,
+    )
+    .unwrap();
     assert_abs_diff_eq!(b[0], 1.0, epsilon = 1e-12);
     assert_abs_diff_eq!(b[1], 1.0, epsilon = 1e-12);
 }
@@ -73,7 +82,14 @@ fn hpsv_hermitian_packed() {
     let mut b = vec![Complex64::new(3.0, 1.0), Complex64::new(4.0, -1.0)];
     let mut ipiv = vec![0_i32; 2];
     hpsv::<Complex64>(
-        Layout::ColMajor, UpLo::Upper, 2, 1, &mut ap, &mut ipiv, &mut b, 2,
+        Layout::ColMajor,
+        UpLo::Upper,
+        2,
+        1,
+        &mut ap,
+        &mut ipiv,
+        &mut b,
+        2,
     )
     .unwrap();
     assert_abs_diff_eq!(b[0].re, 1.0, epsilon = 1e-10);
@@ -92,10 +108,7 @@ fn hptrf_then_hptrs() {
     let mut ipiv = vec![0_i32; 2];
     hptrf::<Complex64>(Layout::ColMajor, UpLo::Upper, 2, &mut ap, &mut ipiv).unwrap();
     let mut b = vec![Complex64::new(3.0, 1.0), Complex64::new(4.0, -1.0)];
-    hptrs::<Complex64>(
-        Layout::ColMajor, UpLo::Upper, 2, 1, &ap, &ipiv, &mut b, 2,
-    )
-    .unwrap();
+    hptrs::<Complex64>(Layout::ColMajor, UpLo::Upper, 2, 1, &ap, &ipiv, &mut b, 2).unwrap();
     assert_abs_diff_eq!(b[0].re, 1.0, epsilon = 1e-10);
     assert_abs_diff_eq!(b[1].re, 1.0, epsilon = 1e-10);
 }

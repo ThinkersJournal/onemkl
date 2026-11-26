@@ -57,9 +57,7 @@ pub fn eigh_real_dense<T: FeastReal>(
     let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let lda_i: c_int = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
     if a.len() < lda * n {
-        return Err(Error::InvalidArgument(
-            "A buffer is smaller than lda * n",
-        ));
+        return Err(Error::InvalidArgument("A buffer is smaller than lda * n"));
     }
     let m0_i: c_int = m0_estimate
         .try_into()
@@ -131,9 +129,7 @@ pub fn eigh_complex_dense<T: FeastComplex>(
     let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let lda_i: c_int = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
     if a.len() < lda * n {
-        return Err(Error::InvalidArgument(
-            "A buffer is smaller than lda * n",
-        ));
+        return Err(Error::InvalidArgument("A buffer is smaller than lda * n"));
     }
     let m0_i: c_int = m0_estimate
         .try_into()
@@ -233,15 +229,34 @@ pub fn eigh_real_csr<T: FeastReal>(
 
     unsafe {
         T::feast_csr_real(
-            &uplo_c, &n_i, sa.as_ptr(), isa.as_ptr(), jsa.as_ptr(),
-            fpm.as_mut_ptr(), &mut epsout, &mut loop_count,
-            &emin, &emax, &mut m0_inout,
-            eigenvalues.as_mut_ptr(), eigenvectors.as_mut_ptr(),
-            &mut m_actual, residuals.as_mut_ptr(), &mut info,
+            &uplo_c,
+            &n_i,
+            sa.as_ptr(),
+            isa.as_ptr(),
+            jsa.as_ptr(),
+            fpm.as_mut_ptr(),
+            &mut epsout,
+            &mut loop_count,
+            &emin,
+            &emax,
+            &mut m0_inout,
+            eigenvalues.as_mut_ptr(),
+            eigenvectors.as_mut_ptr(),
+            &mut m_actual,
+            residuals.as_mut_ptr(),
+            &mut info,
         );
     }
-    finish_real_result(info, m_actual, n, eigenvalues, eigenvectors, residuals,
-        epsout, loop_count)
+    finish_real_result(
+        info,
+        m_actual,
+        n,
+        eigenvalues,
+        eigenvectors,
+        residuals,
+        epsout,
+        loop_count,
+    )
 }
 
 /// Complex Hermitian CSR FEAST solver. Wraps `?feast_hcsrev`.
@@ -282,15 +297,34 @@ pub fn eigh_complex_csr<T: FeastComplex>(
 
     unsafe {
         T::feast_csr_complex(
-            &uplo_c, &n_i, sa.as_ptr(), isa.as_ptr(), jsa.as_ptr(),
-            fpm.as_mut_ptr(), &mut epsout, &mut loop_count,
-            &emin, &emax, &mut m0_inout,
-            eigenvalues.as_mut_ptr(), eigenvectors.as_mut_ptr(),
-            &mut m_actual, residuals.as_mut_ptr(), &mut info,
+            &uplo_c,
+            &n_i,
+            sa.as_ptr(),
+            isa.as_ptr(),
+            jsa.as_ptr(),
+            fpm.as_mut_ptr(),
+            &mut epsout,
+            &mut loop_count,
+            &emin,
+            &emax,
+            &mut m0_inout,
+            eigenvalues.as_mut_ptr(),
+            eigenvectors.as_mut_ptr(),
+            &mut m_actual,
+            residuals.as_mut_ptr(),
+            &mut info,
         );
     }
-    finish_complex_result(info, m_actual, n, eigenvalues, eigenvectors, residuals,
-        epsout, loop_count)
+    finish_complex_result(
+        info,
+        m_actual,
+        n,
+        eigenvalues,
+        eigenvectors,
+        residuals,
+        epsout,
+        loop_count,
+    )
 }
 
 /// Real symmetric banded FEAST solver. Wraps `?feast_sbev`.
@@ -332,15 +366,34 @@ pub fn eigh_real_banded<T: FeastReal>(
 
     unsafe {
         T::feast_banded_real(
-            &uplo_c, &n_i, &kla_i, a.as_ptr(), &lda_i,
-            fpm.as_mut_ptr(), &mut epsout, &mut loop_count,
-            &emin, &emax, &mut m0_inout,
-            eigenvalues.as_mut_ptr(), eigenvectors.as_mut_ptr(),
-            &mut m_actual, residuals.as_mut_ptr(), &mut info,
+            &uplo_c,
+            &n_i,
+            &kla_i,
+            a.as_ptr(),
+            &lda_i,
+            fpm.as_mut_ptr(),
+            &mut epsout,
+            &mut loop_count,
+            &emin,
+            &emax,
+            &mut m0_inout,
+            eigenvalues.as_mut_ptr(),
+            eigenvectors.as_mut_ptr(),
+            &mut m_actual,
+            residuals.as_mut_ptr(),
+            &mut info,
         );
     }
-    finish_real_result(info, m_actual, n, eigenvalues, eigenvectors, residuals,
-        epsout, loop_count)
+    finish_real_result(
+        info,
+        m_actual,
+        n,
+        eigenvalues,
+        eigenvectors,
+        residuals,
+        epsout,
+        loop_count,
+    )
 }
 
 /// Complex Hermitian banded FEAST solver. Wraps `?feast_hbev`.
@@ -378,15 +431,34 @@ pub fn eigh_complex_banded<T: FeastComplex>(
 
     unsafe {
         T::feast_banded_complex(
-            &uplo_c, &n_i, &kla_i, a.as_ptr(), &lda_i,
-            fpm.as_mut_ptr(), &mut epsout, &mut loop_count,
-            &emin, &emax, &mut m0_inout,
-            eigenvalues.as_mut_ptr(), eigenvectors.as_mut_ptr(),
-            &mut m_actual, residuals.as_mut_ptr(), &mut info,
+            &uplo_c,
+            &n_i,
+            &kla_i,
+            a.as_ptr(),
+            &lda_i,
+            fpm.as_mut_ptr(),
+            &mut epsout,
+            &mut loop_count,
+            &emin,
+            &emax,
+            &mut m0_inout,
+            eigenvalues.as_mut_ptr(),
+            eigenvectors.as_mut_ptr(),
+            &mut m_actual,
+            residuals.as_mut_ptr(),
+            &mut info,
         );
     }
-    finish_complex_result(info, m_actual, n, eigenvalues, eigenvectors, residuals,
-        epsout, loop_count)
+    finish_complex_result(
+        info,
+        m_actual,
+        n,
+        eigenvalues,
+        eigenvectors,
+        residuals,
+        epsout,
+        loop_count,
+    )
 }
 
 /// Real symmetric generalized dense FEAST solver: solves
@@ -429,15 +501,35 @@ pub fn gen_eigh_real_dense<T: FeastReal>(
 
     unsafe {
         T::feast_dense_gen_real(
-            &uplo_c, &n_i, a.as_ptr(), &lda_i, b.as_ptr(), &ldb_i,
-            fpm.as_mut_ptr(), &mut epsout, &mut loop_count,
-            &emin, &emax, &mut m0_inout,
-            eigenvalues.as_mut_ptr(), eigenvectors.as_mut_ptr(),
-            &mut m_actual, residuals.as_mut_ptr(), &mut info,
+            &uplo_c,
+            &n_i,
+            a.as_ptr(),
+            &lda_i,
+            b.as_ptr(),
+            &ldb_i,
+            fpm.as_mut_ptr(),
+            &mut epsout,
+            &mut loop_count,
+            &emin,
+            &emax,
+            &mut m0_inout,
+            eigenvalues.as_mut_ptr(),
+            eigenvectors.as_mut_ptr(),
+            &mut m_actual,
+            residuals.as_mut_ptr(),
+            &mut info,
         );
     }
-    finish_real_result(info, m_actual, n, eigenvalues, eigenvectors, residuals,
-        epsout, loop_count)
+    finish_real_result(
+        info,
+        m_actual,
+        n,
+        eigenvalues,
+        eigenvectors,
+        residuals,
+        epsout,
+        loop_count,
+    )
 }
 
 /// Complex Hermitian generalized dense FEAST solver: solves
@@ -480,15 +572,35 @@ pub fn gen_eigh_complex_dense<T: FeastComplex>(
 
     unsafe {
         T::feast_dense_gen_complex(
-            &uplo_c, &n_i, a.as_ptr(), &lda_i, b.as_ptr(), &ldb_i,
-            fpm.as_mut_ptr(), &mut epsout, &mut loop_count,
-            &emin, &emax, &mut m0_inout,
-            eigenvalues.as_mut_ptr(), eigenvectors.as_mut_ptr(),
-            &mut m_actual, residuals.as_mut_ptr(), &mut info,
+            &uplo_c,
+            &n_i,
+            a.as_ptr(),
+            &lda_i,
+            b.as_ptr(),
+            &ldb_i,
+            fpm.as_mut_ptr(),
+            &mut epsout,
+            &mut loop_count,
+            &emin,
+            &emax,
+            &mut m0_inout,
+            eigenvalues.as_mut_ptr(),
+            eigenvectors.as_mut_ptr(),
+            &mut m_actual,
+            residuals.as_mut_ptr(),
+            &mut info,
         );
     }
-    finish_complex_result(info, m_actual, n, eigenvalues, eigenvectors, residuals,
-        epsout, loop_count)
+    finish_complex_result(
+        info,
+        m_actual,
+        n,
+        eigenvalues,
+        eigenvectors,
+        residuals,
+        epsout,
+        loop_count,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -646,12 +758,21 @@ macro_rules! impl_feast_real {
                 0.0
             }
             unsafe fn feast_dense_real(
-                uplo: *const c_char, n: *const c_int,
-                a: *const Self, lda: *const c_int,
-                fpm: *mut c_int, epsout: *mut Self, loop_: *mut c_int,
-                emin: *const Self, emax: *const Self,
-                m0: *mut c_int, e: *mut Self, x: *mut Self,
-                m: *mut c_int, res: *mut Self, info: *mut c_int,
+                uplo: *const c_char,
+                n: *const c_int,
+                a: *const Self,
+                lda: *const c_int,
+                fpm: *mut c_int,
+                epsout: *mut Self,
+                loop_: *mut c_int,
+                emin: *const Self,
+                emax: *const Self,
+                m0: *mut c_int,
+                e: *mut Self,
+                x: *mut Self,
+                m: *mut c_int,
+                res: *mut Self,
+                info: *mut c_int,
             ) {
                 unsafe {
                     sys::$syev(
@@ -660,48 +781,78 @@ macro_rules! impl_feast_real {
                 }
             }
             unsafe fn feast_csr_real(
-                uplo: *const c_char, n: *const c_int,
-                sa: *const Self, isa: *const c_int, jsa: *const c_int,
-                fpm: *mut c_int, epsout: *mut Self, loop_: *mut c_int,
-                emin: *const Self, emax: *const Self,
-                m0: *mut c_int, e: *mut Self, x: *mut Self,
-                m: *mut c_int, res: *mut Self, info: *mut c_int,
+                uplo: *const c_char,
+                n: *const c_int,
+                sa: *const Self,
+                isa: *const c_int,
+                jsa: *const c_int,
+                fpm: *mut c_int,
+                epsout: *mut Self,
+                loop_: *mut c_int,
+                emin: *const Self,
+                emax: *const Self,
+                m0: *mut c_int,
+                e: *mut Self,
+                x: *mut Self,
+                m: *mut c_int,
+                res: *mut Self,
+                info: *mut c_int,
             ) {
                 unsafe {
                     sys::$scsrev(
-                        uplo, n, sa, isa, jsa, fpm, epsout, loop_, emin, emax,
-                        m0, e, x, m, res, info,
+                        uplo, n, sa, isa, jsa, fpm, epsout, loop_, emin, emax, m0, e, x, m, res,
+                        info,
                     )
                 }
             }
             unsafe fn feast_banded_real(
-                uplo: *const c_char, n: *const c_int, kla: *const c_int,
-                a: *const Self, lda: *const c_int,
-                fpm: *mut c_int, epsout: *mut Self, loop_: *mut c_int,
-                emin: *const Self, emax: *const Self,
-                m0: *mut c_int, e: *mut Self, x: *mut Self,
-                m: *mut c_int, res: *mut Self, info: *mut c_int,
+                uplo: *const c_char,
+                n: *const c_int,
+                kla: *const c_int,
+                a: *const Self,
+                lda: *const c_int,
+                fpm: *mut c_int,
+                epsout: *mut Self,
+                loop_: *mut c_int,
+                emin: *const Self,
+                emax: *const Self,
+                m0: *mut c_int,
+                e: *mut Self,
+                x: *mut Self,
+                m: *mut c_int,
+                res: *mut Self,
+                info: *mut c_int,
             ) {
                 unsafe {
                     sys::$sbev(
-                        uplo, n, kla, a, lda, fpm, epsout, loop_, emin, emax,
-                        m0, e, x, m, res, info,
+                        uplo, n, kla, a, lda, fpm, epsout, loop_, emin, emax, m0, e, x, m, res,
+                        info,
                     )
                 }
             }
             unsafe fn feast_dense_gen_real(
-                uplo: *const c_char, n: *const c_int,
-                a: *const Self, lda: *const c_int,
-                b: *const Self, ldb: *const c_int,
-                fpm: *mut c_int, epsout: *mut Self, loop_: *mut c_int,
-                emin: *const Self, emax: *const Self,
-                m0: *mut c_int, e: *mut Self, x: *mut Self,
-                m: *mut c_int, res: *mut Self, info: *mut c_int,
+                uplo: *const c_char,
+                n: *const c_int,
+                a: *const Self,
+                lda: *const c_int,
+                b: *const Self,
+                ldb: *const c_int,
+                fpm: *mut c_int,
+                epsout: *mut Self,
+                loop_: *mut c_int,
+                emin: *const Self,
+                emax: *const Self,
+                m0: *mut c_int,
+                e: *mut Self,
+                x: *mut Self,
+                m: *mut c_int,
+                res: *mut Self,
+                info: *mut c_int,
             ) {
                 unsafe {
                     sys::$sygv(
-                        uplo, n, a, lda, b, ldb, fpm, epsout, loop_, emin, emax,
-                        m0, e, x, m, res, info,
+                        uplo, n, a, lda, b, ldb, fpm, epsout, loop_, emin, emax, m0, e, x, m, res,
+                        info,
                     )
                 }
             }
@@ -709,10 +860,20 @@ macro_rules! impl_feast_real {
     };
 }
 
-impl_feast_real!(f32,
-    syev=sfeast_syev, scsrev=sfeast_scsrev, sbev=sfeast_sbev, sygv=sfeast_sygv);
-impl_feast_real!(f64,
-    syev=dfeast_syev, scsrev=dfeast_scsrev, sbev=dfeast_sbev, sygv=dfeast_sygv);
+impl_feast_real!(
+    f32,
+    syev = sfeast_syev,
+    scsrev = sfeast_scsrev,
+    sbev = sfeast_sbev,
+    sygv = sfeast_sygv
+);
+impl_feast_real!(
+    f64,
+    syev = dfeast_syev,
+    scsrev = dfeast_scsrev,
+    sbev = dfeast_sbev,
+    sygv = dfeast_sygv
+);
 
 /// Complex scalar types supported by FEAST drivers.
 #[allow(missing_docs)]
@@ -723,43 +884,82 @@ pub trait FeastComplex: Copy + 'static {
     fn zero_complex() -> Self;
     #[allow(clippy::too_many_arguments)]
     unsafe fn feast_dense_complex(
-        uplo: *const c_char, n: *const c_int,
-        a: *const Self, lda: *const c_int,
-        fpm: *mut c_int, epsout: *mut Self::Real, loop_: *mut c_int,
-        emin: *const Self::Real, emax: *const Self::Real,
-        m0: *mut c_int, e: *mut Self::Real, x: *mut Self,
-        m: *mut c_int, res: *mut Self::Real, info: *mut c_int,
+        uplo: *const c_char,
+        n: *const c_int,
+        a: *const Self,
+        lda: *const c_int,
+        fpm: *mut c_int,
+        epsout: *mut Self::Real,
+        loop_: *mut c_int,
+        emin: *const Self::Real,
+        emax: *const Self::Real,
+        m0: *mut c_int,
+        e: *mut Self::Real,
+        x: *mut Self,
+        m: *mut c_int,
+        res: *mut Self::Real,
+        info: *mut c_int,
     );
 
     #[allow(clippy::too_many_arguments)]
     unsafe fn feast_csr_complex(
-        uplo: *const c_char, n: *const c_int,
-        sa: *const Self, isa: *const c_int, jsa: *const c_int,
-        fpm: *mut c_int, epsout: *mut Self::Real, loop_: *mut c_int,
-        emin: *const Self::Real, emax: *const Self::Real,
-        m0: *mut c_int, e: *mut Self::Real, x: *mut Self,
-        m: *mut c_int, res: *mut Self::Real, info: *mut c_int,
+        uplo: *const c_char,
+        n: *const c_int,
+        sa: *const Self,
+        isa: *const c_int,
+        jsa: *const c_int,
+        fpm: *mut c_int,
+        epsout: *mut Self::Real,
+        loop_: *mut c_int,
+        emin: *const Self::Real,
+        emax: *const Self::Real,
+        m0: *mut c_int,
+        e: *mut Self::Real,
+        x: *mut Self,
+        m: *mut c_int,
+        res: *mut Self::Real,
+        info: *mut c_int,
     );
 
     #[allow(clippy::too_many_arguments)]
     unsafe fn feast_banded_complex(
-        uplo: *const c_char, n: *const c_int, kla: *const c_int,
-        a: *const Self, lda: *const c_int,
-        fpm: *mut c_int, epsout: *mut Self::Real, loop_: *mut c_int,
-        emin: *const Self::Real, emax: *const Self::Real,
-        m0: *mut c_int, e: *mut Self::Real, x: *mut Self,
-        m: *mut c_int, res: *mut Self::Real, info: *mut c_int,
+        uplo: *const c_char,
+        n: *const c_int,
+        kla: *const c_int,
+        a: *const Self,
+        lda: *const c_int,
+        fpm: *mut c_int,
+        epsout: *mut Self::Real,
+        loop_: *mut c_int,
+        emin: *const Self::Real,
+        emax: *const Self::Real,
+        m0: *mut c_int,
+        e: *mut Self::Real,
+        x: *mut Self,
+        m: *mut c_int,
+        res: *mut Self::Real,
+        info: *mut c_int,
     );
 
     #[allow(clippy::too_many_arguments)]
     unsafe fn feast_dense_gen_complex(
-        uplo: *const c_char, n: *const c_int,
-        a: *const Self, lda: *const c_int,
-        b: *const Self, ldb: *const c_int,
-        fpm: *mut c_int, epsout: *mut Self::Real, loop_: *mut c_int,
-        emin: *const Self::Real, emax: *const Self::Real,
-        m0: *mut c_int, e: *mut Self::Real, x: *mut Self,
-        m: *mut c_int, res: *mut Self::Real, info: *mut c_int,
+        uplo: *const c_char,
+        n: *const c_int,
+        a: *const Self,
+        lda: *const c_int,
+        b: *const Self,
+        ldb: *const c_int,
+        fpm: *mut c_int,
+        epsout: *mut Self::Real,
+        loop_: *mut c_int,
+        emin: *const Self::Real,
+        emax: *const Self::Real,
+        m0: *mut c_int,
+        e: *mut Self::Real,
+        x: *mut Self,
+        m: *mut c_int,
+        res: *mut Self::Real,
+        info: *mut c_int,
     );
 }
 
@@ -774,63 +974,158 @@ macro_rules! impl_feast_complex {
                 <$ty>::new(0.0, 0.0)
             }
             unsafe fn feast_dense_complex(
-                uplo: *const c_char, n: *const c_int,
-                a: *const Self, lda: *const c_int,
-                fpm: *mut c_int, epsout: *mut Self::Real, loop_: *mut c_int,
-                emin: *const Self::Real, emax: *const Self::Real,
-                m0: *mut c_int, e: *mut Self::Real, x: *mut Self,
-                m: *mut c_int, res: *mut Self::Real, info: *mut c_int,
+                uplo: *const c_char,
+                n: *const c_int,
+                a: *const Self,
+                lda: *const c_int,
+                fpm: *mut c_int,
+                epsout: *mut Self::Real,
+                loop_: *mut c_int,
+                emin: *const Self::Real,
+                emax: *const Self::Real,
+                m0: *mut c_int,
+                e: *mut Self::Real,
+                x: *mut Self,
+                m: *mut c_int,
+                res: *mut Self::Real,
+                info: *mut c_int,
             ) {
                 unsafe {
                     sys::$heev(
-                        uplo, n, a.cast(), lda, fpm, epsout, loop_, emin, emax,
-                        m0, e, x.cast(), m, res, info,
+                        uplo,
+                        n,
+                        a.cast(),
+                        lda,
+                        fpm,
+                        epsout,
+                        loop_,
+                        emin,
+                        emax,
+                        m0,
+                        e,
+                        x.cast(),
+                        m,
+                        res,
+                        info,
                     )
                 }
             }
             unsafe fn feast_csr_complex(
-                uplo: *const c_char, n: *const c_int,
-                sa: *const Self, isa: *const c_int, jsa: *const c_int,
-                fpm: *mut c_int, epsout: *mut Self::Real, loop_: *mut c_int,
-                emin: *const Self::Real, emax: *const Self::Real,
-                m0: *mut c_int, e: *mut Self::Real, x: *mut Self,
-                m: *mut c_int, res: *mut Self::Real, info: *mut c_int,
+                uplo: *const c_char,
+                n: *const c_int,
+                sa: *const Self,
+                isa: *const c_int,
+                jsa: *const c_int,
+                fpm: *mut c_int,
+                epsout: *mut Self::Real,
+                loop_: *mut c_int,
+                emin: *const Self::Real,
+                emax: *const Self::Real,
+                m0: *mut c_int,
+                e: *mut Self::Real,
+                x: *mut Self,
+                m: *mut c_int,
+                res: *mut Self::Real,
+                info: *mut c_int,
             ) {
                 unsafe {
                     sys::$hcsrev(
-                        uplo, n, sa.cast(), isa, jsa, fpm, epsout, loop_,
-                        emin, emax, m0, e, x.cast(), m, res, info,
+                        uplo,
+                        n,
+                        sa.cast(),
+                        isa,
+                        jsa,
+                        fpm,
+                        epsout,
+                        loop_,
+                        emin,
+                        emax,
+                        m0,
+                        e,
+                        x.cast(),
+                        m,
+                        res,
+                        info,
                     )
                 }
             }
             unsafe fn feast_banded_complex(
-                uplo: *const c_char, n: *const c_int, kla: *const c_int,
-                a: *const Self, lda: *const c_int,
-                fpm: *mut c_int, epsout: *mut Self::Real, loop_: *mut c_int,
-                emin: *const Self::Real, emax: *const Self::Real,
-                m0: *mut c_int, e: *mut Self::Real, x: *mut Self,
-                m: *mut c_int, res: *mut Self::Real, info: *mut c_int,
+                uplo: *const c_char,
+                n: *const c_int,
+                kla: *const c_int,
+                a: *const Self,
+                lda: *const c_int,
+                fpm: *mut c_int,
+                epsout: *mut Self::Real,
+                loop_: *mut c_int,
+                emin: *const Self::Real,
+                emax: *const Self::Real,
+                m0: *mut c_int,
+                e: *mut Self::Real,
+                x: *mut Self,
+                m: *mut c_int,
+                res: *mut Self::Real,
+                info: *mut c_int,
             ) {
                 unsafe {
                     sys::$hbev(
-                        uplo, n, kla, a.cast(), lda, fpm, epsout, loop_,
-                        emin, emax, m0, e, x.cast(), m, res, info,
+                        uplo,
+                        n,
+                        kla,
+                        a.cast(),
+                        lda,
+                        fpm,
+                        epsout,
+                        loop_,
+                        emin,
+                        emax,
+                        m0,
+                        e,
+                        x.cast(),
+                        m,
+                        res,
+                        info,
                     )
                 }
             }
             unsafe fn feast_dense_gen_complex(
-                uplo: *const c_char, n: *const c_int,
-                a: *const Self, lda: *const c_int,
-                b: *const Self, ldb: *const c_int,
-                fpm: *mut c_int, epsout: *mut Self::Real, loop_: *mut c_int,
-                emin: *const Self::Real, emax: *const Self::Real,
-                m0: *mut c_int, e: *mut Self::Real, x: *mut Self,
-                m: *mut c_int, res: *mut Self::Real, info: *mut c_int,
+                uplo: *const c_char,
+                n: *const c_int,
+                a: *const Self,
+                lda: *const c_int,
+                b: *const Self,
+                ldb: *const c_int,
+                fpm: *mut c_int,
+                epsout: *mut Self::Real,
+                loop_: *mut c_int,
+                emin: *const Self::Real,
+                emax: *const Self::Real,
+                m0: *mut c_int,
+                e: *mut Self::Real,
+                x: *mut Self,
+                m: *mut c_int,
+                res: *mut Self::Real,
+                info: *mut c_int,
             ) {
                 unsafe {
                     sys::$hegv(
-                        uplo, n, a.cast(), lda, b.cast(), ldb, fpm, epsout, loop_,
-                        emin, emax, m0, e, x.cast(), m, res, info,
+                        uplo,
+                        n,
+                        a.cast(),
+                        lda,
+                        b.cast(),
+                        ldb,
+                        fpm,
+                        epsout,
+                        loop_,
+                        emin,
+                        emax,
+                        m0,
+                        e,
+                        x.cast(),
+                        m,
+                        res,
+                        info,
                     )
                 }
             }
@@ -838,7 +1133,19 @@ macro_rules! impl_feast_complex {
     };
 }
 
-impl_feast_complex!(Complex32, f32,
-    heev=cfeast_heev, hcsrev=cfeast_hcsrev, hbev=cfeast_hbev, hegv=cfeast_hegv);
-impl_feast_complex!(Complex64, f64,
-    heev=zfeast_heev, hcsrev=zfeast_hcsrev, hbev=zfeast_hbev, hegv=zfeast_hegv);
+impl_feast_complex!(
+    Complex32,
+    f32,
+    heev = cfeast_heev,
+    hcsrev = cfeast_hcsrev,
+    hbev = cfeast_hbev,
+    hegv = cfeast_hegv
+);
+impl_feast_complex!(
+    Complex64,
+    f64,
+    heev = zfeast_heev,
+    hcsrev = zfeast_hcsrev,
+    hbev = zfeast_hbev,
+    hegv = zfeast_hegv
+);

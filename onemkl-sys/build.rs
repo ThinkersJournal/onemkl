@@ -44,8 +44,7 @@ fn main() {
 }
 
 fn is_docs_only_build() -> bool {
-    env::var_os("DOCS_RS").is_some()
-        || env::var_os("ONEMKL_SYS_USE_VENDORED_BINDINGS").is_some()
+    env::var_os("DOCS_RS").is_some() || env::var_os("ONEMKL_SYS_USE_VENDORED_BINDINGS").is_some()
 }
 
 /// Copy the vendored bindings into `OUT_DIR` so `lib.rs`'s `include!`
@@ -107,16 +106,13 @@ struct MpiFeatures {
 
 impl Config {
     fn from_env() -> Self {
-        let interface = match (
-            cfg_feature("lp64"),
-            cfg_feature("ilp64"),
-        ) {
+        let interface = match (cfg_feature("lp64"), cfg_feature("ilp64")) {
             (true, false) => Interface::Lp64,
             (false, true) => Interface::Ilp64,
             (true, true) => fatal("features `lp64` and `ilp64` are mutually exclusive"),
-            (false, false) => fatal(
-                "no interface layer selected; enable exactly one of `lp64` or `ilp64`",
-            ),
+            (false, false) => {
+                fatal("no interface layer selected; enable exactly one of `lp64` or `ilp64`")
+            }
         };
 
         let threading = match (
@@ -148,9 +144,9 @@ impl Config {
             (false, false, false) => fatal(
                 "no linkage selected; enable exactly one of `link-dynamic`,                  `link-static` or `link-rt`",
             ),
-            _ => fatal(
-                "features `link-dynamic`, `link-static` and `link-rt` are mutually exclusive",
-            ),
+            _ => {
+                fatal("features `link-dynamic`, `link-static` and `link-rt` are mutually exclusive")
+            }
         };
 
         let mpi_features = MpiFeatures {
@@ -305,7 +301,11 @@ impl Config {
                 "mkl_cdft_core"
             };
             link(
-                if self.linkage == Linkage::Dynamic { "dylib" } else { "static" },
+                if self.linkage == Linkage::Dynamic {
+                    "dylib"
+                } else {
+                    "static"
+                },
                 cdft,
             );
         }
@@ -317,7 +317,11 @@ impl Config {
                 if let Some(dir) = mkl.omp_lib_dir.as_ref() {
                     println!("cargo:rustc-link-search=native={}", dir.display());
                 }
-                let omp_lib = if self.is_msvc() { "libiomp5md" } else { "iomp5" };
+                let omp_lib = if self.is_msvc() {
+                    "libiomp5md"
+                } else {
+                    "iomp5"
+                };
                 println!("cargo:rustc-link-lib=dylib={omp_lib}");
             }
             Threading::Tbb => {
@@ -440,7 +444,12 @@ impl MklPaths {
             .map(PathBuf::from)
             .or_else(|| find_tbb_lib(cfg));
 
-        Self { include_dir, lib_dir, omp_lib_dir, tbb_lib_dir }
+        Self {
+            include_dir,
+            lib_dir,
+            omp_lib_dir,
+            tbb_lib_dir,
+        }
     }
 }
 
@@ -465,9 +474,7 @@ fn mkl_root_candidates() -> Vec<PathBuf> {
                 let mut versions: Vec<_> = entries
                     .flatten()
                     .map(|e| e.path())
-                    .filter(|p| {
-                        p.is_dir() && p.file_name().is_some_and(|n| n != "latest")
-                    })
+                    .filter(|p| p.is_dir() && p.file_name().is_some_and(|n| n != "latest"))
                     .collect();
                 // Naive lexicographic sort gives us ascending order; pick the last.
                 versions.sort();
@@ -487,7 +494,10 @@ fn mkl_root_candidates() -> Vec<PathBuf> {
 fn find_compiler_lib(cfg: &Config) -> Option<PathBuf> {
     // Intel OpenMP runtime sits in the `compiler` component, not `mkl`.
     if let Some(v) = env::var_os("ONEAPI_ROOT") {
-        let candidate = PathBuf::from(&v).join("compiler").join("latest").join("lib");
+        let candidate = PathBuf::from(&v)
+            .join("compiler")
+            .join("latest")
+            .join("lib");
         if candidate.is_dir() {
             return Some(candidate);
         }
@@ -497,7 +507,10 @@ fn find_compiler_lib(cfg: &Config) -> Option<PathBuf> {
             "C:/Program Files (x86)/Intel/oneAPI",
             "C:/Program Files/Intel/oneAPI",
         ] {
-            let candidate = PathBuf::from(base).join("compiler").join("latest").join("lib");
+            let candidate = PathBuf::from(base)
+                .join("compiler")
+                .join("latest")
+                .join("lib");
             if candidate.is_dir() {
                 return Some(candidate);
             }
@@ -572,10 +585,7 @@ fn emit_linux_as_needed_wrap(mkl: &MklPaths, interface_lib: &str, threading_lib:
 }
 
 fn cfg_feature(name: &str) -> bool {
-    let var = format!(
-        "CARGO_FEATURE_{}",
-        name.replace('-', "_").to_uppercase()
-    );
+    let var = format!("CARGO_FEATURE_{}", name.replace('-', "_").to_uppercase());
     env::var_os(var).is_some()
 }
 

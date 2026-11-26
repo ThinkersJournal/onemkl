@@ -130,14 +130,11 @@ fn create_complex_descriptor<T: FftScalar>(
     }
     let dims_long: Vec<c_long> = dims
         .iter()
-        .map(|&d| {
-            c_long::try_from(d).map_err(|_| Error::DimensionOverflow)
-        })
+        .map(|&d| c_long::try_from(d).map_err(|_| Error::DimensionOverflow))
         .collect::<Result<Vec<_>>>()?;
 
     let mut handle: DFTI_DESCRIPTOR_HANDLE = ptr::null_mut();
-    let ndim_long: c_long = c_long::try_from(dims.len())
-        .map_err(|_| Error::DimensionOverflow)?;
+    let ndim_long: c_long = c_long::try_from(dims.len()).map_err(|_| Error::DimensionOverflow)?;
     let precision = T::PRECISION.as_dfti();
     let domain = sys::DFTI_CONFIG_VALUE::DFTI_COMPLEX;
 
@@ -156,13 +153,8 @@ fn create_complex_descriptor<T: FftScalar>(
     };
     check_dfti(status)?;
 
-    let status = unsafe {
-        sys::DftiSetValue(
-            handle,
-            sys::DFTI_CONFIG_PARAM::DFTI_PLACEMENT,
-            placement,
-        )
-    };
+    let status =
+        unsafe { sys::DftiSetValue(handle, sys::DFTI_CONFIG_PARAM::DFTI_PLACEMENT, placement) };
     if let Err(e) = check_dfti(status) {
         unsafe {
             let mut h = handle;
@@ -207,8 +199,7 @@ fn create_real_descriptor<T: FftScalar>(
         .collect::<Result<Vec<_>>>()?;
 
     let mut handle: DFTI_DESCRIPTOR_HANDLE = ptr::null_mut();
-    let ndim_long: c_long = c_long::try_from(dims.len())
-        .map_err(|_| Error::DimensionOverflow)?;
+    let ndim_long: c_long = c_long::try_from(dims.len()).map_err(|_| Error::DimensionOverflow)?;
     let precision = T::PRECISION.as_dfti();
     let domain = sys::DFTI_CONFIG_VALUE::DFTI_REAL;
 
@@ -267,8 +258,8 @@ fn create_real_descriptor<T: FftScalar>(
 
         let mut output_strides: Vec<c_long> = Vec::with_capacity(dims.len() + 1);
         output_strides.push(0);
-        let cce_last: c_long = c_long::try_from(cce_complex_len(dims[last]))
-            .map_err(|_| Error::DimensionOverflow)?;
+        let cce_last: c_long =
+            c_long::try_from(cce_complex_len(dims[last])).map_err(|_| Error::DimensionOverflow)?;
         let mut acc: c_long = 1;
         for (i, &d) in dims_long.iter().enumerate() {
             output_strides.push(acc);
@@ -306,13 +297,8 @@ fn create_real_descriptor<T: FftScalar>(
         }
     }
 
-    let status = unsafe {
-        sys::DftiSetValue(
-            handle,
-            sys::DFTI_CONFIG_PARAM::DFTI_PLACEMENT,
-            placement,
-        )
-    };
+    let status =
+        unsafe { sys::DftiSetValue(handle, sys::DFTI_CONFIG_PARAM::DFTI_PLACEMENT, placement) };
     if let Err(e) = check_dfti(status) {
         unsafe {
             let mut h = handle;
@@ -379,11 +365,8 @@ impl<T: FftScalar> FftPlan<T> {
 
     /// N-D in-place plan with the supplied dimensions.
     pub fn complex_nd(dims: &[usize]) -> Result<Self> {
-        let handle = create_complex_descriptor::<T>(
-            dims,
-            sys::DFTI_CONFIG_VALUE::DFTI_INPLACE,
-            None,
-        )?;
+        let handle =
+            create_complex_descriptor::<T>(dims, sys::DFTI_CONFIG_VALUE::DFTI_INPLACE, None)?;
         let total: usize = dims.iter().product();
         Ok(Self {
             handle,
@@ -417,26 +400,18 @@ impl<T: FftScalar> FftPlan<T> {
     /// Forward transform in place.
     pub fn forward_in_place(&mut self, x: &mut [Complex<T>]) -> Result<()> {
         if x.len() < self.total_complex_len {
-            return Err(Error::InvalidArgument(
-                "buffer too small for FFT plan size",
-            ));
+            return Err(Error::InvalidArgument("buffer too small for FFT plan size"));
         }
-        let status = unsafe {
-            sys::DftiComputeForward(self.handle, x.as_mut_ptr().cast())
-        };
+        let status = unsafe { sys::DftiComputeForward(self.handle, x.as_mut_ptr().cast()) };
         check_dfti(status)
     }
 
     /// Backward transform in place (un-normalized).
     pub fn backward_in_place(&mut self, x: &mut [Complex<T>]) -> Result<()> {
         if x.len() < self.total_complex_len {
-            return Err(Error::InvalidArgument(
-                "buffer too small for FFT plan size",
-            ));
+            return Err(Error::InvalidArgument("buffer too small for FFT plan size"));
         }
-        let status = unsafe {
-            sys::DftiComputeBackward(self.handle, x.as_mut_ptr().cast())
-        };
+        let status = unsafe { sys::DftiComputeBackward(self.handle, x.as_mut_ptr().cast()) };
         check_dfti(status)
     }
 }
@@ -482,11 +457,8 @@ impl<T: FftScalar> FftPlanOutOfPlace<T> {
 
     /// N-D out-of-place plan.
     pub fn complex_nd(dims: &[usize]) -> Result<Self> {
-        let handle = create_complex_descriptor::<T>(
-            dims,
-            sys::DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE,
-            None,
-        )?;
+        let handle =
+            create_complex_descriptor::<T>(dims, sys::DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE, None)?;
         let total: usize = dims.iter().product();
         Ok(Self {
             handle,
@@ -520,9 +492,7 @@ impl<T: FftScalar> FftPlanOutOfPlace<T> {
     /// same length (≥ the plan's total size).
     pub fn forward(&mut self, input: &[Complex<T>], out: &mut [Complex<T>]) -> Result<()> {
         if input.len() < self.total_complex_len || out.len() < self.total_complex_len {
-            return Err(Error::InvalidArgument(
-                "buffer too small for FFT plan size",
-            ));
+            return Err(Error::InvalidArgument("buffer too small for FFT plan size"));
         }
         let status = unsafe {
             sys::DftiComputeForward(
@@ -537,9 +507,7 @@ impl<T: FftScalar> FftPlanOutOfPlace<T> {
     /// Backward transform `out ← IFFT(in)` (un-normalized).
     pub fn backward(&mut self, input: &[Complex<T>], out: &mut [Complex<T>]) -> Result<()> {
         if input.len() < self.total_complex_len || out.len() < self.total_complex_len {
-            return Err(Error::InvalidArgument(
-                "buffer too small for FFT plan size",
-            ));
+            return Err(Error::InvalidArgument("buffer too small for FFT plan size"));
         }
         let status = unsafe {
             sys::DftiComputeBackward(
@@ -618,11 +586,8 @@ impl<T: FftScalar> RealFftPlan<T> {
     }
 
     fn real_nd_inner(dims: &[usize], scales: Option<(T, T)>) -> Result<Self> {
-        let handle = create_real_descriptor::<T>(
-            dims,
-            sys::DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE,
-            scales,
-        )?;
+        let handle =
+            create_real_descriptor::<T>(dims, sys::DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE, scales)?;
         let real_total: usize = dims.iter().product();
         let mut complex_dims = dims.to_vec();
         let last = complex_dims.len() - 1;
@@ -1468,7 +1433,13 @@ impl<T: FftScalar> BatchedFftPlan<T> {
         forward_scale: T,
         backward_scale: T,
     ) -> Result<Self> {
-        Self::build(n, howmany, distance, stride, Some((forward_scale, backward_scale)))
+        Self::build(
+            n,
+            howmany,
+            distance,
+            stride,
+            Some((forward_scale, backward_scale)),
+        )
     }
 
     fn build(
@@ -1497,7 +1468,12 @@ impl<T: FftScalar> BatchedFftPlan<T> {
             .and_then(|v| v.checked_add(extent))
             .ok_or(Error::DimensionOverflow)?;
         let to_long = |v: usize| c_long::try_from(v).map_err(|_| Error::DimensionOverflow);
-        let (n_l, h_l, d_l, s_l) = (to_long(n)?, to_long(howmany)?, to_long(distance)?, to_long(stride)?);
+        let (n_l, h_l, d_l, s_l) = (
+            to_long(n)?,
+            to_long(howmany)?,
+            to_long(distance)?,
+            to_long(stride)?,
+        );
         let strides: [c_long; 2] = [0, s_l];
 
         let mut handle: DFTI_DESCRIPTOR_HANDLE = ptr::null_mut();
@@ -1513,7 +1489,11 @@ impl<T: FftScalar> BatchedFftPlan<T> {
         let configure = |handle: DFTI_DESCRIPTOR_HANDLE| -> Result<()> {
             use sys::DFTI_CONFIG_PARAM as P;
             check_dfti(unsafe {
-                sys::DftiSetValue(handle, P::DFTI_PLACEMENT, sys::DFTI_CONFIG_VALUE::DFTI_INPLACE)
+                sys::DftiSetValue(
+                    handle,
+                    P::DFTI_PLACEMENT,
+                    sys::DFTI_CONFIG_VALUE::DFTI_INPLACE,
+                )
             })?;
             check_dfti(unsafe { sys::DftiSetValue(handle, P::DFTI_NUMBER_OF_TRANSFORMS, h_l) })?;
             check_dfti(unsafe { sys::DftiSetValue(handle, P::DFTI_INPUT_DISTANCE, d_l) })?;
@@ -1603,7 +1583,12 @@ unsafe impl<T: FftScalar> Send for BatchedRealFftPlan<T> {}
 
 impl<T: FftScalar> BatchedRealFftPlan<T> {
     /// Batch with unit scaling.
-    pub fn new(n: usize, howmany: usize, real_distance: usize, complex_distance: usize) -> Result<Self> {
+    pub fn new(
+        n: usize,
+        howmany: usize,
+        real_distance: usize,
+        complex_distance: usize,
+    ) -> Result<Self> {
         Self::build(n, howmany, real_distance, complex_distance, None)
     }
 
@@ -1633,7 +1618,9 @@ impl<T: FftScalar> BatchedRealFftPlan<T> {
         scales: Option<(T, T)>,
     ) -> Result<Self> {
         if n == 0 || howmany == 0 {
-            return Err(Error::InvalidArgument("FFT length and batch count must be positive"));
+            return Err(Error::InvalidArgument(
+                "FFT length and batch count must be positive",
+            ));
         }
         let h = cce_complex_len(n);
         if rd < n || cd < h {
@@ -1668,7 +1655,11 @@ impl<T: FftScalar> BatchedRealFftPlan<T> {
             let configure = |handle: DFTI_DESCRIPTOR_HANDLE| -> Result<()> {
                 use sys::DFTI_CONFIG_PARAM as P;
                 check_dfti(unsafe {
-                    sys::DftiSetValue(handle, P::DFTI_PLACEMENT, sys::DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE)
+                    sys::DftiSetValue(
+                        handle,
+                        P::DFTI_PLACEMENT,
+                        sys::DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE,
+                    )
                 })?;
                 check_dfti(unsafe {
                     sys::DftiSetValue(
@@ -1677,7 +1668,9 @@ impl<T: FftScalar> BatchedRealFftPlan<T> {
                         sys::DFTI_CONFIG_VALUE::DFTI_COMPLEX_COMPLEX,
                     )
                 })?;
-                check_dfti(unsafe { sys::DftiSetValue(handle, P::DFTI_NUMBER_OF_TRANSFORMS, h_l) })?;
+                check_dfti(unsafe {
+                    sys::DftiSetValue(handle, P::DFTI_NUMBER_OF_TRANSFORMS, h_l)
+                })?;
                 check_dfti(unsafe { sys::DftiSetValue(handle, P::DFTI_INPUT_DISTANCE, in_d) })?;
                 check_dfti(unsafe { sys::DftiSetValue(handle, P::DFTI_OUTPUT_DISTANCE, out_d) })?;
                 apply_scales(handle, scales)?;

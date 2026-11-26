@@ -5,7 +5,7 @@
 use approx::assert_abs_diff_eq;
 use num_complex::{Complex32, Complex64};
 
-use onemkl::fft::{cce_complex_len, FftPlan, FftPlanOutOfPlace, RealFftPlan};
+use onemkl::fft::{FftPlan, FftPlanOutOfPlace, RealFftPlan, cce_complex_len};
 
 #[test]
 fn fft_of_delta_is_constant_double() {
@@ -54,9 +54,7 @@ fn round_trip_is_identity_double() {
 #[test]
 fn round_trip_single_precision() {
     let n = 16;
-    let original: Vec<Complex32> = (0..n)
-        .map(|i| Complex32::new(i as f32, 0.0))
-        .collect();
+    let original: Vec<Complex32> = (0..n).map(|i| Complex32::new(i as f32, 0.0)).collect();
     let mut plan = FftPlan::<f32>::complex_1d(n).unwrap();
     let mut buf = original.clone();
     plan.forward_in_place(&mut buf).unwrap();
@@ -89,9 +87,7 @@ fn out_of_place_forward() {
 #[test]
 fn out_of_place_round_trip() {
     let n = 8;
-    let original: Vec<Complex64> = (0..n)
-        .map(|i| Complex64::new(i as f64, 0.0))
-        .collect();
+    let original: Vec<Complex64> = (0..n).map(|i| Complex64::new(i as f64, 0.0)).collect();
     let mut transformed = vec![Complex64::new(0.0, 0.0); n];
     let mut restored = vec![Complex64::new(0.0, 0.0); n];
 

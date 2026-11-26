@@ -4,9 +4,7 @@
 
 use approx::assert_abs_diff_eq;
 
-use onemkl::optim::{
-    djacobi_with_callback, solve_trnls, solve_trnls_bounded, TrnlsOptions,
-};
+use onemkl::optim::{TrnlsOptions, djacobi_with_callback, solve_trnls, solve_trnls_bounded};
 
 #[test]
 fn fits_a_line_through_two_points() {
@@ -30,13 +28,24 @@ fn fits_a_line_through_two_points() {
         j[3] = 2.0;
     };
 
-    let result = solve_trnls(2, 2, &mut params, TrnlsOptions::default(), residual, jacobian)
-        .unwrap();
+    let result = solve_trnls(
+        2,
+        2,
+        &mut params,
+        TrnlsOptions::default(),
+        residual,
+        jacobian,
+    )
+    .unwrap();
     assert!(result.iterations > 0);
     assert_abs_diff_eq!(params[0], 1.0, epsilon = 1e-6);
     assert_abs_diff_eq!(params[1], 1.0, epsilon = 1e-6);
     // initial residual at [0, 0] = sqrt(2² + 3²) = sqrt(13) ≈ 3.606.
-    assert_abs_diff_eq!(result.initial_residual_norm, 13.0_f64.sqrt(), epsilon = 1e-6);
+    assert_abs_diff_eq!(
+        result.initial_residual_norm,
+        13.0_f64.sqrt(),
+        epsilon = 1e-6
+    );
     // final residual at the optimum should be ~0.
     assert!(result.final_residual_norm < 1e-6);
 }
@@ -55,15 +64,28 @@ fn fits_quadratic_to_three_points() {
     let jacobian = |_x: &[f64], j: &mut [f64]| {
         // 3 rows × 3 cols, column-major.
         // col 0: ∂F/∂a = [1, 1, 1]
-        j[0] = 1.0; j[1] = 1.0; j[2] = 1.0;
+        j[0] = 1.0;
+        j[1] = 1.0;
+        j[2] = 1.0;
         // col 1: ∂F/∂b = [0, 1, 2]
-        j[3] = 0.0; j[4] = 1.0; j[5] = 2.0;
+        j[3] = 0.0;
+        j[4] = 1.0;
+        j[5] = 2.0;
         // col 2: ∂F/∂c = [0, 1, 4]
-        j[6] = 0.0; j[7] = 1.0; j[8] = 4.0;
+        j[6] = 0.0;
+        j[7] = 1.0;
+        j[8] = 4.0;
     };
 
-    let result = solve_trnls(3, 3, &mut params, TrnlsOptions::default(), residual, jacobian)
-        .unwrap();
+    let result = solve_trnls(
+        3,
+        3,
+        &mut params,
+        TrnlsOptions::default(),
+        residual,
+        jacobian,
+    )
+    .unwrap();
     assert!(result.iterations > 0);
     assert_abs_diff_eq!(params[0], 1.0, epsilon = 1e-6);
     assert_abs_diff_eq!(params[1], 0.0, epsilon = 1e-6);
@@ -94,8 +116,7 @@ fn djacobi_direct_callback_matches_analytic_jacobian() {
     let x = vec![1.5_f64, 0.7];
     let mut jac = vec![0.0_f64; 4];
     unsafe {
-        djacobi_with_callback(2, 2, &x, 1e-6, &mut jac, nonlinear_residual_for_jacobi)
-            .unwrap();
+        djacobi_with_callback(2, 2, &x, 1e-6, &mut jac, nonlinear_residual_for_jacobi).unwrap();
     }
     // Compare to analytic Jacobian at (1.5, 0.7):
     //   [[2*1.5,    1   ],
@@ -111,9 +132,8 @@ fn djacobi_direct_callback_matches_analytic_jacobian() {
 fn djacobi_rejects_undersized_jac() {
     let x = vec![1.0_f64, 1.0];
     let mut jac = vec![0.0_f64; 2]; // need 4
-    let r = unsafe {
-        djacobi_with_callback(2, 2, &x, 1e-6, &mut jac, nonlinear_residual_for_jacobi)
-    };
+    let r =
+        unsafe { djacobi_with_callback(2, 2, &x, 1e-6, &mut jac, nonlinear_residual_for_jacobi) };
     assert!(r.is_err());
 }
 
@@ -129,13 +149,22 @@ fn bounded_solver_respects_bounds() {
         f[1] = x[0] + 2.0 * x[1] - 3.0;
     };
     let jacobian = |_x: &[f64], j: &mut [f64]| {
-        j[0] = 1.0; j[1] = 1.0;
-        j[2] = 1.0; j[3] = 2.0;
+        j[0] = 1.0;
+        j[1] = 1.0;
+        j[2] = 1.0;
+        j[3] = 2.0;
     };
     let _result = solve_trnls_bounded(
-        2, 2, &mut params, &lower, &upper,
-        TrnlsOptions::default(), residual, jacobian,
-    ).unwrap();
+        2,
+        2,
+        &mut params,
+        &lower,
+        &upper,
+        TrnlsOptions::default(),
+        residual,
+        jacobian,
+    )
+    .unwrap();
     assert!(params[0] >= 0.5 - 1e-9);
     assert_abs_diff_eq!(params[0], 1.0, epsilon = 1e-6);
     assert_abs_diff_eq!(params[1], 1.0, epsilon = 1e-6);

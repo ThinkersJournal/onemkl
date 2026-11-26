@@ -55,9 +55,7 @@ impl JitStatus {
         match status {
             s if s == sys::mkl_jit_status_t::MKL_JIT_SUCCESS => Ok(Self::Compiled),
             s if s == sys::mkl_jit_status_t::MKL_NO_JIT => Ok(Self::Fallback),
-            other => Err(Error::LapackComputationFailure {
-                info: other as i32,
-            }),
+            other => Err(Error::LapackComputationFailure { info: other as i32 }),
         }
     }
 }
@@ -100,21 +98,21 @@ pub trait JitGemmScalar: Copy + 'static {
 }
 
 impl JitGemmScalar for f32 {
-    type Kernel = unsafe extern "C" fn(
-        *mut core::ffi::c_void,
-        *mut f32,
-        *mut f32,
-        *mut f32,
-    );
+    type Kernel = unsafe extern "C" fn(*mut core::ffi::c_void, *mut f32, *mut f32, *mut f32);
 
     unsafe fn jit_create(
         jitter: *mut *mut core::ffi::c_void,
         layout: sys::MKL_LAYOUT::Type,
         transa: sys::MKL_TRANSPOSE::Type,
         transb: sys::MKL_TRANSPOSE::Type,
-        m: c_int, n: c_int, k: c_int,
-        alpha: Self, lda: c_int, ldb: c_int,
-        beta: Self, ldc: c_int,
+        m: c_int,
+        n: c_int,
+        k: c_int,
+        alpha: Self,
+        lda: c_int,
+        ldb: c_int,
+        beta: Self,
+        ldc: c_int,
     ) -> sys::mkl_jit_status_t::Type {
         unsafe {
             sys::mkl_cblas_jit_create_sgemm(
@@ -128,28 +126,30 @@ impl JitGemmScalar for f32 {
     unsafe fn invoke_kernel(
         kernel: Self::Kernel,
         jitter: *mut core::ffi::c_void,
-        a: *mut Self, b: *mut Self, c: *mut Self,
+        a: *mut Self,
+        b: *mut Self,
+        c: *mut Self,
     ) {
         unsafe { kernel(jitter, a, b, c) }
     }
 }
 
 impl JitGemmScalar for f64 {
-    type Kernel = unsafe extern "C" fn(
-        *mut core::ffi::c_void,
-        *mut f64,
-        *mut f64,
-        *mut f64,
-    );
+    type Kernel = unsafe extern "C" fn(*mut core::ffi::c_void, *mut f64, *mut f64, *mut f64);
 
     unsafe fn jit_create(
         jitter: *mut *mut core::ffi::c_void,
         layout: sys::MKL_LAYOUT::Type,
         transa: sys::MKL_TRANSPOSE::Type,
         transb: sys::MKL_TRANSPOSE::Type,
-        m: c_int, n: c_int, k: c_int,
-        alpha: Self, lda: c_int, ldb: c_int,
-        beta: Self, ldc: c_int,
+        m: c_int,
+        n: c_int,
+        k: c_int,
+        alpha: Self,
+        lda: c_int,
+        ldb: c_int,
+        beta: Self,
+        ldc: c_int,
     ) -> sys::mkl_jit_status_t::Type {
         unsafe {
             sys::mkl_cblas_jit_create_dgemm(
@@ -163,7 +163,9 @@ impl JitGemmScalar for f64 {
     unsafe fn invoke_kernel(
         kernel: Self::Kernel,
         jitter: *mut core::ffi::c_void,
-        a: *mut Self, b: *mut Self, c: *mut Self,
+        a: *mut Self,
+        b: *mut Self,
+        c: *mut Self,
     ) {
         unsafe { kernel(jitter, a, b, c) }
     }
@@ -182,15 +184,27 @@ impl JitGemmScalar for Complex32 {
         layout: sys::MKL_LAYOUT::Type,
         transa: sys::MKL_TRANSPOSE::Type,
         transb: sys::MKL_TRANSPOSE::Type,
-        m: c_int, n: c_int, k: c_int,
-        alpha: Self, lda: c_int, ldb: c_int,
-        beta: Self, ldc: c_int,
+        m: c_int,
+        n: c_int,
+        k: c_int,
+        alpha: Self,
+        lda: c_int,
+        ldb: c_int,
+        beta: Self,
+        ldc: c_int,
     ) -> sys::mkl_jit_status_t::Type {
         unsafe {
             sys::mkl_cblas_jit_create_cgemm(
-                jitter, layout, transa, transb, m, n, k,
+                jitter,
+                layout,
+                transa,
+                transb,
+                m,
+                n,
+                k,
                 (&alpha as *const Self).cast(),
-                lda, ldb,
+                lda,
+                ldb,
                 (&beta as *const Self).cast(),
                 ldc,
             )
@@ -202,7 +216,9 @@ impl JitGemmScalar for Complex32 {
     unsafe fn invoke_kernel(
         kernel: Self::Kernel,
         jitter: *mut core::ffi::c_void,
-        a: *mut Self, b: *mut Self, c: *mut Self,
+        a: *mut Self,
+        b: *mut Self,
+        c: *mut Self,
     ) {
         unsafe { kernel(jitter, a.cast(), b.cast(), c.cast()) }
     }
@@ -221,15 +237,27 @@ impl JitGemmScalar for Complex64 {
         layout: sys::MKL_LAYOUT::Type,
         transa: sys::MKL_TRANSPOSE::Type,
         transb: sys::MKL_TRANSPOSE::Type,
-        m: c_int, n: c_int, k: c_int,
-        alpha: Self, lda: c_int, ldb: c_int,
-        beta: Self, ldc: c_int,
+        m: c_int,
+        n: c_int,
+        k: c_int,
+        alpha: Self,
+        lda: c_int,
+        ldb: c_int,
+        beta: Self,
+        ldc: c_int,
     ) -> sys::mkl_jit_status_t::Type {
         unsafe {
             sys::mkl_cblas_jit_create_zgemm(
-                jitter, layout, transa, transb, m, n, k,
+                jitter,
+                layout,
+                transa,
+                transb,
+                m,
+                n,
+                k,
                 (&alpha as *const Self).cast(),
-                lda, ldb,
+                lda,
+                ldb,
                 (&beta as *const Self).cast(),
                 ldc,
             )
@@ -241,7 +269,9 @@ impl JitGemmScalar for Complex64 {
     unsafe fn invoke_kernel(
         kernel: Self::Kernel,
         jitter: *mut core::ffi::c_void,
-        a: *mut Self, b: *mut Self, c: *mut Self,
+        a: *mut Self,
+        b: *mut Self,
+        c: *mut Self,
     ) {
         unsafe { kernel(jitter, a.cast(), b.cast(), c.cast()) }
     }
@@ -319,20 +349,32 @@ impl<T: JitGemmScalar> JitGemm<T> {
                 map_layout(layout),
                 map_transpose(transa),
                 map_transpose(transb),
-                m_i, n_i, k_i, alpha, lda_i, ldb_i, beta, ldc_i,
+                m_i,
+                n_i,
+                k_i,
+                alpha,
+                lda_i,
+                ldb_i,
+                beta,
+                ldc_i,
             )
         };
         let status = JitStatus::from_raw(raw_status)?;
-        let kernel = unsafe { T::jit_get_kernel(jitter) }
-            .ok_or(Error::InvalidArgument(
-                "MKL returned a NULL kernel pointer for the JIT'd GEMM",
-            ))?;
+        let kernel = unsafe { T::jit_get_kernel(jitter) }.ok_or(Error::InvalidArgument(
+            "MKL returned a NULL kernel pointer for the JIT'd GEMM",
+        ))?;
         Ok(Self {
             jitter,
             kernel,
-            m, n, k,
-            lda, ldb, ldc,
-            transa, transb, layout,
+            m,
+            n,
+            k,
+            lda,
+            ldb,
+            ldc,
+            transa,
+            transb,
+            layout,
             status,
             _marker: PhantomData,
         })

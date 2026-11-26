@@ -129,9 +129,7 @@ impl<T> Dss<T> {
             opt |= sys::MKL_DSS_ZERO_BASED_INDEXING as c_int;
         }
         if row_ptr.len() != rows + 1 {
-            return Err(Error::InvalidArgument(
-                "row_ptr must have length rows + 1",
-            ));
+            return Err(Error::InvalidArgument("row_ptr must have length rows + 1"));
         }
         let nnz: c_int = col_idx
             .len()
@@ -157,9 +155,7 @@ impl<T> Dss<T> {
     pub fn reorder(&mut self) -> Result<()> {
         let opt: c_int = sys::MKL_DSS_DEFAULTS as c_int;
         let perm: [c_int; 0] = [];
-        let status = unsafe {
-            sys::dss_reorder_(&mut self.handle, &opt, perm.as_ptr())
-        };
+        let status = unsafe { sys::dss_reorder_(&mut self.handle, &opt, perm.as_ptr()) };
         check_dss(status)
     }
 
@@ -228,12 +224,7 @@ impl<T> Dss<T> {
             .map_err(|_| Error::InvalidArgument("statistic name contains a null byte"))?;
         let mut out: Vec<f64> = vec![0.0; count];
         let status = unsafe {
-            sys::dss_statistics_(
-                &mut self.handle,
-                &opt,
-                name_c.as_ptr(),
-                out.as_mut_ptr(),
-            )
+            sys::dss_statistics_(&mut self.handle, &opt, name_c.as_ptr(), out.as_mut_ptr())
         };
         check_dss(status)?;
         Ok(out)
@@ -268,13 +259,8 @@ impl Dss<f64> {
     /// definiteness hint.
     pub fn factor_real(&mut self, definite: Definite, values: &[f64]) -> Result<()> {
         let opt: c_int = definite.as_opt();
-        let status = unsafe {
-            sys::dss_factor_real_(
-                &mut self.handle,
-                &opt,
-                values.as_ptr().cast(),
-            )
-        };
+        let status =
+            unsafe { sys::dss_factor_real_(&mut self.handle, &opt, values.as_ptr().cast()) };
         check_dss(status)
     }
 
@@ -297,29 +283,15 @@ impl Dss<f64> {
 
 impl Dss<Complex64> {
     /// Numerical factorization of a complex matrix.
-    pub fn factor_complex(
-        &mut self,
-        definite: Definite,
-        values: &[Complex64],
-    ) -> Result<()> {
+    pub fn factor_complex(&mut self, definite: Definite, values: &[Complex64]) -> Result<()> {
         let opt: c_int = definite.as_opt();
-        let status = unsafe {
-            sys::dss_factor_complex_(
-                &mut self.handle,
-                &opt,
-                values.as_ptr().cast(),
-            )
-        };
+        let status =
+            unsafe { sys::dss_factor_complex_(&mut self.handle, &opt, values.as_ptr().cast()) };
         check_dss(status)
     }
 
     /// Solve `A * X = B` for complex `B`.
-    pub fn solve_complex(
-        &mut self,
-        b: &[Complex64],
-        nrhs: i32,
-        x: &mut [Complex64],
-    ) -> Result<()> {
+    pub fn solve_complex(&mut self, b: &[Complex64], nrhs: i32, x: &mut [Complex64]) -> Result<()> {
         let opt: c_int = sys::MKL_DSS_DEFAULTS as c_int;
         let status = unsafe {
             sys::dss_solve_complex_(
@@ -336,29 +308,15 @@ impl Dss<Complex64> {
 
 impl Dss<Complex32> {
     /// Numerical factorization of a complex (single-precision) matrix.
-    pub fn factor_complex(
-        &mut self,
-        definite: Definite,
-        values: &[Complex32],
-    ) -> Result<()> {
+    pub fn factor_complex(&mut self, definite: Definite, values: &[Complex32]) -> Result<()> {
         let opt: c_int = definite.as_opt();
-        let status = unsafe {
-            sys::dss_factor_complex_(
-                &mut self.handle,
-                &opt,
-                values.as_ptr().cast(),
-            )
-        };
+        let status =
+            unsafe { sys::dss_factor_complex_(&mut self.handle, &opt, values.as_ptr().cast()) };
         check_dss(status)
     }
 
     /// Solve `A * X = B` for complex (single-precision) `B`.
-    pub fn solve_complex(
-        &mut self,
-        b: &[Complex32],
-        nrhs: i32,
-        x: &mut [Complex32],
-    ) -> Result<()> {
+    pub fn solve_complex(&mut self, b: &[Complex32], nrhs: i32, x: &mut [Complex32]) -> Result<()> {
         let opt: c_int = sys::MKL_DSS_DEFAULTS as c_int;
         let status = unsafe {
             sys::dss_solve_complex_(

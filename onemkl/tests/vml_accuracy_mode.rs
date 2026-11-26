@@ -10,5 +10,9 @@ use onemkl_sys::{VML_ACCURACY_MASK, VML_HA, vmlGetMode};
 fn default_accuracy_mode_is_high_accuracy() {
     // SAFETY: vmlGetMode reads thread-local VML state and has no preconditions.
     let mode = unsafe { vmlGetMode() };
-    assert_eq!(mode & VML_ACCURACY_MASK, VML_HA, "VML mode word = {mode:#x}");
+    assert_eq!(
+        mode & VML_ACCURACY_MASK,
+        VML_HA,
+        "VML mode word = {mode:#x}"
+    );
 }

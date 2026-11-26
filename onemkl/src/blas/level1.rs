@@ -106,11 +106,7 @@ pub fn scal_real<T: ComplexBlasScalar>(alpha: T::Real, x: &mut [T]) {
 }
 
 /// Strided variant of [`scal_real`].
-pub fn scal_real_inc<T: ComplexBlasScalar>(
-    alpha: T::Real,
-    x: &mut [T],
-    incx: i64,
-) -> Result<()> {
+pub fn scal_real_inc<T: ComplexBlasScalar>(alpha: T::Real, x: &mut [T], incx: i64) -> Result<()> {
     let n = derive_n(x.len(), incx)?;
     let cn = dim_to_mkl_int(n)?;
     let cinc = stride_to_mkl_int(incx)?;
@@ -130,13 +126,7 @@ pub fn axpy<T: BlasScalar>(alpha: T, x: &[T], y: &mut [T]) -> Result<()> {
 }
 
 /// Strided variant of [`axpy`].
-pub fn axpy_inc<T: BlasScalar>(
-    alpha: T,
-    x: &[T],
-    incx: i64,
-    y: &mut [T],
-    incy: i64,
-) -> Result<()> {
+pub fn axpy_inc<T: BlasScalar>(alpha: T, x: &[T], incx: i64, y: &mut [T], incy: i64) -> Result<()> {
     let n = check_two_vectors(x, incx, y, incy)?;
     let cn = dim_to_mkl_int(n)?;
     unsafe {
@@ -158,12 +148,7 @@ pub fn copy<T: BlasScalar>(x: &[T], y: &mut [T]) -> Result<()> {
 }
 
 /// Strided variant of [`copy`].
-pub fn copy_inc<T: BlasScalar>(
-    x: &[T],
-    incx: i64,
-    y: &mut [T],
-    incy: i64,
-) -> Result<()> {
+pub fn copy_inc<T: BlasScalar>(x: &[T], incx: i64, y: &mut [T], incy: i64) -> Result<()> {
     let n = check_two_vectors(x, incx, y, incy)?;
     let cn = dim_to_mkl_int(n)?;
     unsafe {
@@ -184,12 +169,7 @@ pub fn swap<T: BlasScalar>(x: &mut [T], y: &mut [T]) -> Result<()> {
 }
 
 /// Strided variant of [`swap`].
-pub fn swap_inc<T: BlasScalar>(
-    x: &mut [T],
-    incx: i64,
-    y: &mut [T],
-    incy: i64,
-) -> Result<()> {
+pub fn swap_inc<T: BlasScalar>(x: &mut [T], incx: i64, y: &mut [T], incy: i64) -> Result<()> {
     let n = check_two_vectors(x, incx, y, incy)?;
     let cn = dim_to_mkl_int(n)?;
     unsafe {
@@ -217,12 +197,7 @@ pub fn dot<T: RealBlasScalar>(x: &[T], y: &[T]) -> Result<T> {
 }
 
 /// Strided variant of [`dot`].
-pub fn dot_inc<T: RealBlasScalar>(
-    x: &[T],
-    incx: i64,
-    y: &[T],
-    incy: i64,
-) -> Result<T> {
+pub fn dot_inc<T: RealBlasScalar>(x: &[T], incx: i64, y: &[T], incy: i64) -> Result<T> {
     let n = check_two_vectors(x, incx, y, incy)?;
     let cn = dim_to_mkl_int(n)?;
     Ok(unsafe {
@@ -242,12 +217,7 @@ pub fn dotc<T: ComplexBlasScalar>(x: &[T], y: &[T]) -> Result<T> {
 }
 
 /// Strided variant of [`dotc`].
-pub fn dotc_inc<T: ComplexBlasScalar>(
-    x: &[T],
-    incx: i64,
-    y: &[T],
-    incy: i64,
-) -> Result<T> {
+pub fn dotc_inc<T: ComplexBlasScalar>(x: &[T], incx: i64, y: &[T], incy: i64) -> Result<T> {
     let n = check_two_vectors(x, incx, y, incy)?;
     let cn = dim_to_mkl_int(n)?;
     Ok(unsafe {
@@ -267,12 +237,7 @@ pub fn dotu<T: ComplexBlasScalar>(x: &[T], y: &[T]) -> Result<T> {
 }
 
 /// Strided variant of [`dotu`].
-pub fn dotu_inc<T: ComplexBlasScalar>(
-    x: &[T],
-    incx: i64,
-    y: &[T],
-    incy: i64,
-) -> Result<T> {
+pub fn dotu_inc<T: ComplexBlasScalar>(x: &[T], incx: i64, y: &[T], incy: i64) -> Result<T> {
     let n = check_two_vectors(x, incx, y, incy)?;
     let cn = dim_to_mkl_int(n)?;
     Ok(unsafe {
@@ -339,4 +304,3 @@ pub fn rotg<T: RealBlasScalar>(a: &mut T, b: &mut T) -> (T, T) {
     }
     (c, s)
 }
-

@@ -16,12 +16,18 @@ fn dotmv_returns_x_dot_y() {
     let row_ptr = vec![0, 1, 2, 3];
     let col_idx = vec![0, 1, 2];
     let values = vec![1.0_f64, 2.0, 3.0];
-    let a =
-        SparseMatrix::from_csr(3, 3, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
+    let a = SparseMatrix::from_csr(3, 3, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
     let x = [1.0_f64; 3];
     let mut y = [0.0_f64; 3];
     let d = a
-        .dot_mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y)
+        .dot_mv(
+            Operation::NoTrans,
+            1.0,
+            MatrixType::General,
+            &x,
+            0.0,
+            &mut y,
+        )
         .unwrap();
     assert_abs_diff_eq!(y[0], 1.0, epsilon = 1e-12);
     assert_abs_diff_eq!(y[1], 2.0, epsilon = 1e-12);
@@ -35,12 +41,18 @@ fn dotmv_with_alpha_beta() {
     let row_ptr = vec![0, 1, 2, 3];
     let col_idx = vec![0, 1, 2];
     let values = vec![1.0_f64, 1.0, 1.0]; // identity
-    let a =
-        SparseMatrix::from_csr(3, 3, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
+    let a = SparseMatrix::from_csr(3, 3, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
     let x = [1.0_f64, 2.0, 3.0];
     let mut y = [4.0_f64, 5.0, 6.0];
     let d = a
-        .dot_mv(Operation::NoTrans, 2.0, MatrixType::General, &x, 3.0, &mut y)
+        .dot_mv(
+            Operation::NoTrans,
+            2.0,
+            MatrixType::General,
+            &x,
+            3.0,
+            &mut y,
+        )
         .unwrap();
     // y_new = 2 * I * x + 3 * y_0 = 2*x + 3*y_0 = [2+12, 4+15, 6+18] = [14, 19, 24]
     assert_abs_diff_eq!(y[0], 14.0, epsilon = 1e-12);
@@ -57,8 +69,7 @@ fn symgs_solves_diagonal_system() {
     let row_ptr = vec![0, 1, 2, 3];
     let col_idx = vec![0, 1, 2];
     let values = vec![2.0_f64, 3.0, 4.0];
-    let a =
-        SparseMatrix::from_csr(3, 3, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
+    let a = SparseMatrix::from_csr(3, 3, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
     let b = [4.0_f64, 6.0, 8.0];
     let mut x = [0.0_f64; 3];
     a.symgs(
@@ -80,8 +91,7 @@ fn symgs_mv_combines_sweep_and_matvec() {
     let row_ptr = vec![0, 1, 2, 3];
     let col_idx = vec![0, 1, 2];
     let values = vec![2.0_f64, 3.0, 4.0];
-    let a =
-        SparseMatrix::from_csr(3, 3, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
+    let a = SparseMatrix::from_csr(3, 3, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
     let b = [4.0_f64, 6.0, 8.0];
     let mut x = [0.0_f64; 3];
     let mut y = [0.0_f64; 3];

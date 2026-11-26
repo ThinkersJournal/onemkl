@@ -22,7 +22,11 @@ fn factor(n: usize) -> i32 {
     for i in 0..n {
         a[i * n + i] = n as f64 + 1.0;
     }
-    let (uplo, nn, lda) = (b'U' as core::ffi::c_char, n as core::ffi::c_int, n as core::ffi::c_int);
+    let (uplo, nn, lda) = (
+        b'U' as core::ffi::c_char,
+        n as core::ffi::c_int,
+        n as core::ffi::c_int,
+    );
     let mut info: core::ffi::c_int = 0;
     unsafe { onemkl_sys::dpotrf(&uplo, &nn, a.as_mut_ptr(), &lda, &mut info) };
     info
@@ -37,7 +41,11 @@ fn handler_install_remove_and_observed_calls() {
 
     service::set_progress_handler(None);
     assert_eq!(factor(512), 0);
-    assert_eq!(CALLS.load(Ordering::SeqCst), with_handler, "handler still called after removal");
+    assert_eq!(
+        CALLS.load(Ordering::SeqCst),
+        with_handler,
+        "handler still called after removal"
+    );
 
     // `Stop`: MKL abandons the factorization after the first callback
     // and the routine reports a nonzero info (measured: -1002).

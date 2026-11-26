@@ -885,33 +885,23 @@ fn ensure_square_mut<T>(a: &MatrixMut<'_, T>) -> Result<usize> {
     Ok(a.rows())
 }
 
-fn check_vec_len<T>(
-    v: &[T],
-    inc: i64,
-    n: usize,
-    name: &'static str,
-) -> Result<()> {
+fn check_vec_len<T>(v: &[T], inc: i64, n: usize, name: &'static str) -> Result<()> {
     if inc == 0 {
         return Err(Error::InvalidArgument("vector stride must be non-zero"));
     }
     if v.len() < vector_min_len(n, inc) {
         return Err(match name {
-            "x" => Error::InvalidArgument(
-                "x is too short for the implied dimension and stride",
-            ),
-            "y" => Error::InvalidArgument(
-                "y is too short for the implied dimension and stride",
-            ),
-            _ => Error::InvalidArgument(
-                "vector is too short for the implied dimension and stride",
-            ),
+            "x" => Error::InvalidArgument("x is too short for the implied dimension and stride"),
+            "y" => Error::InvalidArgument("y is too short for the implied dimension and stride"),
+            _ => Error::InvalidArgument("vector is too short for the implied dimension and stride"),
         });
     }
     Ok(())
 }
 
 fn check_packed_len<T>(ap: &[T], n: usize) -> Result<()> {
-    let needed = n.checked_mul(n + 1)
+    let needed = n
+        .checked_mul(n + 1)
         .map(|v| v / 2)
         .ok_or(Error::DimensionOverflow)?;
     if ap.len() < needed {

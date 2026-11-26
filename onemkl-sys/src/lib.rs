@@ -61,8 +61,7 @@ mod keep_layers_needed {
     }
 
     #[used]
-    static KEEP: [unsafe extern "C" fn(); 2] =
-        [mkl_serv_cbwr_get, mkl_serv_get_max_threads];
+    static KEEP: [unsafe extern "C" fn(); 2] = [mkl_serv_cbwr_get, mkl_serv_get_max_threads];
 }
 
 // `MKL_INT`, `MKL_UINT`, and `MKL_LONG` are preprocessor `#define`s in

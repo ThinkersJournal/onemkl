@@ -34,18 +34,8 @@ fn ilut_returns_factor() {
     //    [ 0, -1,  4, -1],
     //    [ 0,  0, -1,  4]]
     let ia = vec![1_i32, 3, 6, 9, 11];
-    let ja = vec![
-        1_i32, 2,
-        1, 2, 3,
-        2, 3, 4,
-        3, 4,
-    ];
-    let a = vec![
-        4.0_f64, -1.0,
-        -1.0, 4.0, -1.0,
-        -1.0, 4.0, -1.0,
-        -1.0, 4.0,
-    ];
+    let ja = vec![1_i32, 2, 1, 2, 3, 2, 3, 4, 3, 4];
+    let a = vec![4.0_f64, -1.0, -1.0, 4.0, -1.0, -1.0, 4.0, -1.0, -1.0, 4.0];
     let res = ilut(4, &a, &ia, &ja, 1e-6, 5).unwrap();
     assert_eq!(res.ialut.len(), 5);
     // MKL versions disagree on what `dcsrilut` writes for this tiny

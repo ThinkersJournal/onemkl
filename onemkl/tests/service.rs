@@ -7,7 +7,10 @@ fn version_is_populated() {
     let v = service::version();
     assert!(v.major > 0);
     assert!(!v.build.is_empty());
-    println!("MKL {}.{}.{} (build {}, processor {})", v.major, v.minor, v.update, v.build, v.processor);
+    println!(
+        "MKL {}.{}.{} (build {}, processor {})",
+        v.major, v.minor, v.update, v.build, v.processor
+    );
 }
 
 #[test]

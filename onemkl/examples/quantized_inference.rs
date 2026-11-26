@@ -5,7 +5,7 @@
 //!
 //! Run with `cargo run --example quantized_inference`.
 
-use onemkl::blas::mixed_precision::{gemm_s8u8_s32, CblasOffset};
+use onemkl::blas::mixed_precision::{CblasOffset, gemm_s8u8_s32};
 use onemkl::{Layout, Transpose};
 
 fn main() {
@@ -24,14 +24,22 @@ fn main() {
 
     gemm_s8u8_s32(
         Layout::RowMajor,
-        Transpose::NoTrans, Transpose::NoTrans,
+        Transpose::NoTrans,
+        Transpose::NoTrans,
         CblasOffset::Row,
-        m, n, k,
-        1.0,         // alpha
-        &a, k, 0,    // A and zero-point ao = 0 (symmetric int8)
-        &b, n, 0,    // B and zero-point bo = 0
-        0.0,         // beta
-        &mut c, n,
+        m,
+        n,
+        k,
+        1.0, // alpha
+        &a,
+        k,
+        0, // A and zero-point ao = 0 (symmetric int8)
+        &b,
+        n,
+        0,   // B and zero-point bo = 0
+        0.0, // beta
+        &mut c,
+        n,
         &cb,
     )
     .unwrap();

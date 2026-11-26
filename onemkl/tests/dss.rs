@@ -18,10 +18,18 @@ fn solve_real_3x3_spd() {
     let values = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
 
     let mut dss = Dss::<f64>::new().unwrap();
-    dss.define_structure(Symmetry::Symmetric, 3, 3, &row_ptr, &col_idx, IndexBase::One)
-        .unwrap();
+    dss.define_structure(
+        Symmetry::Symmetric,
+        3,
+        3,
+        &row_ptr,
+        &col_idx,
+        IndexBase::One,
+    )
+    .unwrap();
     dss.reorder().unwrap();
-    dss.factor_real(Definite::PositiveDefinite, &values).unwrap();
+    dss.factor_real(Definite::PositiveDefinite, &values)
+        .unwrap();
 
     // x_true = [1, 1, 1] → b = A * x = [3, 2, 3]
     let b = vec![3.0_f64, 2.0, 3.0];
@@ -39,10 +47,18 @@ fn solve_two_rhs() {
     let values = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
 
     let mut dss = Dss::<f64>::new().unwrap();
-    dss.define_structure(Symmetry::Symmetric, 3, 3, &row_ptr, &col_idx, IndexBase::One)
-        .unwrap();
+    dss.define_structure(
+        Symmetry::Symmetric,
+        3,
+        3,
+        &row_ptr,
+        &col_idx,
+        IndexBase::One,
+    )
+    .unwrap();
     dss.reorder().unwrap();
-    dss.factor_real(Definite::PositiveDefinite, &values).unwrap();
+    dss.factor_real(Definite::PositiveDefinite, &values)
+        .unwrap();
 
     // Two RHS, column-major.
     // X_true = [[1, 2], [1, 2], [1, 2]]
@@ -69,8 +85,15 @@ fn statistics_after_factor() {
     let values = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
 
     let mut dss = Dss::<f64>::new().unwrap();
-    dss.define_structure(Symmetry::Symmetric, 3, 3, &row_ptr, &col_idx, IndexBase::One)
-        .unwrap();
+    dss.define_structure(
+        Symmetry::Symmetric,
+        3,
+        3,
+        &row_ptr,
+        &col_idx,
+        IndexBase::One,
+    )
+    .unwrap();
     dss.reorder().unwrap();
     dss.factor_real(Definite::Indefinite, &values).unwrap();
 
@@ -99,8 +122,15 @@ fn inertia_for_indefinite_matrix() {
     let values = vec![2.0_f64, 1.0, 0.0, 1.0, -3.0];
 
     let mut dss = Dss::<f64>::new().unwrap();
-    dss.define_structure(Symmetry::Symmetric, 3, 3, &row_ptr, &col_idx, IndexBase::One)
-        .unwrap();
+    dss.define_structure(
+        Symmetry::Symmetric,
+        3,
+        3,
+        &row_ptr,
+        &col_idx,
+        IndexBase::One,
+    )
+    .unwrap();
     dss.reorder().unwrap();
     dss.factor_real(Definite::Indefinite, &values).unwrap();
 
@@ -110,4 +140,3 @@ fn inertia_for_indefinite_matrix() {
     assert_eq!(inertia.negative, 2);
     assert_eq!(inertia.zero, 0);
 }
-

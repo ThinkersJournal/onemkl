@@ -12,9 +12,7 @@ fn unscaled_round_trip_is_n_times_input() {
     // Default behavior: IFFT(FFT(x)) = N * x.
     let n: usize = 8;
     let mut plan = FftPlan::<f64>::complex_1d(n).unwrap();
-    let mut buf: Vec<Complex64> = (0..n)
-        .map(|i| Complex64::new(i as f64, 0.0))
-        .collect();
+    let mut buf: Vec<Complex64> = (0..n).map(|i| Complex64::new(i as f64, 0.0)).collect();
     let original = buf.clone();
     plan.forward_in_place(&mut buf).unwrap();
     plan.backward_in_place(&mut buf).unwrap();
@@ -27,11 +25,8 @@ fn unscaled_round_trip_is_n_times_input() {
 #[test]
 fn backward_scaled_round_trip_returns_input() {
     let n: usize = 8;
-    let mut plan =
-        FftPlan::<f64>::complex_nd_with_scales(&[n], 1.0, 1.0 / n as f64).unwrap();
-    let mut buf: Vec<Complex64> = (0..n)
-        .map(|i| Complex64::new(i as f64, 0.0))
-        .collect();
+    let mut plan = FftPlan::<f64>::complex_nd_with_scales(&[n], 1.0, 1.0 / n as f64).unwrap();
+    let mut buf: Vec<Complex64> = (0..n).map(|i| Complex64::new(i as f64, 0.0)).collect();
     let original = buf.clone();
     plan.forward_in_place(&mut buf).unwrap();
     plan.backward_in_place(&mut buf).unwrap();
@@ -46,11 +41,8 @@ fn unitary_scaling_preserves_norm() {
     // Forward = backward = 1/sqrt(N) — Parseval-style unitary FFT.
     let n: usize = 8;
     let scale = 1.0 / (n as f64).sqrt();
-    let mut plan =
-        FftPlan::<f64>::complex_nd_with_scales(&[n], scale, scale).unwrap();
-    let mut buf: Vec<Complex64> = (0..n)
-        .map(|i| Complex64::new(i as f64, 0.0))
-        .collect();
+    let mut plan = FftPlan::<f64>::complex_nd_with_scales(&[n], scale, scale).unwrap();
+    let mut buf: Vec<Complex64> = (0..n).map(|i| Complex64::new(i as f64, 0.0)).collect();
     let original = buf.clone();
     let norm_before: f64 = original.iter().map(|c| c.norm_sqr()).sum();
     plan.forward_in_place(&mut buf).unwrap();
@@ -61,12 +53,8 @@ fn unitary_scaling_preserves_norm() {
 #[test]
 fn out_of_place_scaling() {
     let n: usize = 4;
-    let mut plan = FftPlanOutOfPlace::<f64>::complex_nd_with_scales(
-        &[n],
-        1.0,
-        1.0 / n as f64,
-    )
-    .unwrap();
+    let mut plan =
+        FftPlanOutOfPlace::<f64>::complex_nd_with_scales(&[n], 1.0, 1.0 / n as f64).unwrap();
     let input: Vec<Complex64> = vec![
         Complex64::new(1.0, 0.0),
         Complex64::new(2.0, 0.0),
@@ -86,12 +74,7 @@ fn out_of_place_scaling() {
 #[test]
 fn real_fft_with_backward_scale() {
     let n: usize = 8;
-    let mut plan = RealFftPlan::<f64>::real_nd_with_scales(
-        &[n],
-        1.0,
-        1.0 / n as f64,
-    )
-    .unwrap();
+    let mut plan = RealFftPlan::<f64>::real_nd_with_scales(&[n], 1.0, 1.0 / n as f64).unwrap();
     let input: Vec<f64> = (0..n).map(|i| i as f64).collect();
     let mut spectrum: Vec<Complex64> = vec![Complex64::new(0.0, 0.0); plan.complex_len()];
     plan.forward(&input, &mut spectrum).unwrap();
@@ -106,12 +89,7 @@ fn real_fft_with_backward_scale() {
 fn f32_scaling() {
     // Confirm scales propagate correctly for single precision too.
     let n: usize = 4;
-    let mut plan = FftPlan::<f32>::complex_nd_with_scales(
-        &[n],
-        1.0,
-        1.0 / n as f32,
-    )
-    .unwrap();
+    let mut plan = FftPlan::<f32>::complex_nd_with_scales(&[n], 1.0, 1.0 / n as f32).unwrap();
     let mut buf: Vec<num_complex::Complex32> = (0..n)
         .map(|i| num_complex::Complex32::new(i as f32, 0.0))
         .collect();

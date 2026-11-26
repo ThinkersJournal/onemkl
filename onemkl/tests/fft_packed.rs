@@ -96,8 +96,7 @@ fn packed_round_trip_scaled() {
     ] {
         let n = 12;
         let x = signal(n);
-        let mut plan =
-            PackedRealFftPlan::<f64>::with_scales(n, fmt, 1.0, 1.0 / n as f64).unwrap();
+        let mut plan = PackedRealFftPlan::<f64>::with_scales(n, fmt, 1.0, 1.0 / n as f64).unwrap();
         let mut buf = vec![0.0; plan.buffer_len()];
         buf[..n].copy_from_slice(&x);
         plan.forward_in_place(&mut buf).unwrap();

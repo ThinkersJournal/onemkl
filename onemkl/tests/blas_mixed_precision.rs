@@ -5,8 +5,8 @@
 use approx::assert_abs_diff_eq;
 
 use onemkl::blas::mixed_precision::{
-    bf16_bits_to_f32, f32_to_bf16_bits, gemm_bf16_f32, gemm_e4m3_f32, gemm_e5m2_f32,
-    gemm_f16_f32, gemm_s16_s32, gemm_s8u8_s32, hgemm, CblasOffset,
+    CblasOffset, bf16_bits_to_f32, f32_to_bf16_bits, gemm_bf16_f32, gemm_e4m3_f32, gemm_e5m2_f32,
+    gemm_f16_f32, gemm_s8u8_s32, gemm_s16_s32, hgemm,
 };
 use onemkl::{Layout, Transpose};
 
@@ -56,8 +56,20 @@ fn bf16_gemm_2x2_identity_passes_a_through() {
     let b: Vec<u16> = i_f32.iter().copied().map(f32_to_bf16_bits).collect();
     let mut c = [0.0_f32; 4];
     gemm_bf16_f32(
-        Layout::RowMajor, Transpose::NoTrans, Transpose::NoTrans,
-        2, 2, 2, 1.0, &a, 2, &b, 2, 0.0, &mut c, 2,
+        Layout::RowMajor,
+        Transpose::NoTrans,
+        Transpose::NoTrans,
+        2,
+        2,
+        2,
+        1.0,
+        &a,
+        2,
+        &b,
+        2,
+        0.0,
+        &mut c,
+        2,
     )
     .unwrap();
     // bf16 keeps integer values 1..=4 exactly.
@@ -76,8 +88,20 @@ fn f16_gemm_2x2() {
     let b: Vec<u16> = b_f32.iter().copied().map(f32_to_f16_bits).collect();
     let mut c = [0.0_f32; 4];
     gemm_f16_f32(
-        Layout::RowMajor, Transpose::NoTrans, Transpose::NoTrans,
-        2, 2, 2, 1.0, &a, 2, &b, 2, 0.0, &mut c, 2,
+        Layout::RowMajor,
+        Transpose::NoTrans,
+        Transpose::NoTrans,
+        2,
+        2,
+        2,
+        1.0,
+        &a,
+        2,
+        &b,
+        2,
+        0.0,
+        &mut c,
+        2,
     )
     .unwrap();
     assert_abs_diff_eq!(c[0], 6.0, epsilon = 1e-3);
@@ -95,9 +119,24 @@ fn s8u8_s32_quantized_matmul() {
     let mut c = [0_i32; 4];
     let cb = [0_i32]; // single-element bias for Fix mode
     gemm_s8u8_s32(
-        Layout::RowMajor, Transpose::NoTrans, Transpose::NoTrans,
+        Layout::RowMajor,
+        Transpose::NoTrans,
+        Transpose::NoTrans,
         CblasOffset::Fix,
-        2, 2, 2, 1.0, &a, 2, 0, &b, 2, 0, 0.0, &mut c, 2, &cb,
+        2,
+        2,
+        2,
+        1.0,
+        &a,
+        2,
+        0,
+        &b,
+        2,
+        0,
+        0.0,
+        &mut c,
+        2,
+        &cb,
     )
     .unwrap();
     assert_eq!(c[0], 19);
@@ -114,9 +153,24 @@ fn s16_s32_quantized_matmul() {
     let mut c = [0_i32; 4];
     let cb = [0_i32];
     gemm_s16_s32(
-        Layout::RowMajor, Transpose::NoTrans, Transpose::NoTrans,
+        Layout::RowMajor,
+        Transpose::NoTrans,
+        Transpose::NoTrans,
         CblasOffset::Fix,
-        2, 2, 2, 1.0, &a, 2, 0, &b, 2, 0, 0.0, &mut c, 2, &cb,
+        2,
+        2,
+        2,
+        1.0,
+        &a,
+        2,
+        0,
+        &b,
+        2,
+        0,
+        0.0,
+        &mut c,
+        2,
+        &cb,
     )
     .unwrap();
     assert_eq!(c[0], 19);
@@ -134,12 +188,20 @@ fn hgemm_2x2_scaled() {
     let b: Vec<u16> = i_f32.iter().copied().map(f32_to_f16_bits).collect();
     let mut c: Vec<u16> = vec![0; 4];
     hgemm(
-        Layout::RowMajor, Transpose::NoTrans, Transpose::NoTrans,
-        2, 2, 2,
+        Layout::RowMajor,
+        Transpose::NoTrans,
+        Transpose::NoTrans,
+        2,
+        2,
+        2,
         f32_to_f16_bits(1.0),
-        &a, 2, &b, 2,
+        &a,
+        2,
+        &b,
+        2,
         f32_to_f16_bits(0.0),
-        &mut c, 2,
+        &mut c,
+        2,
     )
     .unwrap();
     // hgemm output is fp16; we won't dig into the bit pattern, just
@@ -154,8 +216,20 @@ fn dimension_mismatch_rejected() {
     let mut c = [0.0_f32; 4];
     // Claim k = 8 but A only holds 4 elements.
     let r = gemm_bf16_f32(
-        Layout::RowMajor, Transpose::NoTrans, Transpose::NoTrans,
-        2, 2, 8, 1.0, &a, 8, &b, 2, 0.0, &mut c, 2,
+        Layout::RowMajor,
+        Transpose::NoTrans,
+        Transpose::NoTrans,
+        2,
+        2,
+        8,
+        1.0,
+        &a,
+        8,
+        &b,
+        2,
+        0.0,
+        &mut c,
+        2,
     );
     assert!(r.is_err());
 }
@@ -169,12 +243,36 @@ fn fp8_gemm_calls_succeed() {
     let b = [0_u8; 4];
     let mut c = [0.0_f32; 4];
     let r1 = gemm_e5m2_f32(
-        Layout::RowMajor, Transpose::NoTrans, Transpose::NoTrans,
-        2, 2, 2, 1.0, &a, 2, &b, 2, 0.0, &mut c, 2,
+        Layout::RowMajor,
+        Transpose::NoTrans,
+        Transpose::NoTrans,
+        2,
+        2,
+        2,
+        1.0,
+        &a,
+        2,
+        &b,
+        2,
+        0.0,
+        &mut c,
+        2,
     );
     let r2 = gemm_e4m3_f32(
-        Layout::RowMajor, Transpose::NoTrans, Transpose::NoTrans,
-        2, 2, 2, 1.0, &a, 2, &b, 2, 0.0, &mut c, 2,
+        Layout::RowMajor,
+        Transpose::NoTrans,
+        Transpose::NoTrans,
+        2,
+        2,
+        2,
+        1.0,
+        &a,
+        2,
+        &b,
+        2,
+        0.0,
+        &mut c,
+        2,
     );
     // Either succeeds or returns an MKL "not supported" error; both
     // exercise the FFI binding without crashing.

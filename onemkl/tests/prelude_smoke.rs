@@ -15,8 +15,13 @@ fn prelude_lets_us_run_a_gemm() {
     let b = MatrixRef::new(&b_data, 2, 2, Layout::RowMajor).unwrap();
     let mut c = MatrixMut::new(&mut c_data, 2, 2, Layout::RowMajor).unwrap();
     gemm(
-        Transpose::NoTrans, Transpose::NoTrans,
-        1.0, &a, &b, 0.0, &mut c,
+        Transpose::NoTrans,
+        Transpose::NoTrans,
+        1.0,
+        &a,
+        &b,
+        0.0,
+        &mut c,
     )
     .unwrap();
     // A * I = A.
@@ -33,7 +38,15 @@ fn prelude_brings_sparse_types_in_scope() {
         SparseMatrix::from_csr(3, 3, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
     let x = [1.0_f64; 3];
     let mut y = [0.0_f64; 3];
-    mat.mv(Operation::NoTrans, 1.0, MatrixType::General, &x, 0.0, &mut y).unwrap();
+    mat.mv(
+        Operation::NoTrans,
+        1.0,
+        MatrixType::General,
+        &x,
+        0.0,
+        &mut y,
+    )
+    .unwrap();
     assert_eq!(y, [1.0, 2.0, 3.0]);
 }
 

@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.3.10 - 2026-11-26 (allocated by pm-assist)
+
+### Added
+
+- FFT slice 1 (onemkl#14, ROADMAP): N-D strided complex `StridedFftPlan`, N-D strided real `StridedRealFftPlan`, in-place real `InPlaceRealFftPlan` and `StridedBatchedRealFftPlan` over the existing plan family, with tests under `onemkl/tests/fft_*`. Additive only; not breaking.
+
 ## 0.3.9 - 2026-11-25 (allocated by pm-assist)
 
 ### Added

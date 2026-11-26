@@ -149,6 +149,22 @@ jobs:
           n=$(cargo clippy -p onemkl --lib -- --force-warn clippy::too_many_arguments 2>&1 | grep -c 'too many arguments' || true)
           echo "too_many_arguments with the source allows overridden: $n (ROADMAP row W1)" | tee -a "$GITHUB_STEP_SUMMARY"
 
+  # `ilp64` needs bindings generated from the ILP64 headers; the vendored
+  # (LP64) bindings must be refused with a clear message, not 689 type errors.
+  ilp64-vendored-guard:
+    name: ilp64 refuses vendored bindings
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal --no-self-update
+      - name: cargo check must fail with the intended message
+        run: |
+          if out=$(ONEMKL_SYS_USE_VENDORED_BINDINGS=1 cargo check -p onemkl-sys --no-default-features --features ilp64 2>&1); then
+            echo "expected the ilp64 + vendored build to fail"; exit 1
+          fi
+          echo "$out" | grep -q 'needs bindings generated from the ILP64 headers' || { echo "$out"; exit 1; }
+
   deny:
     name: cargo deny (advisories, licences, bans, sources)
     runs-on: ubuntu-latest

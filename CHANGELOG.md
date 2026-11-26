@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased (version to be allocated by pm-assist)
+
+### Changed
+
+- `onemkl-sys` build script: `--features ilp64` together with the vendored bindings (`DOCS_RS` or `ONEMKL_SYS_USE_VENDORED_BINDINGS`) now stops with a message naming the requirement (ILP64 needs bindings generated from the ILP64 headers; the vendored ones are LP64-only) instead of hundreds of integer-width type errors in `onemkl`. CI checks the message.
+
 ## 0.4.3 - 2026-11-26 (allocated by pm-assist; SPDX headers, comments only)
 
 ### Changed

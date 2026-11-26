@@ -11,3 +11,5 @@ Build and run (Linux, oneMKL 2026.2 installed under `$MKLROOT`):
 
 Results at the time of writing are quoted in the doc comments, with the oneMKL version. A guard-page probe gives the extent MKL
 touches for the arguments used, not a documented guarantee; see each doc comment for what was and was not covered.
+
+`feast2.c` (FEAST csr / banded / generalised dense) and `ss2.c` (Summary Statistics robust covariance, outlier weights, stream quantiles) use the same method (`gcc ... feast2.c`, same flags). Not probed: `ss_edit_missing_values` (needs NaN data and an MI parameter set), `corr_exec`, trig `ipar` = 128.

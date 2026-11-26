@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased (version to be allocated by pm-assist)
+
+### Fixed
+
+- `data_fitting::CubicSpline1d::hermite` returned wrong splines: it passed all `n` knot slopes as MKL's `ic` array, but for `DF_PP_HERMITE` oneMKL takes the end-point slopes as boundary-condition values (`DF_BC_1ST_LEFT_DER | DF_BC_1ST_RIGHT_DER`) and `ic` only the `n - 2` interior slopes, so every slope was read one knot off (exact slopes of `x^3` gave first-cell coefficients `0 6 -9 4` instead of `0 0 0 1`). Present since 0.1.0 (published 0.1.0, 0.2.0, 0.3.0, 0.3.4, 0.3.8, 0.3.10); the earlier test only checked the knots, which the wrong spline still hits. Now checked at non-knot sites against an independent cubic Hermite evaluation. A two-knot Hermite spline, which oneMKL rejects at construction, now returns `Error::InvalidArgument` instead of a bare status.
+
 ## 0.3.10 - 2026-11-26 (allocated by pm-assist)
 
 ### Added

@@ -47,7 +47,8 @@ fn hermite_reproduces_a_cubic_exactly() {
     let d: Vec<f64> = x.iter().map(|t| 3.0 * t * t).collect();
     check(x.clone(), y.clone(), d, 1e-9);
     // and equals x^3 itself
-    let spline = CubicSpline1d::hermite(x.clone(), y, x.iter().map(|t| 3.0 * t * t).collect()).unwrap();
+    let spline =
+        CubicSpline1d::hermite(x.clone(), y, x.iter().map(|t| 3.0 * t * t).collect()).unwrap();
     let v = spline.interpolate(&[0.5, 2.25, 4.75]).unwrap();
     assert_abs_diff_eq!(v[0], 0.125, epsilon = 1e-9);
     assert_abs_diff_eq!(v[1], 11.390625, epsilon = 1e-9);
@@ -71,9 +72,15 @@ fn hermite_matches_reference_for_a_non_polynomial() {
 }
 
 #[test]
-fn hermite_with_two_knots() {
-    let x = vec![0.0_f64, 2.0];
-    let y = vec![1.0_f64, 5.0];
-    let d = vec![0.5_f64, -1.0];
+fn hermite_with_three_knots_and_end_slopes() {
+    let x = vec![0.0_f64, 2.0, 3.0];
+    let y = vec![1.0_f64, 5.0, 4.0];
+    let d = vec![0.5_f64, 0.0, -1.0];
     check(x, y, d, 1e-9);
+}
+
+#[test]
+fn hermite_rejects_two_knots_with_a_typed_error() {
+    let r = CubicSpline1d::hermite(vec![0.0_f64, 2.0], vec![1.0, 5.0], vec![0.5, -1.0]);
+    assert!(r.is_err());
 }

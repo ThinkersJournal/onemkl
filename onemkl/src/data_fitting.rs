@@ -178,6 +178,9 @@ pub struct CubicSpline1d<T: DataFittingScalar> {
     // Hermite splines need user-supplied derivatives at each knot; MKL
     // also keeps a raw pointer into this for the task's lifetime.
     _ic: Option<Box<[T]>>,
+    // Boundary-condition values (Hermite: the end-point derivatives); MKL
+    // also keeps a raw pointer into this.
+    _bc: Option<Box<[T]>>,
     // Coefficient storage. For cubic spline of n knots, MKL writes
     // 4 * (n - 1) coefficients here.
     _coeffs: Box<[T]>,
@@ -195,6 +198,7 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
             sys::DF_PP_NATURAL as c_int,
             sys::DF_BC_FREE_END as c_int,
             None,
+            None,
         )
     }
 
@@ -207,6 +211,7 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
             y,
             sys::DF_PP_BESSEL as c_int,
             sys::DF_BC_NOT_A_KNOT as c_int,
+            None,
             None,
         )
     }
@@ -222,24 +227,45 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
             sys::DF_PP_AKIMA as c_int,
             sys::DF_BC_NOT_A_KNOT as c_int,
             None,
+            None,
         )
     }
 
     /// Build a Hermite cubic spline interpolating `(x[i], y[i])` with
     /// the supplied first derivatives at each knot. `derivatives` must
     /// have the same length as `x` and `y`.
+    ///
+    /// oneMKL takes the Hermite slopes in two parts (see
+    /// `DF_PP_HERMITE`, `DF_BC_1ST_LEFT_DER` / `DF_BC_1ST_RIGHT_DER` and
+    /// `DF_IC_1ST_DER` in `mkl_df_defines.h`; behaviour measured on oneMKL
+    /// 2026.2): the end-point slopes go in as boundary-condition values and
+    /// `ic` carries only the `n - 2` interior slopes. Passing all `n`
+    /// slopes as `ic` makes MKL read them shifted by one knot and return
+    /// wrong coefficients (published versions 0.1.0 to 0.3.10 did that).
     pub fn hermite(x: Vec<T>, y: Vec<T>, derivatives: Vec<T>) -> Result<Self> {
         if derivatives.len() != x.len() {
             return Err(Error::InvalidArgument(
                 "derivatives must have the same length as x and y",
             ));
         }
+        let n = derivatives.len();
+        // oneMKL rejects a two-knot Hermite spline at construction (status
+        // -1004; measured on oneMKL 2026.2), so refuse it here rather than
+        // surface an opaque status.
+        if n < 3 {
+            return Err(Error::InvalidArgument(
+                "Hermite spline needs at least 3 knots (oneMKL rejects 2)",
+            ));
+        }
+        let bc = vec![derivatives[0], derivatives[n - 1]];
+        let interior: Option<Vec<T>> = Some(derivatives[1..n - 1].to_vec());
         Self::build(
             x,
             y,
             sys::DF_PP_HERMITE as c_int,
-            sys::DF_BC_NOT_A_KNOT as c_int,
-            Some(derivatives),
+            (sys::DF_BC_1ST_LEFT_DER | sys::DF_BC_1ST_RIGHT_DER) as c_int,
+            Some(bc),
+            interior,
         )
     }
 
@@ -248,6 +274,7 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         y: Vec<T>,
         s_type: c_int,
         bc_type: c_int,
+        bc: Option<Vec<T>>,
         ic: Option<Vec<T>>,
     ) -> Result<Self> {
         if x.len() != y.len() {
@@ -265,6 +292,7 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         let x_box = x.into_boxed_slice();
         let y_box = y.into_boxed_slice();
         let ic_box: Option<Box<[T]>> = ic.map(|v| v.into_boxed_slice());
+        let bc_box: Option<Box<[T]>> = bc.map(|v| v.into_boxed_slice());
         let coeffs_box: Box<[T]> = (0..(n - 1) * sys::DF_PP_CUBIC as usize)
             .map(|_| T::default())
             .collect::<Vec<_>>()
@@ -292,6 +320,7 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
             _x: x_box,
             _y: y_box,
             _ic: ic_box,
+            _bc: bc_box,
             _coeffs: coeffs_box,
         };
 
@@ -299,13 +328,17 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
             Some(buf) => (sys::DF_IC_1ST_DER as c_int, buf.as_ptr()),
             None => (sys::DF_NO_IC as c_int, ptr::null()),
         };
+        let bc_ptr = match this._bc.as_ref() {
+            Some(buf) => buf.as_ptr(),
+            None => ptr::null(),
+        };
         let status = unsafe {
             T::df_edit_pp_spline_1d(
                 this.task,
                 sys::DF_PP_CUBIC as c_int,
                 s_type,
                 bc_type,
-                ptr::null(),
+                bc_ptr,
                 ic_type,
                 ic_ptr,
                 this._coeffs.as_ptr(),

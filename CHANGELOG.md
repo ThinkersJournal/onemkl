@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased (version to be allocated by pm-assist)
+
+### Changed
+
+- Every `unsafe` trait method now has a `# Safety` section stating its real preconditions (extents, leading dimensions, aliasing, pointer retention, status handling); sizes verified against the installed oneMKL headers or by measurement are marked, the rest are marked unverified. `blas::packed` docs now say `gemm_pack_get_size` returns bytes.
+
 ## 0.3.13 - 2026-11-26 (allocated by pm-assist; docs only)
 
 ### Added

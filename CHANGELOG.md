@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.4.6 - 2026-11-26 (allocated by pm-assist; docs and tools: guard-page probes, verified-extent docs)
+
+### Changed
+
+- `feast` and `summary_stats` `# Safety` docs now give guard-page-verified extents for the FEAST csr/banded/general-dense calls and the robust-covariance, outlier-weight and stream-quantile calls (oneMKL 2026.2); new probes under `tools/size-probes/` (`feast2.c`, `ss2.c`, `fft_flags.c`) and provenance notes. Docs and tools only; no behaviour change.
+
 ## 0.4.5 - 2026-11-26 (allocated by pm-assist; additive: interpolate_derivatives, find_cells)
 
 ### Added

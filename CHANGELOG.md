@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased (version to be allocated by pm-assist)
+
+### Added
+
+- `data_fitting::CubicSpline1d::hyman` (`DF_PP_HYMAN`, free-end conditions; keeps monotone data monotone, unlike the not-a-knot variant); additive.
+
 ## 0.4.9 - 2026-11-27 (allocated by pm-assist; docs and tools: Data Fitting facts note, df_probe3.c)
 
 ### Added

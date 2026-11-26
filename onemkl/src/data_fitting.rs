@@ -275,6 +275,28 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         )
     }
 
+    /// Build a Hyman cubic spline interpolating `(x[i], y[i])`; the slopes
+    /// are limited so that monotone data stays monotone between knots.
+    /// Needs at least 4 knots. Built with `DF_BC_FREE_END`: measured on oneMKL
+    /// 2026.2 (`tools/size-probes/df_probe3.c`), that keeps plateau data
+    /// monotone, while `DF_BC_NOT_A_KNOT` does not and `DF_NO_BC` fails with
+    /// status -1014 even though the Intel reference lists it as supported.
+    pub fn hyman(x: Vec<T>, y: Vec<T>) -> Result<Self> {
+        if x.len() < 4 {
+            return Err(Error::InvalidArgument(
+                "Hyman spline needs at least 4 knots",
+            ));
+        }
+        Self::build(
+            x,
+            y,
+            sys::DF_PP_HYMAN as c_int,
+            sys::DF_BC_FREE_END as c_int,
+            None,
+            None,
+        )
+    }
+
     /// Build a Bessel cubic spline interpolating `(x[i], y[i])`. The
     /// derivative at each knot is set to the slope of the parabola
     /// through that knot and its two neighbors.
@@ -612,7 +634,7 @@ impl<T: DataFittingScalar> Drop for CubicSpline1d<T> {
 
 /// A piecewise-linear interpolant (`DF_PP_LINEAR`, default spline type,
 /// no boundary or internal conditions: the combination oneMKL 2026.2
-/// accepts, measured with `tools/size-probes/df_probe3.c` (added with the Data Fitting facts note)). `x` must be
+/// accepts, measured with `tools/size-probes/df_probe3.c`). `x` must be
 /// strictly increasing.
 pub struct LinearSpline1d<T: DataFittingScalar> {
     task: DFTaskPtr,

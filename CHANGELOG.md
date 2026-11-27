@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.4.8 - 2026-11-27 (allocated by pm-assist; additive: LinearSpline1d)
+
+### Added
+
+- `data_fitting::LinearSpline1d` (piecewise-linear interpolant: `new`, `interpolate`, `integrate`); additive.
+
 ## 0.4.7 - 2026-11-26 (allocated by pm-assist; additive: FftWorkspace, DFTI_WORKSPACE)
 
 ### Added

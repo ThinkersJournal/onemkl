@@ -606,6 +606,153 @@ impl<T: DataFittingScalar> Drop for CubicSpline1d<T> {
     }
 }
 
+// =====================================================================
+// LinearSpline1d
+// =====================================================================
+
+/// A piecewise-linear interpolant (`DF_PP_LINEAR`, default spline type,
+/// no boundary or internal conditions: the combination oneMKL 2026.2
+/// accepts, measured with `tools/size-probes/df_probe3.c` (added with the Data Fitting facts note)). `x` must be
+/// strictly increasing.
+pub struct LinearSpline1d<T: DataFittingScalar> {
+    task: DFTaskPtr,
+    // Inputs and coefficient storage; MKL keeps raw pointers into them
+    // while the task is open. Two coefficients per cell.
+    _x: Box<[T]>,
+    _y: Box<[T]>,
+    _coeffs: Box<[T]>,
+}
+
+unsafe impl<T: DataFittingScalar + Send> Send for LinearSpline1d<T> {}
+
+impl<T: DataFittingScalar + Default> LinearSpline1d<T> {
+    /// Build the piecewise-linear interpolant through `(x[i], y[i])`.
+    pub fn new(x: Vec<T>, y: Vec<T>) -> Result<Self> {
+        if x.len() != y.len() {
+            return Err(Error::InvalidArgument("x and y must have the same length"));
+        }
+        let n = x.len();
+        if n < 2 {
+            return Err(Error::InvalidArgument(
+                "linear spline needs at least 2 knots",
+            ));
+        }
+        let x_box = x.into_boxed_slice();
+        let y_box = y.into_boxed_slice();
+        let coeffs_box: Box<[T]> = (0..(n - 1) * sys::DF_PP_LINEAR as usize)
+            .map(|_| T::default())
+            .collect::<Vec<_>>()
+            .into_boxed_slice();
+        let nx: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let mut task: DFTaskPtr = ptr::null_mut();
+        check_df(unsafe {
+            T::df_new_task_1d(
+                &mut task,
+                nx,
+                x_box.as_ptr(),
+                sys::DF_NON_UNIFORM_PARTITION as c_int,
+                1,
+                y_box.as_ptr(),
+                sys::DF_NO_HINT as c_int,
+            )
+        })?;
+        let this = Self {
+            task,
+            _x: x_box,
+            _y: y_box,
+            _coeffs: coeffs_box,
+        };
+        check_df(unsafe {
+            T::df_edit_pp_spline_1d(
+                this.task,
+                sys::DF_PP_LINEAR as c_int,
+                sys::DF_PP_DEFAULT as c_int,
+                sys::DF_NO_BC as c_int,
+                ptr::null(),
+                sys::DF_NO_IC as c_int,
+                ptr::null(),
+                this._coeffs.as_ptr(),
+                sys::DF_NO_HINT as c_int,
+            )
+        })?;
+        check_df(unsafe {
+            T::df_construct_1d(
+                this.task,
+                sys::DF_PP_SPLINE as c_int,
+                sys::DF_METHOD_STD as c_int,
+            )
+        })?;
+        Ok(this)
+    }
+
+    /// Evaluate the interpolant at `sites`.
+    pub fn interpolate(&self, sites: &[T]) -> Result<Vec<T>> {
+        let nsite: c_int = sites
+            .len()
+            .try_into()
+            .map_err(|_| Error::DimensionOverflow)?;
+        let mut out: Vec<T> = (0..sites.len()).map(|_| T::default()).collect();
+        let dorder: [c_int; 1] = [1];
+        check_df(unsafe {
+            T::df_interpolate_1d(
+                self.task,
+                sys::DF_INTERP as c_int,
+                sys::DF_METHOD_PP as c_int,
+                nsite,
+                sites.as_ptr(),
+                sys::DF_NO_HINT as c_int,
+                1,
+                dorder.as_ptr(),
+                ptr::null(),
+                out.as_mut_ptr(),
+                sys::DF_NO_HINT as c_int,
+                ptr::null_mut(),
+            )
+        })?;
+        Ok(out)
+    }
+
+    /// Integrate over `[left[i], right[i]]` for each pair.
+    pub fn integrate(&self, left: &[T], right: &[T]) -> Result<Vec<T>> {
+        if left.len() != right.len() {
+            return Err(Error::InvalidArgument(
+                "left and right limit slices must have the same length",
+            ));
+        }
+        let nlim: c_int = left
+            .len()
+            .try_into()
+            .map_err(|_| Error::DimensionOverflow)?;
+        let mut out: Vec<T> = (0..left.len()).map(|_| T::default()).collect();
+        check_df(unsafe {
+            T::df_integrate_1d(
+                self.task,
+                sys::DF_METHOD_PP as c_int,
+                nlim,
+                left.as_ptr(),
+                sys::DF_NO_HINT as c_int,
+                right.as_ptr(),
+                sys::DF_NO_HINT as c_int,
+                ptr::null(),
+                ptr::null(),
+                out.as_mut_ptr(),
+                sys::DF_NO_HINT as c_int,
+            )
+        })?;
+        Ok(out)
+    }
+}
+
+impl<T: DataFittingScalar> Drop for LinearSpline1d<T> {
+    fn drop(&mut self) {
+        if !self.task.is_null() {
+            unsafe {
+                let _ = sys::dfDeleteTask(&mut self.task);
+            }
+        }
+    }
+}
+
 #[inline]
 fn check_df(status: c_int) -> Result<()> {
     if status == 0 {

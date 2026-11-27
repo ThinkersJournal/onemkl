@@ -60,6 +60,9 @@ Exactly one feature must be selected from each of:
 | Threading | `threading-sequential` (default), `threading-intel-openmp`, `threading-tbb` |
 | Linkage | `link-dynamic` (default), `link-static`, `link-rt` |
 
+`ilp64` makes `MKL_INT` 64-bit and needs the `mkl_intel_ilp64` libraries. A **binary** crate may enable it; a **library** crate must not, because Cargo unifies features across the dependency graph and enabling it would change the public integer types for every dependent.
+
+
 ### Per-domain (`onemkl`)
 
 Each oneMKL domain has its own feature, all enabled by default. Foundation

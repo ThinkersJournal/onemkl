@@ -20,7 +20,7 @@ fn iter_refine_gesv_f64_solves_2x2() {
     let mut a = [2.0_f64, 1.0, 1.0, 3.0];
     let mut b = [3.0_f64, 4.0];
     let mut x = [0.0_f64, 0.0];
-    let mut ipiv = vec![0_i32; 2];
+    let mut ipiv = vec![0; 2];
 
     let mut a_view = MatrixMut::new(&mut a, 2, 2, Layout::RowMajor).unwrap();
     let mut b_view = MatrixMut::new(&mut b, 2, 1, Layout::RowMajor).unwrap();
@@ -68,7 +68,7 @@ fn iter_refine_gesv_c64_solves_2x2_complex() {
     ];
     let mut b = [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
     let mut x = [Complex64::new(0.0, 0.0); 2];
-    let mut ipiv = vec![0_i32; 2];
+    let mut ipiv = vec![0; 2];
 
     let mut a_view = MatrixMut::new(&mut a, 2, 2, Layout::RowMajor).unwrap();
     let mut b_view = MatrixMut::new(&mut b, 2, 1, Layout::RowMajor).unwrap();

@@ -13,8 +13,8 @@ fn ilu0_preserves_sparsity() {
     //   [[ 4, -1,  0],
     //    [-1,  4, -1],
     //    [ 0, -1,  4]]
-    let ia = vec![1_i32, 3, 6, 8];
-    let ja = vec![1_i32, 2, 1, 2, 3, 2, 3];
+    let ia = vec![1, 3, 6, 8];
+    let ja = vec![1, 2, 1, 2, 3, 2, 3];
     let a = vec![4.0_f64, -1.0, -1.0, 4.0, -1.0, -1.0, 4.0];
 
     let alu = ilu0(3, &a, &ia, &ja).unwrap();
@@ -34,8 +34,8 @@ fn ilut_returns_factor() {
     //    [-1,  4, -1,  0],
     //    [ 0, -1,  4, -1],
     //    [ 0,  0, -1,  4]]
-    let ia = vec![1_i32, 3, 6, 9, 11];
-    let ja = vec![1_i32, 2, 1, 2, 3, 2, 3, 4, 3, 4];
+    let ia = vec![1, 3, 6, 9, 11];
+    let ja = vec![1, 2, 1, 2, 3, 2, 3, 4, 3, 4];
     let a = vec![4.0_f64, -1.0, -1.0, 4.0, -1.0, -1.0, 4.0, -1.0, -1.0, 4.0];
     let res = ilut(4, &a, &ia, &ja, 1e-6, 5).unwrap();
     assert_eq!(res.ialut.len(), 5);
@@ -49,7 +49,7 @@ fn ilut_returns_factor() {
 
 #[test]
 fn invalid_ia_length_rejected() {
-    let r = ilu0(3, &[1.0_f64], &[0_i32, 1], &[0_i32]);
+    let r = ilu0(3, &[1.0_f64], &[0, 1], &[0]);
     assert!(r.is_err());
 }
 
@@ -58,8 +58,8 @@ fn apply_ilu0_round_trips_through_a() {
     // 3×3 tridiagonal A = [[ 4, -1,  0], [-1, 4, -1], [0, -1, 4]].
     // ILU(0) is exact on a tridiagonal SPD matrix, so M = A and
     // M⁻¹ * (A * x) = x for any x.
-    let ia = vec![1_i32, 3, 6, 8];
-    let ja = vec![1_i32, 2, 1, 2, 3, 2, 3];
+    let ia = vec![1, 3, 6, 8];
+    let ja = vec![1, 2, 1, 2, 3, 2, 3];
     let a = vec![4.0_f64, -1.0, -1.0, 4.0, -1.0, -1.0, 4.0];
     let alu = ilu0(3, &a, &ia, &ja).unwrap();
 
@@ -74,8 +74,8 @@ fn apply_ilu0_round_trips_through_a() {
 
 #[test]
 fn apply_ilu_validates_dimensions() {
-    let ia = vec![1_i32, 2];
-    let ja = vec![1_i32];
+    let ia = vec![1, 2];
+    let ja = vec![1];
     let alu = vec![1.0_f64];
     let v_wrong = vec![1.0_f64, 2.0];
     let r = apply_ilu(1, &alu, &ia, &ja, &v_wrong);

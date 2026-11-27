@@ -15,8 +15,8 @@ fn qr_solve_overdetermined_system() {
     //    [1, 1],
     //    [1, 0]]
     // CSR (zero-based): row_ptr = [0, 1, 2, 4, 5]; col_idx = [0, 1, 0, 1, 0]
-    let row_ptr = vec![0_i32, 1, 2, 4, 5];
-    let col_idx = vec![0_i32, 1, 0, 1, 0];
+    let row_ptr = vec![0, 1, 2, 4, 5];
+    let col_idx = vec![0, 1, 0, 1, 0];
     let values = vec![1.0_f64, 1.0, 1.0, 1.0, 1.0];
     let a = CsrMatrix::from_csr(4, 2, IndexBase::Zero, row_ptr, col_idx, values).unwrap();
 

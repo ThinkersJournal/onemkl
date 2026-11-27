@@ -99,8 +99,8 @@ fn fits_quadratic_to_three_points() {
 //   J = [[2*x[0], 1], [1, -2*x[1]]]
 // Stored column-major in MKL: [2*x[0], 1, 1, -2*x[1]].
 unsafe extern "C" fn nonlinear_residual_for_jacobi(
-    n: *mut core::ffi::c_int,
-    m: *mut core::ffi::c_int,
+    n: *mut onemkl_sys::MKL_INT,
+    m: *mut onemkl_sys::MKL_INT,
     x: *mut f64,
     f: *mut f64,
 ) {

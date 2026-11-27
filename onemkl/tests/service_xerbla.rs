@@ -13,12 +13,12 @@ fn record(routine: &str, argument: i32) {
     SEEN.lock().unwrap().push((routine.to_owned(), argument));
 }
 
-fn bad_dpotrf() -> i32 {
+fn bad_dpotrf() -> onemkl_sys::MKL_INT {
     let uplo = b'U' as c_char;
-    let n: core::ffi::c_int = -1;
-    let lda: core::ffi::c_int = 1;
+    let n: onemkl_sys::MKL_INT = -1;
+    let lda: onemkl_sys::MKL_INT = 1;
     let mut a = [0.0f64; 1];
-    let mut info: core::ffi::c_int = 0;
+    let mut info: onemkl_sys::MKL_INT = 0;
     unsafe { onemkl_sys::dpotrf(&uplo, &n, a.as_mut_ptr(), &lda, &mut info) };
     info
 }

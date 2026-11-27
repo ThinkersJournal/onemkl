@@ -14,8 +14,8 @@ fn solve_real_3x3_spd() {
     //    [-1,  4, -1],
     //    [ 0, -1,  4]]
     // 1-based CSR upper triangle (DSS convention for symmetric):
-    let row_ptr = vec![1_i32, 3, 5, 6];
-    let col_idx = vec![1_i32, 2, 2, 3, 3];
+    let row_ptr = vec![1, 3, 5, 6];
+    let col_idx = vec![1, 2, 2, 3, 3];
     let values = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
 
     let mut dss = Dss::<f64>::new().unwrap();
@@ -43,8 +43,8 @@ fn solve_real_3x3_spd() {
 
 #[test]
 fn solve_two_rhs() {
-    let row_ptr = vec![1_i32, 3, 5, 6];
-    let col_idx = vec![1_i32, 2, 2, 3, 3];
+    let row_ptr = vec![1, 3, 5, 6];
+    let col_idx = vec![1, 2, 2, 3, 3];
     let values = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
 
     let mut dss = Dss::<f64>::new().unwrap();
@@ -81,8 +81,8 @@ fn statistics_after_factor() {
     // 4 * (4*4 - 1) - (-1) * (-4 - 0) = 4*15 - 4 = 56.
     //
     // 1-based upper-triangular CSR.
-    let row_ptr = vec![1_i32, 3, 5, 6];
-    let col_idx = vec![1_i32, 2, 2, 3, 3];
+    let row_ptr = vec![1, 3, 5, 6];
+    let col_idx = vec![1, 2, 2, 3, 3];
     let values = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
 
     let mut dss = Dss::<f64>::new().unwrap();
@@ -118,8 +118,8 @@ fn inertia_for_indefinite_matrix() {
     //    [ 1,  0,  1],
     //    [ 0,  1, -3]]
     // Eigenvalues are roughly { 2.30, -3.13, -0.17 } → 1 positive, 2 negative.
-    let row_ptr = vec![1_i32, 3, 5, 6];
-    let col_idx = vec![1_i32, 2, 2, 3, 3];
+    let row_ptr = vec![1, 3, 5, 6];
+    let col_idx = vec![1, 2, 2, 3, 3];
     let values = vec![2.0_f64, 1.0, 0.0, 1.0, -3.0];
 
     let mut dss = Dss::<f64>::new().unwrap();

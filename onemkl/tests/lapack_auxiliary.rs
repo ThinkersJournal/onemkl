@@ -83,7 +83,7 @@ fn gecon_well_conditioned_matrix() {
     // LU factorize in-place.
     {
         let mut a_view = MatrixMut::new(&mut a, 3, 3, Layout::RowMajor).unwrap();
-        let mut ipiv = vec![0_i32; 3];
+        let mut ipiv = vec![0; 3];
         getrf::<f64>(&mut a_view, &mut ipiv).unwrap();
     }
     // gecon expects a MatrixRef of the LU-factored matrix.
@@ -101,7 +101,7 @@ fn laswp_swaps_two_rows() {
     let mut a = vec![1.0_f64, 2.0, 3.0, 4.0, 5.0, 6.0];
     let mut a_view = MatrixMut::new(&mut a, 3, 2, Layout::RowMajor).unwrap();
     // Swap row 1 with row 3 (1-based ipiv[0] = 3).
-    let ipiv = vec![3_i32, 2, 3];
+    let ipiv = vec![3, 2, 3];
     laswp::<f64>(&mut a_view, 1, 1, &ipiv, 1).unwrap();
     // After swapping rows 1 and 3:
     //   row 0: [5, 6] (was row 2)
@@ -253,7 +253,7 @@ fn syconv_roundtrip(uplo: UpLo, layout: Layout) {
             a[idx] = full[i][j];
         }
     }
-    let mut ipiv = vec![0_i32; n];
+    let mut ipiv = vec![0; n];
     sytrf(
         uplo,
         &mut MatrixMut::new(&mut a, n, n, layout).unwrap(),

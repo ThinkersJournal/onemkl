@@ -80,15 +80,11 @@ jobs:
       - name: cargo test
         run: cargo test --workspace --no-fail-fast
 
-      # `ilp64` does not type-check for the safe wrappers (measured with
-      # bindgen on the ILP64 headers); the build script must refuse it with
-      # one message, not hundreds of type errors.
-      - name: onemkl refuses ilp64 with the intended message
-        run: |
-          if out=$(cargo check -p onemkl --no-default-features --features "ilp64,threading-sequential,link-dynamic,blas" 2>&1); then
-            echo "expected the ilp64 build to fail"; exit 1
-          fi
-          echo "$out" | grep -q 'ilp64. feature of .onemkl. is not supported yet' || { echo "$out"; exit 1; }
+      # The safe wrappers support the ILP64 interface (`MKL_INT` = 64-bit):
+      # build against bindings generated from the ILP64 headers and run the
+      # whole suite against the `mkl_intel_ilp64` libraries.
+      - name: cargo test (ilp64)
+        run: cargo test -p onemkl --no-default-features --features "ilp64,threading-sequential,link-dynamic,blas,data-fitting,dss,feast,fft,iss,lapack,optim,pardiso,pde,preconditioners,rng,sparse,vm" --no-fail-fast
 
       # Single dynamic library (mkl_rt): layers are chosen at run time.
       - name: cargo test (link-rt)

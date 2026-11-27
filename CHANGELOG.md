@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- ILP64 support for `onemkl` (package 4 of 4, with 0.6.1 to 0.6.4): `--features ilp64` now builds the safe wrappers against bindings generated from the ILP64 headers; `onemkl/build.rs` no longer refuses it. Tests and the `solve_linear_system` example spell their integers as `MKL_INT`, so they compile under both interfaces. CI replaces the refusal check with `cargo test (ilp64)` in the `build + test (Ubuntu, Intel oneAPI MKL)` job (the job that installs `intel-oneapi-mkl-devel`, which carries the `mkl_intel_ilp64` libraries); its first run is unproven. A binary crate may enable `ilp64`; a library crate must not (feature unification would change the public types for every dependent). Under the default `lp64` nothing changes for callers.
+
 ## 0.6.4 - 2026-11-27 (PM-allocated; additive: ILP64 package 3b of 4, data_fitting, rng convolution and summary_stats; MKL_INT is i32 under lp64: no change)
 
 ### Changed

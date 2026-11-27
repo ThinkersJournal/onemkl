@@ -119,3 +119,50 @@ fn outliers_bacon_flags_extreme() {
         weights[5]
     );
 }
+
+#[test]
+fn impute_missing_fills_marked_cells() {
+    use onemkl::rng::summary_stats::{ImputeOptions, SsScalar, impute_missing};
+    const P: usize = 3;
+    const N: usize = 40;
+    let mut state = 12345_u64;
+    let mut data: Vec<f64> = (0..P * N)
+        .map(|_| {
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            (state >> 11) as f64 / (1u64 << 53) as f64
+        })
+        .collect();
+    for j in 0..P {
+        data[j * N + 3 + j] = <f64 as SsScalar>::MISSING;
+    }
+    let opts = ImputeOptions::<f64> {
+        sets: 2,
+        ..Default::default()
+    };
+    let out = impute_missing(&mut data, P, N, &opts).unwrap();
+    assert_eq!(out.missing_count, 3);
+    assert_eq!(out.simulated.len(), 6);
+    assert_eq!(out.estimates.len(), 2 * 30 * (P + (P * P + P) / 2));
+    assert!(
+        out.simulated
+            .iter()
+            .all(|v| v.is_finite() && (-2.0..3.0).contains(v))
+    );
+    // an ordinary NaN is not the marker
+    let mut plain = vec![1.0_f64, f64::NAN, 3.0, 4.0];
+    assert!(impute_missing(&mut plain, 1, 4, &opts).is_err());
+}
+
+#[test]
+fn impute_missing_f32() {
+    use onemkl::rng::summary_stats::{ImputeOptions, SsScalar, impute_missing};
+    let mut data: Vec<f32> = (0..2 * 30)
+        .map(|i| ((i * 37 % 101) as f32) / 101.0)
+        .collect();
+    data[5] = <f32 as SsScalar>::MISSING;
+    let out = impute_missing(&mut data, 2, 30, &ImputeOptions::<f32>::default()).unwrap();
+    assert_eq!(out.simulated.len(), 2);
+    assert!(out.simulated.iter().all(|v| v.is_finite()));
+}

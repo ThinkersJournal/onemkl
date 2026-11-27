@@ -5,7 +5,7 @@
 #include <mkl.h>
 #include <mkl_vsl.h>
 static int tbs(int p, int n, int np, double *par) {
-  double *x = malloc(8 * p * n), m[8], c[64];
+  double *x = malloc(sizeof(double) * (size_t)p * (size_t)n), m[8], c[64];
   srand(2);
   for (int i = 0; i < p * n; i++) x[i] = (double)rand() / RAND_MAX;
   MKL_INT P = p, N = n, st = VSL_SS_MATRIX_STORAGE_ROWS, cs = VSL_SS_MATRIX_STORAGE_FULL, k = np;
@@ -14,6 +14,7 @@ static int tbs(int p, int n, int np, double *par) {
   int e = vsldSSEditRobustCovariance(t, &cs, &k, np ? par : NULL, m, c);
   int rc = vsldSSCompute(t, VSL_SS_ROBUST_COV, VSL_SS_METHOD_TBS);
   vslSSDeleteTask(&t);
+  free(x);
   printf("tbs p=%d n=%d nparams=%d edit=%d compute=%d\n", p, n, np, e, rc);
   return rc;
 }

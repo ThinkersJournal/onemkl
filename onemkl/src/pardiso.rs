@@ -239,7 +239,7 @@ impl<T: PardisoScalar> Pardiso<T> {
         ia: &[i32],
         ja: &[i32],
     ) -> Result<()> {
-        self.run_phase(12, n, a, ia, ja, 0, &[], &mut [])
+        self.run_phase(12, n, CsrRef { a, ia, ja }, 0, &[], &mut [])
     }
 
     /// Solve `A * X = B`, returning `X` in `x`. If the matrix has not
@@ -261,7 +261,7 @@ impl<T: PardisoScalar> Pardiso<T> {
         } else {
             13
         };
-        self.run_phase(phase, n, a, ia, ja, nrhs as i32, b, x)
+        self.run_phase(phase, n, CsrRef { a, ia, ja }, nrhs as i32, b, x)
     }
 
     /// Solve with multiple right-hand sides simultaneously. `b` and
@@ -289,7 +289,7 @@ impl<T: PardisoScalar> Pardiso<T> {
         } else {
             13
         };
-        self.run_phase(phase, n, a, ia, ja, nrhs, b, x)
+        self.run_phase(phase, n, CsrRef { a, ia, ja }, nrhs, b, x)
     }
 
     /// Free the internal numerical factorization (phase 0) but keep
@@ -299,7 +299,18 @@ impl<T: PardisoScalar> Pardiso<T> {
         // Empty arrays — phase 0 only inspects pt and iparm.
         let dummy_a: [T; 0] = [];
         let dummy_i: [i32; 0] = [];
-        self.run_phase(0, 0, &dummy_a, &dummy_i, &dummy_i, 0, &[], &mut [])?;
+        self.run_phase(
+            0,
+            0,
+            CsrRef {
+                a: &dummy_a,
+                ia: &dummy_i,
+                ja: &dummy_i,
+            },
+            0,
+            &[],
+            &mut [],
+        )?;
         self.factorized = false;
         Ok(())
     }
@@ -470,24 +481,33 @@ impl<T: PardisoScalar> Pardiso<T> {
     pub fn reset(&mut self) -> Result<()> {
         let dummy_a: [T; 0] = [];
         let dummy_i: [i32; 0] = [];
-        self.run_phase(-1, 0, &dummy_a, &dummy_i, &dummy_i, 0, &[], &mut [])?;
+        self.run_phase(
+            -1,
+            0,
+            CsrRef {
+                a: &dummy_a,
+                ia: &dummy_i,
+                ja: &dummy_i,
+            },
+            0,
+            &[],
+            &mut [],
+        )?;
         self.initialized = false;
         self.factorized = false;
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn run_phase(
         &mut self,
         phase: i32,
         n: usize,
-        a: &[T],
-        ia: &[i32],
-        ja: &[i32],
+        csr: CsrRef<'_, T>,
         nrhs: i32,
         b: &[T],
         x: &mut [T],
     ) -> Result<()> {
+        let CsrRef { a, ia, ja } = csr;
         let n_i32: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
         let phase_c = phase;
         let maxfct: c_int = 1;
@@ -684,4 +704,11 @@ impl<T> Drop for Pardiso<T> {
             );
         }
     }
+}
+
+/// The three CSR arrays of the matrix handed to a PARDISO phase.
+struct CsrRef<'a, T> {
+    a: &'a [T],
+    ia: &'a [i32],
+    ja: &'a [i32],
 }

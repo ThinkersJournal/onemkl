@@ -38,7 +38,6 @@ pub trait SsScalar: Copy + Default + 'static {
     /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
     /// On a non-zero return `*task` must not be used. A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `x`: p * n and `w`: n elements, row storage; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
     unsafe fn ss_new_task(
         task: *mut VSLSSTaskPtr,
         p: *const c_int,
@@ -103,7 +102,6 @@ pub trait SsScalar: Copy + Default + 'static {
     /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `quants_out`: p * q elements; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
     unsafe fn ss_edit_quantiles(
         task: VSLSSTaskPtr,
         quant_order_n: *const c_int,
@@ -123,7 +121,6 @@ pub trait SsScalar: Copy + Default + 'static {
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (`tools/size-probes/ss2.c`, smallest buffer for which the call did not fault, p = 3, n = 40, row storage; oneMKL 2026.2, Linux x86_64): `quants_out`: p * m elements (m = 3 orders; ZW method, accuracy 0.01, computed over one batch of n observations, not a multi-block stream).
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
     unsafe fn ss_edit_stream_quantiles(
         task: VSLSSTaskPtr,
         quant_order_n: *const c_int,
@@ -143,7 +140,6 @@ pub trait SsScalar: Copy + Default + 'static {
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (`tools/size-probes/ss2.c`, smallest buffer for which the call did not fault, p = 3, n = 40, row storage; oneMKL 2026.2, Linux x86_64): `mean_out`: p and `cov_out`: p * p elements (full storage, TBS method with 4 parameters).
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
     unsafe fn ss_edit_robust_covariance(
         task: VSLSSTaskPtr,
         cov_storage: *const c_int,

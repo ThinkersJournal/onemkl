@@ -314,7 +314,6 @@ pub fn mul_by_conj<T: ComplexVmScalar>(x: &[T], y: &[T], z: &mut [T]) -> Result<
 
 /// Element-wise `r[i] = (scale_a * x[i] + shift_a) / (scale_b * y[i] + shift_b)`.
 /// Real-only.
-#[allow(clippy::too_many_arguments)]
 pub fn linear_frac<T: RealVmScalar>(
     x: &[T],
     y: &[T],

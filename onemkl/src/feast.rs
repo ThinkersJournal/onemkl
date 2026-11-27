@@ -252,14 +252,16 @@ pub fn eigh_real_csr<T: FeastReal>(
         );
     }
     finish_real_result(
-        info,
-        m_actual,
+        FeastStatus {
+            info,
+            m_actual,
+            epsout,
+            loop_count,
+        },
         n,
         eigenvalues,
         eigenvectors,
         residuals,
-        epsout,
-        loop_count,
     )
 }
 
@@ -323,14 +325,16 @@ pub fn eigh_complex_csr<T: FeastComplex>(
         );
     }
     finish_complex_result(
-        info,
-        m_actual,
+        FeastStatus {
+            info,
+            m_actual,
+            epsout,
+            loop_count,
+        },
         n,
         eigenvalues,
         eigenvectors,
         residuals,
-        epsout,
-        loop_count,
     )
 }
 
@@ -395,14 +399,16 @@ pub fn eigh_real_banded<T: FeastReal>(
         );
     }
     finish_real_result(
-        info,
-        m_actual,
+        FeastStatus {
+            info,
+            m_actual,
+            epsout,
+            loop_count,
+        },
         n,
         eigenvalues,
         eigenvectors,
         residuals,
-        epsout,
-        loop_count,
     )
 }
 
@@ -463,14 +469,16 @@ pub fn eigh_complex_banded<T: FeastComplex>(
         );
     }
     finish_complex_result(
-        info,
-        m_actual,
+        FeastStatus {
+            info,
+            m_actual,
+            epsout,
+            loop_count,
+        },
         n,
         eigenvalues,
         eigenvectors,
         residuals,
-        epsout,
-        loop_count,
     )
 }
 
@@ -537,14 +545,16 @@ pub fn gen_eigh_real_dense<T: FeastReal>(
         );
     }
     finish_real_result(
-        info,
-        m_actual,
+        FeastStatus {
+            info,
+            m_actual,
+            epsout,
+            loop_count,
+        },
         n,
         eigenvalues,
         eigenvectors,
         residuals,
-        epsout,
-        loop_count,
     )
 }
 
@@ -611,28 +621,41 @@ pub fn gen_eigh_complex_dense<T: FeastComplex>(
         );
     }
     finish_complex_result(
-        info,
-        m_actual,
+        FeastStatus {
+            info,
+            m_actual,
+            epsout,
+            loop_count,
+        },
         n,
         eigenvalues,
         eigenvectors,
         residuals,
-        epsout,
-        loop_count,
     )
 }
 
-#[allow(clippy::too_many_arguments)]
-fn finish_real_result<T: FeastReal>(
+/// What a FEAST driver reports besides the buffers (`info`, the eigenvalue
+/// count found, the last residual norm and the refinement loop count).
+struct FeastStatus<R> {
     info: c_int,
     m_actual: c_int,
+    epsout: R,
+    loop_count: c_int,
+}
+
+fn finish_real_result<T: FeastReal>(
+    status: FeastStatus<T>,
     n: usize,
     mut eigenvalues: Vec<T>,
     mut eigenvectors: Vec<T>,
     mut residuals: Vec<T>,
-    epsout: T,
-    loop_count: c_int,
 ) -> Result<FeastResult<T, T>> {
+    let FeastStatus {
+        info,
+        m_actual,
+        epsout,
+        loop_count,
+    } = status;
     if !(0..=1).contains(&info) {
         return Err(Error::LapackComputationFailure { info });
     }
@@ -650,17 +673,19 @@ fn finish_real_result<T: FeastReal>(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
 fn finish_complex_result<T: FeastComplex>(
-    info: c_int,
-    m_actual: c_int,
+    status: FeastStatus<T::Real>,
     n: usize,
     mut eigenvalues: Vec<T::Real>,
     mut eigenvectors: Vec<T>,
     mut residuals: Vec<T::Real>,
-    epsout: T::Real,
-    loop_count: c_int,
 ) -> Result<FeastResult<T, T::Real>> {
+    let FeastStatus {
+        info,
+        m_actual,
+        epsout,
+        loop_count,
+    } = status;
     if !(0..=1).contains(&info) {
         return Err(Error::LapackComputationFailure { info });
     }

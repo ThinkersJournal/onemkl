@@ -3,7 +3,7 @@ import re,sys,glob
 ROOT='.'
 SPD=sys.argv[1]
 text=''
-for h in ('mkl_spblas.h','mkl_vsl_functions.h','mkl_vml_functions.h','mkl_solvers_ee.h','mkl_df_functions.h','mkl_blas.h','mkl_cblas.h','mkl_lapacke.h','mkl_blas_compact.h'):
+for h in ('mkl_spblas.h','mkl_vsl_functions.h','mkl_vml_functions.h','mkl_solvers_ee.h','mkl_df_functions.h','mkl_blas.h','mkl_cblas.h','mkl_lapacke.h','mkl_blas_compact.h','mkl_sparse_qr.h','mkl_poisson.h','mkl_trans.h'):
     try: text+=open(f'{SPD}/{h}',encoding='utf-8',errors='replace').read()+'\n'
     except FileNotFoundError: pass
 def split_args(a):
@@ -18,7 +18,7 @@ def split_args(a):
 protos={}
 for m in re.finditer(r'\b(?:_Mkl_Api|_Mkl_Vml_Api|_mkl_api)\s*\(\s*[\w\s\*]+?,\s*(\w+)\s*,\s*\((.*?)\)\s*(?:NOTHROW)?\s*\)\s*;',text,re.S):
     protos.setdefault(m.group(1),split_args(m.group(2)))
-for m in re.finditer(r'\b(?:void|int|float|double|lapack_int|sparse_status_t|MKL_INT|CBLAS_INDEX|size_t)\s+\*?\s*(\w+)\s*\(([^;{}]*?)\)\s*(?:NOTHROW|MKL_DEPRECATED[^;]*)?\s*;',text,re.S):
+for m in re.finditer(r'\b(?:void|int|float|double|lapack_int|sparse_status_t|mkl_jit_status_t|MKL_INT|CBLAS_INDEX|size_t)\s+\*?\s*(\w+)\s*\(([^;{}]*?)\)\s*(?:NOTHROW|MKL_DEPRECATED[^;]*)?\s*;',text,re.S):
     protos.setdefault(m.group(1),split_args(m.group(2)))
 print(len(protos),'prototypes',file=sys.stderr)
 def f(pfx,mid,suffix=''): return [pfx.replace('?',p)+mid+suffix for p in ('s','d','c','z')]
@@ -26,7 +26,7 @@ MAP={
  'sparse_create_csr':[f('mkl_sparse_?_create_csr','')[i] for i in range(4)],
 }
 def sp(n): return [f'mkl_sparse_{p}_{n}' for p in 'sdcz']
-MAP={'sparse_create_csr':sp('create_csr'),'sparse_create_coo':sp('create_coo'),'sparse_create_csc':sp('create_csc'),'sparse_create_bsr':sp('create_bsr'),'sparse_mm':sp('mm'),'sparse_dotmv':sp('dotmv'),'sparse_qr_solve':sp('qr_solve'),
+MAP={'mkl_imatcopy':[f'mkl_{p}imatcopy' for p in 'sdcz'],'mkl_omatcopy':[f'mkl_{p}omatcopy' for p in 'sdcz'],'mkl_omatcopy2':[f'mkl_{p}omatcopy2' for p in 'sdcz'],'mkl_omatadd':[f'mkl_{p}omatadd' for p in 'sdcz'],'sparse_qr_solve':[f'mkl_sparse_{p}_qr_solve' for p in 'sdcz'],'jit_create':[f'mkl_cblas_jit_create_{p}gemm' for p in 'sdcz'],'init_2d':['s_init_Helmholtz_2D','d_init_Helmholtz_2D'],'commit_2d':['s_commit_Helmholtz_2D','d_commit_Helmholtz_2D'],'solve_2d':['s_Helmholtz_2D','d_Helmholtz_2D'],'sparse_create_csr':sp('create_csr'),'sparse_create_coo':sp('create_coo'),'sparse_create_csc':sp('create_csc'),'sparse_create_bsr':sp('create_bsr'),'sparse_mm':sp('mm'),'sparse_dotmv':sp('dotmv'),'sparse_qr_solve':sp('qr_solve'),
  'rng_lognormal':['vsRngLognormal','vdRngLognormal'],'rng_beta':['vsRngBeta','vdRngBeta'],'rng_gaussian_mv':['vsRngGaussianMV','vdRngGaussianMV'],
  'ss_edit_moments':['vslsSSEditMoments','vsldSSEditMoments'],'ss_edit_missing_values':['vslsSSEditMissingValues','vsldSSEditMissingValues'],
  'vm_linear_frac':['vsLinearFrac','vdLinearFrac'],

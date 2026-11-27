@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.4.15 - 2026-11-27 (allocated by pm-assist; W1 closes: every too_many_arguments allow carries a reason, 50 no-op allows removed, 4 private fns restructured; no API change)
+
+### Changed
+
+- The last bare `#[allow(clippy::too_many_arguments)]` are gone: 9 more raw C-mirror declarations, 6 published wrappers and 2 test mirrors carry a `reason`; 4 private functions take a parameter struct instead (`PackArgs`, `FeastStatus`, `CsrRef`; no API change); 50 allows on functions clippy does not flag were removed; the trait-level allow on `HelmholtzScalar` is split into one reasoned allow per method. No behaviour change.
+
 ## 0.4.14 - 2026-11-27 (allocated by pm-assist; reasons on 171 too_many_arguments allows: W1 chunks 1-3, no behaviour change)
 
 ### Changed

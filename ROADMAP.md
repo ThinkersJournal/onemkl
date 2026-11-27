@@ -288,10 +288,14 @@ Every non-MPI domain at Comprehensive:
     summary statistics, sparse, VM) brings that to 127 bare and 118 reasoned.
     Chunk 3 (60 published safe wrappers, "stable public surface" with the
     tag and argument count as evidence) brings it to 67 bare and 178
-    reasoned (measured by `git grep`). Left: `sparse_qr_solve`, `pde` 3,
-    `jit_create`, `compact` `gepack` / `geunpack`, 4 lines of
-    `blas/scalar.rs`, 4 ambiguous-name wrappers and the 4 private functions;
-    plus the 42 allows that no longer have a flagged function (unexplained).
+    reasoned (measured by `git grep`). Chunk 4 (the rest; the PR after
+    the chunks 1-3 group): 9 more C mirrors, 6 public-surface, 2 test mirrors,
+    4 private functions restructured (parameter structs, no API change), 50
+    no-op allows removed. Result: no bare `#[allow(clippy::too_many_arguments)]`
+    left in `onemkl` / `onemkl-sys` (`git grep`); every one carries a `reason`.
+    Open: whether the reasoned functions should eventually take parameter
+    structs (breaking for the published ones) is a separate decision; this
+    row's bare-allow work is done.
   - **Wanted:** per item, either a `reason = "mirrors the oneMKL C signature
     <name> argument for argument"` (C mirrors: most of the trait declarations
     and wrappers above), or a restructure (a parameter struct) for the rest;

@@ -511,7 +511,10 @@ pub trait BlasScalar: Scalar {
     /// # Safety
     /// The buffer must be large enough for both pre- and post-transpose
     /// shapes given the leading dimensions.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature mkl_?imatcopy argument for argument"
+    )]
     unsafe fn mkl_imatcopy(
         ordering: c_char,
         trans: c_char,
@@ -532,7 +535,10 @@ pub trait BlasScalar: Scalar {
     /// `b` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `b`, after `trans`/`side` are applied) and `ldb` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
     /// Buffers written by the routine (`b`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature mkl_?omatcopy argument for argument"
+    )]
     unsafe fn mkl_omatcopy(
         ordering: c_char,
         trans: c_char,
@@ -553,7 +559,10 @@ pub trait BlasScalar: Scalar {
     /// `b` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `b`, after `trans`/`side` are applied) and `ldb` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
     /// Buffers written by the routine (`b`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature mkl_?omatcopy2 argument for argument"
+    )]
     unsafe fn mkl_omatcopy2(
         ordering: c_char,
         trans: c_char,
@@ -577,7 +586,10 @@ pub trait BlasScalar: Scalar {
     /// `c` must be valid for reads and writes (`beta != 0` or in/out operand) or writes of `ldc * stored_cols` elements for column-major or `ldc * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix as stored (the dimensions the routine defines for `c`, after `trans`/`side` are applied) and `ldc` is at least `max(1, stored_rows)` (column-major) or `max(1, stored_cols)` (row-major).
     /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature mkl_?omatadd argument for argument"
+    )]
     unsafe fn mkl_omatadd(
         ordering: c_char,
         transa: c_char,
@@ -895,7 +907,6 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
     /// # Safety
     /// `x` and `y` must be uniquely accessible, each at least
     /// `(n - 1) * |inc?| + 1` elements.
-    #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_rot(
         n: MKL_INT,
         x: *mut Self,

@@ -255,7 +255,17 @@ impl<T: PackedGemmScalar> PackedMatrix<T> {
         src: &[T],
         ld: usize,
     ) -> Result<Self> {
-        Self::pack(layout, PackIdentifier::A, trans, m, n, k, alpha, src, ld)
+        Self::pack(PackArgs {
+            layout,
+            identifier: PackIdentifier::A,
+            trans,
+            m,
+            n,
+            k,
+            alpha,
+            src,
+            ld,
+        })
     }
 
     /// Pack the `B` operand of a future GEMM.
@@ -273,21 +283,31 @@ impl<T: PackedGemmScalar> PackedMatrix<T> {
         src: &[T],
         ld: usize,
     ) -> Result<Self> {
-        Self::pack(layout, PackIdentifier::B, trans, m, n, k, alpha, src, ld)
+        Self::pack(PackArgs {
+            layout,
+            identifier: PackIdentifier::B,
+            trans,
+            m,
+            n,
+            k,
+            alpha,
+            src,
+            ld,
+        })
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn pack(
-        layout: Layout,
-        identifier: PackIdentifier,
-        trans: Transpose,
-        m: usize,
-        n: usize,
-        k: usize,
-        alpha: T,
-        src: &[T],
-        ld: usize,
-    ) -> Result<Self> {
+    fn pack(args: PackArgs<'_, T>) -> Result<Self> {
+        let PackArgs {
+            layout,
+            identifier,
+            trans,
+            m,
+            n,
+            k,
+            alpha,
+            src,
+            ld,
+        } = args;
         let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
         let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
         let k_i: c_int = k.try_into().map_err(|_| Error::DimensionOverflow)?;
@@ -481,4 +501,17 @@ pub fn gemm_compute_packed_b<T: PackedGemmScalar>(
         );
     }
     Ok(())
+}
+
+/// The arguments of the private `pack` helper, gathered in one struct.
+struct PackArgs<'a, T> {
+    layout: Layout,
+    identifier: PackIdentifier,
+    trans: Transpose,
+    m: usize,
+    n: usize,
+    k: usize,
+    alpha: T,
+    src: &'a [T],
+    ld: usize,
 }

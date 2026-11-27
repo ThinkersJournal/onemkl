@@ -386,10 +386,14 @@ impl Boundary {
 }
 
 /// Scalar types supported by the Helmholtz solver.
-#[allow(missing_docs, clippy::missing_safety_doc, clippy::too_many_arguments)]
+#[allow(missing_docs, clippy::missing_safety_doc)]
 pub trait HelmholtzScalar: Copy + Default + 'static {
     fn to_f64(self) -> f64;
     fn from_f64(v: f64) -> Self;
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature ?_init_Helmholtz_2D argument for argument"
+    )]
     unsafe fn init_2d(
         ax: *const Self,
         bx: *const Self,
@@ -403,6 +407,10 @@ pub trait HelmholtzScalar: Copy + Default + 'static {
         dpar: *mut Self,
         stat: *mut c_int,
     );
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature ?_commit_Helmholtz_2D argument for argument"
+    )]
     unsafe fn commit_2d(
         f: *mut Self,
         bd_ax: *const Self,
@@ -414,6 +422,10 @@ pub trait HelmholtzScalar: Copy + Default + 'static {
         dpar: *mut Self,
         stat: *mut c_int,
     );
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature ?_Helmholtz_2D argument for argument"
+    )]
     unsafe fn solve_2d(
         f: *mut Self,
         bd_ax: *const Self,
@@ -1018,7 +1030,10 @@ unsafe impl<T: HelmholtzScalar + Send> Send for Helmholtz3D<T> {}
 
 impl<T: HelmholtzScalar> Helmholtz3D<T> {
     /// Build a solver; `nx`, `ny`, `nz` must be even and at least 4.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "stable public surface: published since v0.3.8 with 8 arguments; changing the signature breaks consumers"
+    )]
     pub fn new(
         (ax, bx): (T, T),
         (ay, by): (T, T),

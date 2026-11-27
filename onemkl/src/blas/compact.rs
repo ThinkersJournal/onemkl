@@ -327,7 +327,10 @@ pub fn get_size<T: CompactScalar>(
 /// Each pointer in `a` must point to a buffer of at least the
 /// matrix's storage size and remain valid for the duration of this
 /// call.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub unsafe fn gepack<T: CompactScalar>(
     layout: Layout,
     rows: usize,
@@ -367,7 +370,10 @@ pub unsafe fn gepack<T: CompactScalar>(
 /// Each pointer in `a` must point to a buffer of at least the
 /// matrix's storage size and remain valid for the duration of this
 /// call.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub unsafe fn geunpack<T: CompactScalar>(
     layout: Layout,
     rows: usize,

@@ -169,7 +169,10 @@ pub fn gemm_bf16_f32(
 
 /// `C ← alpha · op(A) · op(B) + beta · C` where `A` and `B` are fp16
 /// and `C` is f32. Wraps `cblas_gemm_f16f16f32`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 14 arguments; changing the signature breaks consumers"
+)]
 pub fn gemm_f16_f32(
     layout: Layout,
     transa: Transpose,
@@ -475,7 +478,10 @@ pub fn gemm_s16_s32(
 /// Pre-Sapphire-Rapids legacy path; for modern hardware prefer
 /// [`gemm_f16_f32`] (fp32 accumulator) for better numerical accuracy
 /// at the same fp16 input precision.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 14 arguments; changing the signature breaks consumers"
+)]
 pub fn hgemm(
     layout: Layout,
     transa: Transpose,
@@ -540,7 +546,6 @@ pub mod f16 {
 
     /// `C ← alpha · op(A) · op(B) + beta · C`, `A`/`B` in `f16`, `C` and the
     /// accumulator in `f32` (`cblas_gemm_f16f16f32`).
-    #[allow(clippy::too_many_arguments)]
     pub fn gemm_f16_f32(
         layout: Layout,
         transa: Transpose,
@@ -579,7 +584,6 @@ pub mod f16 {
     /// (`cblas_hgemm`). Each operand needs `cols * ld` elements (stricter than
     /// the Fortran `(cols-1)*ld + rows`). Accumulation precision is not
     /// measured here.
-    #[allow(clippy::too_many_arguments)]
     pub fn hgemm(
         layout: Layout,
         transa: Transpose,

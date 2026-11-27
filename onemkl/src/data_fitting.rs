@@ -35,7 +35,6 @@ pub trait DataFittingScalar: Copy + 'static {
     /// **Pointer retention:** the task stores the pointers passed to it; each such buffer must stay allocated at a stable address and be neither mutated nor aliased by a `&mut` while MKL may read it (outputs: not accessed at all) until the task is deleted (`dfDeleteTask`) or the pointer replaced.
     /// On non-zero return `*task` must not be used. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `x`: nx, `y`: nx * ny elements, with a non-uniform partition and no hints; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
     unsafe fn df_new_task_1d(
         task: *mut DFTaskPtr,
         nx: c_int,
@@ -338,10 +337,6 @@ macro_rules! impl_data_fitting_real {
                 task: DFTaskPtr,
                 args: &mut IntegrateExArgs<'_, Self>,
             ) -> c_int {
-                #[allow(
-                    clippy::too_many_arguments,
-                    reason = "mirrors the oneMKL C call-back typedef df?IntegrCallBack argument for argument"
-                )]
                 unsafe extern "C" fn tramp(
                     n: *mut c_longlong,
                     lcell: *mut c_longlong,
@@ -355,9 +350,21 @@ macro_rules! impl_data_fitting_real {
                     // SAFETY: oneMKL passes valid arguments and the slot pointer given below.
                     unsafe { run_integr_callback::<$ty>(n, lcell, llim, rcell, rlim, r, user) }
                 }
-                let mut left = args.callbacks.left.take().map(|f| CbSlot { f, panic: None });
-                let mut right = args.callbacks.right.take().map(|f| CbSlot { f, panic: None });
-                let mut inside = args.callbacks.interior.take().map(|f| CbSlot { f, panic: None });
+                let mut left = args
+                    .callbacks
+                    .left
+                    .take()
+                    .map(|f| CbSlot { f, panic: None });
+                let mut right = args
+                    .callbacks
+                    .right
+                    .take()
+                    .map(|f| CbSlot { f, panic: None });
+                let mut inside = args
+                    .callbacks
+                    .interior
+                    .take()
+                    .map(|f| CbSlot { f, panic: None });
                 fn slot_ptr<T>(s: &mut Option<CbSlot<'_, T>>) -> *const c_void {
                     s.as_mut()
                         .map_or(ptr::null(), |s| ptr::from_mut(s).cast_const().cast())

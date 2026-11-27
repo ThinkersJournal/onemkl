@@ -540,7 +540,6 @@ pub fn heev<T: ComplexLapackScalar>(
 
 /// Eigen-decomposition of a real general matrix. Eigenvalues are split
 /// into real (`wr`) and imaginary (`wi`) parts.
-#[allow(clippy::too_many_arguments)]
 pub fn geev_real<T: RealLapackScalar>(
     jobvl: Job,
     jobvr: Job,
@@ -587,7 +586,6 @@ pub fn geev_real<T: RealLapackScalar>(
 
 /// Eigen-decomposition of a complex general matrix. Eigenvalues are
 /// returned as a single complex vector `w`.
-#[allow(clippy::too_many_arguments)]
 pub fn geev_complex<T: ComplexLapackScalar>(
     jobvl: Job,
     jobvr: Job,
@@ -631,7 +629,6 @@ pub fn geev_complex<T: ComplexLapackScalar>(
 /// SVD of a general matrix using the divide-and-conquer driver.
 /// Returns `A = U * Σ * V`. `s` receives singular values; `u` and `vt`
 /// receive `U` and `Vᵀ` according to `jobz`.
-#[allow(clippy::too_many_arguments)]
 pub fn gesdd<T: LapackScalar>(
     jobz: Job,
     a: &mut MatrixMut<'_, T>,
@@ -676,7 +673,6 @@ pub fn gesdd<T: LapackScalar>(
 
 /// SVD of a general matrix using the QR-iteration driver. Slower but
 /// more memory-efficient than [`gesdd`] for some shapes.
-#[allow(clippy::too_many_arguments)]
 pub fn gesvd<T: LapackScalar>(
     jobu: Job,
     jobvt: Job,
@@ -1044,7 +1040,6 @@ pub fn pbtrs<T: LapackScalar>(
 
 /// Solve `A * X = B` with PD tridiagonal `A`. `d` is the real diagonal
 /// (length `n`); `e` is the off-diagonal (length `n - 1`).
-#[allow(clippy::too_many_arguments)]
 pub fn ptsv<T: LapackScalar>(
     layout: Layout,
     n: usize,
@@ -1244,7 +1239,6 @@ pub fn sptrs<T: LapackScalar>(
 }
 
 /// Solve `A * X = B` with symmetric / Hermitian PD `A` stored packed.
-#[allow(clippy::too_many_arguments)]
 pub fn ppsv<T: LapackScalar>(
     layout: Layout,
     uplo: UpLo,
@@ -1292,7 +1286,6 @@ pub fn pptrf<T: LapackScalar>(layout: Layout, uplo: UpLo, n: usize, ap: &mut [T]
 }
 
 /// Solve with the PD packed Cholesky factor produced by [`pptrf`].
-#[allow(clippy::too_many_arguments)]
 pub fn pptrs<T: LapackScalar>(
     layout: Layout,
     uplo: UpLo,
@@ -1447,7 +1440,6 @@ impl GeneralizedEigenType {
 /// `A` and `B` are real symmetric `n × n`; `B` must additionally be
 /// positive-definite. Eigenvalues are written to `w`. With
 /// [`Job::Compute`] the eigenvectors overwrite `A`.
-#[allow(clippy::too_many_arguments)]
 pub fn sygv<T: RealLapackScalar>(
     itype: GeneralizedEigenType,
     jobz: Job,
@@ -1484,7 +1476,6 @@ pub fn sygv<T: RealLapackScalar>(
 /// Solve a complex Hermitian-definite generalized eigenproblem.
 /// `A` is Hermitian; `B` is Hermitian positive-definite. Eigenvalues
 /// `w` are real (Hermitian guarantees this).
-#[allow(clippy::too_many_arguments)]
 pub fn hegv<T: ComplexLapackScalar>(
     itype: GeneralizedEigenType,
     jobz: Job,
@@ -1684,7 +1675,6 @@ pub struct RrrEigResult<T, R> {
 /// Real-only. Computes the eigenvalues / eigenvectors of `A` in the
 /// requested range; `abstol` is the absolute convergence tolerance
 /// (pass `0.0` to use LAPACK's default).
-#[allow(clippy::too_many_arguments)]
 pub fn syevr<T: RealLapackScalar + Default>(
     jobz: Job,
     range: EigenRange<T>,
@@ -1763,7 +1753,6 @@ pub fn syevr<T: RealLapackScalar + Default>(
 
 /// Hermitian eigensolver via RRR. Complex-only. Eigenvalues are
 /// real (stored in `Self::Real`); eigenvectors are complex.
-#[allow(clippy::too_many_arguments)]
 pub fn heevr<T: ComplexLapackScalar + Default>(
     jobz: Job,
     range: EigenRange<T::Real>,

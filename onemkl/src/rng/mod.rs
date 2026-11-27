@@ -17,6 +17,7 @@
 
 use core::ffi::c_int;
 use core::ptr;
+use onemkl_sys::MKL_INT;
 
 use onemkl_sys::{self as sys, VSLStreamStatePtr};
 
@@ -76,7 +77,7 @@ pub enum BasicRng {
 
 impl BasicRng {
     #[inline]
-    fn as_brng(self) -> c_int {
+    fn as_brng(self) -> MKL_INT {
         let v = match self {
             Self::Mcg31 => sys::VSL_BRNG_MCG31,
             Self::Mcg59 => sys::VSL_BRNG_MCG59,
@@ -93,7 +94,7 @@ impl BasicRng {
             Self::Rdrand => sys::VSL_BRNG_RDRAND,
             Self::NonDeterm => sys::VSL_BRNG_NONDETERM,
         };
-        v as c_int
+        v as MKL_INT
     }
 
     /// True if this BRNG is a quasi-random sequence rather than a
@@ -127,13 +128,13 @@ pub enum MatrixStorage {
 
 impl MatrixStorage {
     #[inline]
-    fn as_int(self) -> c_int {
+    fn as_int(self) -> MKL_INT {
         let v = match self {
             Self::Full => sys::VSL_MATRIX_STORAGE_FULL,
             Self::Packed => sys::VSL_MATRIX_STORAGE_PACKED,
             Self::Diagonal => sys::VSL_MATRIX_STORAGE_DIAGONAL,
         };
-        v as c_int
+        v as MKL_INT
     }
 
     fn factor_len(self, dimen: usize) -> usize {
@@ -175,7 +176,8 @@ impl Stream {
             ));
         }
         let mut handle: VSLStreamStatePtr = ptr::null_mut();
-        let status = unsafe { sys::vslNewStream(&mut handle, brng.as_brng(), seed) };
+        let status =
+            unsafe { sys::vslNewStream(&mut handle, brng.as_brng(), sys::MKL_UINT::from(seed)) };
         check_vsl(status)?;
         Ok(Self { handle })
     }
@@ -210,7 +212,7 @@ impl Stream {
             sys::vslNewStreamEx(
                 &mut handle,
                 brng.as_brng(),
-                params.len() as c_int,
+                params.len() as MKL_INT,
                 params.as_ptr(),
             )
         };
@@ -228,7 +230,7 @@ impl Stream {
     /// Re-cast as the leapfrog'th generator out of `nstreams`. Each
     /// resulting stream draws every `nstreams`-th element of the
     /// original sequence.
-    pub fn leapfrog(&mut self, leap_index: c_int, nstreams: c_int) -> Result<()> {
+    pub fn leapfrog(&mut self, leap_index: MKL_INT, nstreams: MKL_INT) -> Result<()> {
         let status = unsafe { sys::vslLeapfrogStream(self.handle, leap_index, nstreams) };
         check_vsl(status)
     }
@@ -679,7 +681,7 @@ impl Stream {
             return Err(Error::InvalidArgument("ntrial must be >= 0"));
         }
         let n_samples = dim_to_mkl_int(out.len() / k)?;
-        let k_i = dim_to_mkl_int(k)?;
+        let k_i: c_int = k.try_into().map_err(|_| Error::DimensionOverflow)?;
         let status = unsafe {
             sys::viRngMultinomial(
                 0,
@@ -830,7 +832,7 @@ pub trait RngFloat: Copy + 'static {
     /// Parameters: `a < b` (the interval `[a, b)`).
     /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_uniform(
-        method: c_int,
+        method: MKL_INT,
         stream: VSLStreamStatePtr,
         n: onemkl_sys::MKL_INT,
         r: *mut Self,
@@ -847,7 +849,7 @@ pub trait RngFloat: Copy + 'static {
     /// Parameters: `sigma > 0`; `mean` any finite value.
     /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_gaussian(
-        method: c_int,
+        method: MKL_INT,
         stream: VSLStreamStatePtr,
         n: onemkl_sys::MKL_INT,
         r: *mut Self,
@@ -864,7 +866,7 @@ pub trait RngFloat: Copy + 'static {
     /// Parameters: `beta > 0` (scale); `displacement` any finite value.
     /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_exponential(
-        method: c_int,
+        method: MKL_INT,
         stream: VSLStreamStatePtr,
         n: onemkl_sys::MKL_INT,
         r: *mut Self,
@@ -885,7 +887,7 @@ pub trait RngFloat: Copy + 'static {
         reason = "mirrors the oneMKL C signature v?RngLognormal argument for argument"
     )]
     unsafe fn rng_lognormal(
-        method: c_int,
+        method: MKL_INT,
         stream: VSLStreamStatePtr,
         n: onemkl_sys::MKL_INT,
         r: *mut Self,
@@ -904,7 +906,7 @@ pub trait RngFloat: Copy + 'static {
     /// Parameters: `scale > 0`; `displacement` any finite value.
     /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_cauchy(
-        method: c_int,
+        method: MKL_INT,
         stream: VSLStreamStatePtr,
         n: onemkl_sys::MKL_INT,
         r: *mut Self,
@@ -921,7 +923,7 @@ pub trait RngFloat: Copy + 'static {
     /// Parameters: `alpha > 0` (shape) and `beta > 0` (scale); `displacement` any finite value.
     /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_weibull(
-        method: c_int,
+        method: MKL_INT,
         stream: VSLStreamStatePtr,
         n: onemkl_sys::MKL_INT,
         r: *mut Self,
@@ -939,7 +941,7 @@ pub trait RngFloat: Copy + 'static {
     /// Parameters: `alpha > 0` (shape) and `beta > 0` (scale); `displacement` any finite value.
     /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_gamma(
-        method: c_int,
+        method: MKL_INT,
         stream: VSLStreamStatePtr,
         n: onemkl_sys::MKL_INT,
         r: *mut Self,
@@ -961,7 +963,7 @@ pub trait RngFloat: Copy + 'static {
         reason = "mirrors the oneMKL C signature v?RngBeta argument for argument"
     )]
     unsafe fn rng_beta(
-        method: c_int,
+        method: MKL_INT,
         stream: VSLStreamStatePtr,
         n: onemkl_sys::MKL_INT,
         r: *mut Self,
@@ -980,7 +982,7 @@ pub trait RngFloat: Copy + 'static {
     /// Parameters: `scale > 0`; `displacement` any finite value.
     /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_gumbel(
-        method: c_int,
+        method: MKL_INT,
         stream: VSLStreamStatePtr,
         n: onemkl_sys::MKL_INT,
         r: *mut Self,
@@ -997,7 +999,7 @@ pub trait RngFloat: Copy + 'static {
     /// Parameters: `scale > 0`; `displacement` any finite value.
     /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_laplace(
-        method: c_int,
+        method: MKL_INT,
         stream: VSLStreamStatePtr,
         n: onemkl_sys::MKL_INT,
         r: *mut Self,
@@ -1014,7 +1016,7 @@ pub trait RngFloat: Copy + 'static {
     /// Parameters: `scale > 0`; `displacement` any finite value.
     /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_rayleigh(
-        method: c_int,
+        method: MKL_INT,
         stream: VSLStreamStatePtr,
         n: onemkl_sys::MKL_INT,
         r: *mut Self,
@@ -1031,7 +1033,7 @@ pub trait RngFloat: Copy + 'static {
     /// Parameters: `ndf > 0` (degrees of freedom).
     /// A non-zero return is the VSL status; `r` may be partially written on failure.
     unsafe fn rng_chi_square(
-        method: c_int,
+        method: MKL_INT,
         stream: VSLStreamStatePtr,
         n: onemkl_sys::MKL_INT,
         r: *mut Self,
@@ -1051,12 +1053,12 @@ pub trait RngFloat: Copy + 'static {
         reason = "mirrors the oneMKL C signature v?RngGaussianMV argument for argument"
     )]
     unsafe fn rng_gaussian_mv(
-        method: c_int,
+        method: MKL_INT,
         stream: VSLStreamStatePtr,
         n: onemkl_sys::MKL_INT,
         r: *mut Self,
-        dimen: c_int,
-        mstorage: c_int,
+        dimen: MKL_INT,
+        mstorage: MKL_INT,
         mean: *const Self,
         cov_factor: *const Self,
     ) -> c_int;
@@ -1074,7 +1076,7 @@ macro_rules! impl_rng_float {
     ) => {
         impl RngFloat for $ty {
             unsafe fn rng_uniform(
-                method: c_int,
+                method: MKL_INT,
                 stream: VSLStreamStatePtr,
                 n: onemkl_sys::MKL_INT,
                 r: *mut Self,
@@ -1084,7 +1086,7 @@ macro_rules! impl_rng_float {
                 unsafe { sys::$uniform(method, stream, n, r, a, b) }
             }
             unsafe fn rng_gaussian(
-                method: c_int,
+                method: MKL_INT,
                 stream: VSLStreamStatePtr,
                 n: onemkl_sys::MKL_INT,
                 r: *mut Self,
@@ -1094,7 +1096,7 @@ macro_rules! impl_rng_float {
                 unsafe { sys::$gaussian(method, stream, n, r, mean, sigma) }
             }
             unsafe fn rng_exponential(
-                method: c_int,
+                method: MKL_INT,
                 stream: VSLStreamStatePtr,
                 n: onemkl_sys::MKL_INT,
                 r: *mut Self,
@@ -1104,7 +1106,7 @@ macro_rules! impl_rng_float {
                 unsafe { sys::$exp(method, stream, n, r, displacement, beta) }
             }
             unsafe fn rng_lognormal(
-                method: c_int,
+                method: MKL_INT,
                 stream: VSLStreamStatePtr,
                 n: onemkl_sys::MKL_INT,
                 r: *mut Self,
@@ -1116,7 +1118,7 @@ macro_rules! impl_rng_float {
                 unsafe { sys::$logn(method, stream, n, r, mean, sigma, displacement, scale) }
             }
             unsafe fn rng_cauchy(
-                method: c_int,
+                method: MKL_INT,
                 stream: VSLStreamStatePtr,
                 n: onemkl_sys::MKL_INT,
                 r: *mut Self,
@@ -1126,7 +1128,7 @@ macro_rules! impl_rng_float {
                 unsafe { sys::$cauchy(method, stream, n, r, displacement, scale) }
             }
             unsafe fn rng_weibull(
-                method: c_int,
+                method: MKL_INT,
                 stream: VSLStreamStatePtr,
                 n: onemkl_sys::MKL_INT,
                 r: *mut Self,
@@ -1137,7 +1139,7 @@ macro_rules! impl_rng_float {
                 unsafe { sys::$weibull(method, stream, n, r, alpha, displacement, beta) }
             }
             unsafe fn rng_gamma(
-                method: c_int,
+                method: MKL_INT,
                 stream: VSLStreamStatePtr,
                 n: onemkl_sys::MKL_INT,
                 r: *mut Self,
@@ -1148,7 +1150,7 @@ macro_rules! impl_rng_float {
                 unsafe { sys::$gamma(method, stream, n, r, alpha, displacement, beta) }
             }
             unsafe fn rng_beta(
-                method: c_int,
+                method: MKL_INT,
                 stream: VSLStreamStatePtr,
                 n: onemkl_sys::MKL_INT,
                 r: *mut Self,
@@ -1160,7 +1162,7 @@ macro_rules! impl_rng_float {
                 unsafe { sys::$beta(method, stream, n, r, p, q, displacement, scale) }
             }
             unsafe fn rng_gumbel(
-                method: c_int,
+                method: MKL_INT,
                 stream: VSLStreamStatePtr,
                 n: onemkl_sys::MKL_INT,
                 r: *mut Self,
@@ -1170,7 +1172,7 @@ macro_rules! impl_rng_float {
                 unsafe { sys::$gumbel(method, stream, n, r, displacement, scale) }
             }
             unsafe fn rng_laplace(
-                method: c_int,
+                method: MKL_INT,
                 stream: VSLStreamStatePtr,
                 n: onemkl_sys::MKL_INT,
                 r: *mut Self,
@@ -1180,7 +1182,7 @@ macro_rules! impl_rng_float {
                 unsafe { sys::$laplace(method, stream, n, r, displacement, scale) }
             }
             unsafe fn rng_rayleigh(
-                method: c_int,
+                method: MKL_INT,
                 stream: VSLStreamStatePtr,
                 n: onemkl_sys::MKL_INT,
                 r: *mut Self,
@@ -1190,7 +1192,7 @@ macro_rules! impl_rng_float {
                 unsafe { sys::$rayleigh(method, stream, n, r, displacement, scale) }
             }
             unsafe fn rng_chi_square(
-                method: c_int,
+                method: MKL_INT,
                 stream: VSLStreamStatePtr,
                 n: onemkl_sys::MKL_INT,
                 r: *mut Self,
@@ -1199,12 +1201,12 @@ macro_rules! impl_rng_float {
                 unsafe { sys::$chi_square(method, stream, n, r, ndf) }
             }
             unsafe fn rng_gaussian_mv(
-                method: c_int,
+                method: MKL_INT,
                 stream: VSLStreamStatePtr,
                 n: onemkl_sys::MKL_INT,
                 r: *mut Self,
-                dimen: c_int,
-                mstorage: c_int,
+                dimen: MKL_INT,
+                mstorage: MKL_INT,
                 mean: *const Self,
                 cov_factor: *const Self,
             ) -> c_int {

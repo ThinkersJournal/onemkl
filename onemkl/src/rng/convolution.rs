@@ -19,6 +19,7 @@
 use core::ffi::c_int;
 use core::marker::PhantomData;
 use core::ptr;
+use onemkl_sys::MKL_INT;
 
 use onemkl_sys::{self as sys, VSLConvTaskPtr, VSLCorrTaskPtr};
 
@@ -38,14 +39,14 @@ pub enum ConvMode {
 
 impl ConvMode {
     #[inline]
-    fn as_int(self) -> c_int {
+    fn as_int(self) -> MKL_INT {
         // Cast each constant individually so the match arms are
         // type-uniform regardless of whether bindgen typed the
         // underlying constant as i32 or u32.
         match self {
-            Self::Auto => sys::VSL_CONV_MODE_AUTO as c_int,
-            Self::Direct => sys::VSL_CONV_MODE_DIRECT as c_int,
-            Self::Fft => sys::VSL_CONV_MODE_FFT as c_int,
+            Self::Auto => sys::VSL_CONV_MODE_AUTO as MKL_INT,
+            Self::Direct => sys::VSL_CONV_MODE_DIRECT as MKL_INT,
+            Self::Fft => sys::VSL_CONV_MODE_FFT as MKL_INT,
         }
     }
 }
@@ -64,11 +65,11 @@ pub enum CorrMode {
 
 impl CorrMode {
     #[inline]
-    fn as_int(self) -> c_int {
+    fn as_int(self) -> MKL_INT {
         match self {
-            Self::Auto => sys::VSL_CORR_MODE_AUTO as c_int,
-            Self::Direct => sys::VSL_CORR_MODE_DIRECT as c_int,
-            Self::Fft => sys::VSL_CORR_MODE_FFT as c_int,
+            Self::Auto => sys::VSL_CORR_MODE_AUTO as MKL_INT,
+            Self::Direct => sys::VSL_CORR_MODE_DIRECT as MKL_INT,
+            Self::Fft => sys::VSL_CORR_MODE_FFT as MKL_INT,
         }
     }
 }
@@ -85,10 +86,10 @@ pub trait ConvCorrScalar: Copy + 'static {
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
     unsafe fn conv_new_task_1d(
         task: *mut VSLConvTaskPtr,
-        mode: c_int,
-        xshape: c_int,
-        yshape: c_int,
-        zshape: c_int,
+        mode: MKL_INT,
+        xshape: MKL_INT,
+        yshape: MKL_INT,
+        zshape: MKL_INT,
     ) -> c_int;
 
     /// Raw `corr_new_task_1d` call.
@@ -100,10 +101,10 @@ pub trait ConvCorrScalar: Copy + 'static {
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
     unsafe fn corr_new_task_1d(
         task: *mut VSLCorrTaskPtr,
-        mode: c_int,
-        xshape: c_int,
-        yshape: c_int,
-        zshape: c_int,
+        mode: MKL_INT,
+        xshape: MKL_INT,
+        yshape: MKL_INT,
+        zshape: MKL_INT,
     ) -> c_int;
 
     /// Raw `conv_exec_1d` call.
@@ -117,11 +118,11 @@ pub trait ConvCorrScalar: Copy + 'static {
     unsafe fn conv_exec_1d(
         task: VSLConvTaskPtr,
         x: *const Self,
-        xstride: c_int,
+        xstride: MKL_INT,
         y: *const Self,
-        ystride: c_int,
+        ystride: MKL_INT,
         z: *mut Self,
-        zstride: c_int,
+        zstride: MKL_INT,
     ) -> c_int;
 
     /// Raw `corr_exec_1d` call.
@@ -135,11 +136,11 @@ pub trait ConvCorrScalar: Copy + 'static {
     unsafe fn corr_exec_1d(
         task: VSLCorrTaskPtr,
         x: *const Self,
-        xstride: c_int,
+        xstride: MKL_INT,
         y: *const Self,
-        ystride: c_int,
+        ystride: MKL_INT,
         z: *mut Self,
-        zstride: c_int,
+        zstride: MKL_INT,
     ) -> c_int;
 }
 
@@ -151,41 +152,41 @@ macro_rules! impl_conv_corr {
         impl ConvCorrScalar for $ty {
             unsafe fn conv_new_task_1d(
                 task: *mut VSLConvTaskPtr,
-                mode: c_int,
-                xshape: c_int,
-                yshape: c_int,
-                zshape: c_int,
+                mode: MKL_INT,
+                xshape: MKL_INT,
+                yshape: MKL_INT,
+                zshape: MKL_INT,
             ) -> c_int {
                 unsafe { sys::$conv_new(task, mode, xshape, yshape, zshape) }
             }
             unsafe fn corr_new_task_1d(
                 task: *mut VSLCorrTaskPtr,
-                mode: c_int,
-                xshape: c_int,
-                yshape: c_int,
-                zshape: c_int,
+                mode: MKL_INT,
+                xshape: MKL_INT,
+                yshape: MKL_INT,
+                zshape: MKL_INT,
             ) -> c_int {
                 unsafe { sys::$corr_new(task, mode, xshape, yshape, zshape) }
             }
             unsafe fn conv_exec_1d(
                 task: VSLConvTaskPtr,
                 x: *const Self,
-                xstride: c_int,
+                xstride: MKL_INT,
                 y: *const Self,
-                ystride: c_int,
+                ystride: MKL_INT,
                 z: *mut Self,
-                zstride: c_int,
+                zstride: MKL_INT,
             ) -> c_int {
                 unsafe { sys::$conv_exec(task, x, xstride, y, ystride, z, zstride) }
             }
             unsafe fn corr_exec_1d(
                 task: VSLCorrTaskPtr,
                 x: *const Self,
-                xstride: c_int,
+                xstride: MKL_INT,
                 y: *const Self,
-                ystride: c_int,
+                ystride: MKL_INT,
                 z: *mut Self,
-                zstride: c_int,
+                zstride: MKL_INT,
             ) -> c_int {
                 unsafe { sys::$corr_exec(task, x, xstride, y, ystride, z, zstride) }
             }
@@ -225,9 +226,9 @@ impl<T: ConvCorrScalar> Conv1d<T> {
     /// `yshape` and an output buffer of length `zshape`. The natural
     /// full-convolution length is `xshape + yshape - 1`.
     pub fn new(mode: ConvMode, xshape: usize, yshape: usize, zshape: usize) -> Result<Self> {
-        let xs: c_int = xshape.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let ys: c_int = yshape.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let zs: c_int = zshape.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let xs: MKL_INT = xshape.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let ys: MKL_INT = yshape.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let zs: MKL_INT = zshape.try_into().map_err(|_| Error::DimensionOverflow)?;
         let mut task: VSLConvTaskPtr = ptr::null_mut();
         let status = unsafe { T::conv_new_task_1d(&mut task, mode.as_int(), xs, ys, zs) };
         check_vsl(status)?;
@@ -267,9 +268,9 @@ impl<T: ConvCorrScalar> Conv1d<T> {
                 "z is too short for zstride * zshape",
             ));
         }
-        let xs: c_int = xstride.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let ys: c_int = ystride.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let zs: c_int = zstride.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let xs: MKL_INT = xstride.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let ys: MKL_INT = ystride.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let zs: MKL_INT = zstride.try_into().map_err(|_| Error::DimensionOverflow)?;
         let status = unsafe {
             T::conv_exec_1d(
                 self.task,
@@ -311,9 +312,9 @@ impl<T: ConvCorrScalar> Corr1d<T> {
     /// Build a new correlation task. See [`Conv1d::new`] for shape
     /// conventions — they apply equally here.
     pub fn new(mode: CorrMode, xshape: usize, yshape: usize, zshape: usize) -> Result<Self> {
-        let xs: c_int = xshape.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let ys: c_int = yshape.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let zs: c_int = zshape.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let xs: MKL_INT = xshape.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let ys: MKL_INT = yshape.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let zs: MKL_INT = zshape.try_into().map_err(|_| Error::DimensionOverflow)?;
         let mut task: VSLCorrTaskPtr = ptr::null_mut();
         let status = unsafe { T::corr_new_task_1d(&mut task, mode.as_int(), xs, ys, zs) };
         check_vsl(status)?;
@@ -351,9 +352,9 @@ impl<T: ConvCorrScalar> Corr1d<T> {
                 "z is too short for zstride * zshape",
             ));
         }
-        let xs: c_int = xstride.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let ys: c_int = ystride.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let zs: c_int = zstride.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let xs: MKL_INT = xstride.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let ys: MKL_INT = ystride.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let zs: MKL_INT = zstride.try_into().map_err(|_| Error::DimensionOverflow)?;
         let status = unsafe {
             T::corr_exec_1d(
                 self.task,

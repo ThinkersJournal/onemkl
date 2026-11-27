@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.4.9 - 2026-11-27 (allocated by pm-assist; docs and tools: Data Fitting facts note, df_probe3.c)
+
+### Added
+
+- `docs/DATA-FITTING-FACTS.md` and `tools/size-probes/df_probe3.c`: Data Fitting facts read from the Intel reference (credited) and measured on oneMKL 2026.2 (call-back regions, 1-based cells, status pass-through; Hyman, default-quadratic and Subbotin conditions). Docs and tools only; no behaviour change.
+
 ## 0.4.8 - 2026-11-27 (allocated by pm-assist; additive: LinearSpline1d)
 
 ### Added

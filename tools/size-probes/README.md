@@ -14,4 +14,4 @@ touches for the arguments used, not a documented guarantee; see each doc comment
 
 `feast2.c` (FEAST csr / banded / generalised dense) and `ss2.c` (Summary Statistics robust covariance, outlier weights, stream quantiles) use the same method (`gcc ... feast2.c`, same flags). Not probed: `ss_edit_missing_values` (needs NaN data and an MI parameter set), `corr_exec`, trig `ipar` = 128.
 
-`fft_flags.c` records which `DFTI_WORKSPACE` / `DFTI_ORDERING` settings oneMKL 2026.2 accepts. (An earlier draft of this line cited a `df_types.c` that was never committed, with a Hyman result taken from not-a-knot ends only; both are withdrawn. Data Fitting probes: `df_probe3.c`.)
+`fft_flags.c` records which `DFTI_WORKSPACE` / `DFTI_ORDERING` settings oneMKL 2026.2 accepts. `df_probe3.c` records the Data Fitting call-back, Hyman and quadratic behaviour (see `docs/DATA-FITTING-FACTS.md`, section "Measured"). An earlier version of this line cited a `df_types.c` that was never committed and a Hyman non-monotone result from it; that result is withdrawn here (the Hyman data point is re-measured in `df_probe3.c`).

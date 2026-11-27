@@ -131,7 +131,7 @@ pub trait ConvCorrScalar: Copy + 'static {
     /// `task` must be a live task of the matching kind created by `corr_new_task_1d` and not yet deleted, and not used from another thread during the call.
     /// `x` must be valid for reads of `1 + (xshape - 1) * |xstride|` elements, `y` of `1 + (yshape - 1) * |ystride|`, and `z` for writes of `1 + (zshape - 1) * |zstride|`, with the shapes given when the task was created and all strides non-zero. `z` must not overlap `x` or `y`.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
-    /// Same extent rule as `conv_exec_1d` (verified there for convolution only; for correlation unverified).
+    /// Same extent rule as `conv_exec_1d`. **Verified** for correlation by guard-page probe (`tools/size-probes/ss3.c`, VSL_CORR_MODE_DIRECT, x = 8, y = 5, z = 12, strides 1 and 2): the smallest buffers that did not fault were `1 + (shape - 1) * stride` elements for each of `x`, `y` and `z`; oneMKL 2026.2, Linux x86_64.
     unsafe fn corr_exec_1d(
         task: VSLCorrTaskPtr,
         x: *const Self,

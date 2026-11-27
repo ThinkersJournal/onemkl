@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.4.16 - 2026-11-27 (allocated by pm-assist; the ilp64 feature is refused by build.rs (measured ~590 type errors with real bindgen), corr_exec extents verified, ROADMAP row for SummaryStats::impute_missing)
+
+### Changed
+
+- `onemkl/build.rs` stops the `ilp64` feature with one message (measured: the safe wrappers do not type-check against ILP64 bindings, about 590 errors) instead of hundreds of type errors; CI checks the message. `corr_exec` extents verified by guard-page probe (same rule as convolution). Docs and tools otherwise; `SummaryStats::impute_missing` is documented as not working with its shipped arguments (ROADMAP row).
+
 ## 0.4.15 - 2026-11-27 (allocated by pm-assist; W1 closes: every too_many_arguments allow carries a reason, 50 no-op allows removed, 4 private fns restructured; no API change)
 
 ### Changed

@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased (version to be allocated by pm-assist)
+## 0.4.15 - 2026-11-27 (allocated by pm-assist; W1 closes: every too_many_arguments allow carries a reason, 50 no-op allows removed, 4 private fns restructured; no API change)
 
 ### Changed
 

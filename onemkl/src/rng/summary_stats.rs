@@ -43,7 +43,7 @@ pub trait SsScalar: Copy + Default + 'static {
     ///
     /// # Safety
     ///
-    /// `task` must be valid for a write of one `VSLSSTaskPtr`. `p`, `n` and `xstorage` must each point to one readable `c_int` (dimension `p >= 1`, observation count `n >= 1`, and a `VSL_SS_MATRIX_STORAGE_*` constant); they are read during the call.
+    /// `task` must be valid for a write of one `VSLSSTaskPtr`. `p`, `n` and `xstorage` must each point to one readable `MKL_INT` (dimension `p >= 1`, observation count `n >= 1`, and a `VSL_SS_MATRIX_STORAGE_*` constant); they are read during the call.
     /// `x` must point to the `p x n` observation matrix, `p * n` elements, stored per `*xstorage`. `w` may be null (equal weights) or point to `n` weights. `indices` may be null or point to `p` entries of 0/1 selecting which variables are used.
     /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
     /// On a non-zero return `*task` must not be used. A non-zero return is the VSL status. The MKL library must be linked and usable.
@@ -108,7 +108,7 @@ pub trait SsScalar: Copy + Default + 'static {
     /// # Safety
     ///
     /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
-    /// `quant_order_n` points to one `c_int` (number of quantile orders `m`); `quant_orders` points to `m` values in `[0, 1]`; `quants_out` must be valid for writes of `p * m` elements; `order_stats_out` and `order_stats_storage` may be null together, otherwise `order_stats_out` must be valid for writes of `p * n` elements stored per `*order_stats_storage`.
+    /// `quant_order_n` points to one `MKL_INT` (number of quantile orders `m`); `quant_orders` points to `m` values in `[0, 1]`; `quants_out` must be valid for writes of `p * m` elements; `order_stats_out` and `order_stats_storage` may be null together, otherwise `order_stats_out` must be valid for writes of `p * n` elements stored per `*order_stats_storage`.
     /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `quants_out`: p * q elements; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
@@ -126,7 +126,7 @@ pub trait SsScalar: Copy + Default + 'static {
     /// # Safety
     ///
     /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
-    /// `quant_order_n` points to one `c_int` (`m`); `quant_orders` points to `m` values in `[0, 1]`; `quants_out` must be valid for writes of `p * m` elements; `params_n` points to one `c_int` (the number of parameters, at least 1) and `params` to that many values (the accuracy parameter).
+    /// `quant_order_n` points to one `MKL_INT` (`m`); `quant_orders` points to `m` values in `[0, 1]`; `quants_out` must be valid for writes of `p * m` elements; `params_n` points to one `MKL_INT` (the number of parameters, at least 1) and `params` to that many values (the accuracy parameter).
     /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (`tools/size-probes/ss2.c`, smallest buffer for which the call did not fault, p = 3, n = 40, row storage; oneMKL 2026.2, Linux x86_64): `quants_out`: p * m elements (m = 3 orders; ZW method, accuracy 0.01, computed over one batch of n observations, not a multi-block stream).
@@ -145,7 +145,7 @@ pub trait SsScalar: Copy + Default + 'static {
     /// # Safety
     ///
     /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
-    /// `idx` points to `p` entries, each `-1` (component of Z, conditioned on) or `1` (component of Y); `cov` and `cor` are valid for writes of `p * p` elements, `pcov` and `pcor` for `p * p` (only `ny * ny` were written when measured); each `*_storage` points to one `c_int` (a `VSL_SS_MATRIX_STORAGE_*`).
+    /// `idx` points to `p` entries, each `-1` (component of Z, conditioned on) or `1` (component of Y); `cov` and `cor` are valid for writes of `p * p` elements, `pcov` and `pcor` for `p * p` (only `ny * ny` were written when measured); each `*_storage` points to one `MKL_INT` (a `VSL_SS_MATRIX_STORAGE_*`).
     /// **Pointer retention:** the task stores the pointers it is given; each buffer must stay allocated at a stable address, and not be accessed through Rust references, until the task has been deleted or the pointers replaced, including across every `ss_compute` call.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// Extents beyond the measured ones are unverified (from MKL documentation).
@@ -168,7 +168,7 @@ pub trait SsScalar: Copy + Default + 'static {
     /// # Safety
     ///
     /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
-    /// `cov_storage` points to one `c_int` giving the storage of `cov_out` (a `VSL_SS_MATRIX_STORAGE_*`); `n_params` points to one `c_int` and `params` to that many parameters; `mean_out` must be valid for writes of `p` elements and `cov_out` of `p * p` elements (or the packed size for packed storage).
+    /// `cov_storage` points to one `MKL_INT` giving the storage of `cov_out` (a `VSL_SS_MATRIX_STORAGE_*`); `n_params` points to one `MKL_INT` and `params` to that many parameters; `mean_out` must be valid for writes of `p` elements and `cov_out` of `p * p` elements (or the packed size for packed storage).
     /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (`tools/size-probes/ss2.c`, smallest buffer for which the call did not fault, p = 3, n = 40, row storage; oneMKL 2026.2, Linux x86_64): `mean_out`: p and `cov_out`: p * p elements (full storage, TBS method with 4 parameters).
@@ -187,7 +187,7 @@ pub trait SsScalar: Copy + Default + 'static {
     /// # Safety
     ///
     /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
-    /// `n_params` points to one `c_int` and `params` to that many parameters (3 as MKL documents); `weights_out` must be valid for writes of `n` elements (one weight per observation).
+    /// `n_params` points to one `MKL_INT` and `params` to that many parameters (3 as MKL documents); `weights_out` must be valid for writes of `n` elements (one weight per observation).
     /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (`tools/size-probes/ss2.c`, smallest buffer for which the call did not fault, p = 3, n = 40, row storage; oneMKL 2026.2, Linux x86_64): `weights_out`: n elements (BACON method with 3 parameters).
@@ -204,7 +204,7 @@ pub trait SsScalar: Copy + Default + 'static {
     /// # Safety
     ///
     /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
-    /// `n_params`/`params`, `init_estimates_n`/`init_estimates`, `prior_n`/`prior` and `simul_vals_n`/`estimates_n` are (count, data) pairs: each count points to one `c_int` and the paired data to that many `Self` values (null where MKL allows a default). `simul_vals_out` must be valid for writes of `simul_vals * p` elements and `estimates_out` of the estimates the task defines (the mean `p` and covariance `p * p` as requested).
+    /// `n_params`/`params`, `init_estimates_n`/`init_estimates`, `prior_n`/`prior` and `simul_vals_n`/`estimates_n` are (count, data) pairs: each count points to one `MKL_INT` and the paired data to that many `Self` values (null where MKL allows a default). `simul_vals_out` must be valid for writes of `simul_vals * p` elements and `estimates_out` of the estimates the task defines (the mean `p` and covariance `p * p` as requested).
     /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// **Not verifiable so far:** `tools/size-probes/ss3.c` and a parameter sweep on oneMKL 2026.2 could not get `VSL_SS_METHOD_MI` to compute: with a null `simul_vals_out` (what `SummaryStats::impute_missing` passes) the compute step returns `VSL_SS_ERROR_BAD_MI_SIMUL_VALS_ADDR` (-4054), and with a buffer of `k * m` elements every parameter set tried returned `VSL_SS_ERROR_BAD_MI_PARAMS` (-4051) or `VSL_SS_ERROR_BAD_MI_MISSING_VALS_N` (-4063). The meaning of the five method parameters is not in the Developer Reference (it points to the separate Summary Statistics Application Notes), so no extent here is verified; treat the extents above as the documentation's.

@@ -2423,7 +2423,10 @@ pub trait ComplexAuxScalar: Copy + 'static {
     ///
     /// `a` is a complex `m x n` matrix and `b` a real `n x n` matrix, `c` the complex `m x n` result (`C = A * B`). Per `layout`, `a`, `b`, `c` must be valid for `lda * n` / `ldb * n` / `ldc * n` elements (column-major, `ld* >= rows`) or `lda * m` / `ldb * n` / `ldc * m` (row-major, `ld* >= cols`). `c` must not overlap `a` or `b`.
     /// The returned value is LAPACK's `info` (0 success, negative `-i` argument `i` invalid, positive numerical failure); outputs may be partly overwritten on non-zero. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?lacrm argument for argument"
+    )]
     unsafe fn lapacke_lacrm(
         layout: core::ffi::c_int,
         m: core::ffi::c_int,
@@ -2563,7 +2566,10 @@ pub trait SymConvScalar: Copy + 'static {
     ///
     /// `a` and `ipiv` must be the output of a successful `lapacke_sytrf` with the same `uplo` and `n` (`a`: `lda * n` elements, `ipiv`: `n` entries, readable). `a` is converted in place (`way` is `C` convert or `R` revert); `e` must be valid for writes of `n` elements (off-diagonal entries of the block diagonal). `a`, `e` and `ipiv` must not overlap.
     /// The returned value is LAPACK's `info` (0 success, negative `-i` argument `i` invalid, positive numerical failure); outputs may be partly overwritten on non-zero. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?syconv argument for argument"
+    )]
     unsafe fn lapacke_syconv(
         layout: core::ffi::c_int,
         uplo: core::ffi::c_char,

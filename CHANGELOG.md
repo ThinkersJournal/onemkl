@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- 76 `#[allow(clippy::too_many_arguments)]` on the raw `cblas_*` and `lapacke_*` trait declarations now carry a `reason` naming the C function (each checked by argument count against the installed oneMKL headers); no behaviour change. Tools in `tools/w1/`, table in `docs/W1-TOO-MANY-ARGUMENTS.md`.
+- 76 `#[allow(clippy::too_many_arguments)]` on the raw `cblas_*` and `lapacke_*` trait declarations and 35 more on raw declarations in `blas::compact`/`packed`, `data_fitting`, `feast`, `lapack`, `rng`, `sparse` and `vm` now carry a `reason` naming the C function (each checked by argument count only, not types or order, against the installed oneMKL headers); no behaviour change. Tools in `tools/w1/`, table in `docs/W1-TOO-MANY-ARGUMENTS.md`.
 
 ## 0.4.12 - 2026-11-27 (allocated by pm-assist; additive: QuadraticSpline1d; Subbotin writes order*n coefficients, the wrapper sizes by the measured extent)
 

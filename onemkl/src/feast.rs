@@ -677,7 +677,10 @@ pub trait FeastReal: Copy + 'static {
     /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
     /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `a`: n * n (uplo = F), `e`: m0, `x`: n * m0, `res`: m0 elements, n = 20, m0 = 10, via `dfeast_syev`; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature ?feast_syev argument for argument"
+    )]
     unsafe fn feast_dense_real(
         uplo: *const c_char,
         n: *const c_int,
@@ -706,7 +709,10 @@ pub trait FeastReal: Copy + 'static {
     /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (`tools/size-probes/feast2.c`, smallest buffer for which the call did not fault, n = 20, m0 = 10, tridiagonal matrix, via `dfeast_scsrev`; oneMKL 2026.2, Linux x86_64): `sa` and `jsa`: nnz of the stored triangle (58 for uplo = F, 39 for uplo = U), `isa`: n + 1, `e`: m0, `x`: n * m0, `res`: m0 elements.
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature ?feast_scsrev argument for argument"
+    )]
     unsafe fn feast_csr_real(
         uplo: *const c_char,
         n: *const c_int,
@@ -736,7 +742,10 @@ pub trait FeastReal: Copy + 'static {
     /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (`tools/size-probes/feast2.c`, smallest buffer for which the call did not fault, n = 20, kla = 1, m0 = 10, via `dfeast_sbev`; oneMKL 2026.2, Linux x86_64): `a`: lda * n (40 for uplo = U or L with lda = 2, 60 for uplo = F with lda = 3), `e`: m0, `x`: n * m0, `res`: m0 elements.
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature ?feast_sbev argument for argument"
+    )]
     unsafe fn feast_banded_real(
         uplo: *const c_char,
         n: *const c_int,
@@ -766,7 +775,10 @@ pub trait FeastReal: Copy + 'static {
     /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (`tools/size-probes/feast2.c`, smallest buffer for which the call did not fault, n = 20, m0 = 10, uplo = F, B = I, via `dfeast_sygv`; oneMKL 2026.2, Linux x86_64): `a` and `b`: n * n elements each (lda = ldb = n).
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature ?feast_sygv argument for argument"
+    )]
     unsafe fn feast_dense_gen_real(
         uplo: *const c_char,
         n: *const c_int,
@@ -931,7 +943,10 @@ pub trait FeastComplex: Copy + 'static {
     /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
     /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature ?feast_heev argument for argument"
+    )]
     unsafe fn feast_dense_complex(
         uplo: *const c_char,
         n: *const c_int,
@@ -959,7 +974,10 @@ pub trait FeastComplex: Copy + 'static {
     /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
     /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature ?feast_hcsrev argument for argument"
+    )]
     unsafe fn feast_csr_complex(
         uplo: *const c_char,
         n: *const c_int,
@@ -988,7 +1006,10 @@ pub trait FeastComplex: Copy + 'static {
     /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
     /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature ?feast_hbev argument for argument"
+    )]
     unsafe fn feast_banded_complex(
         uplo: *const c_char,
         n: *const c_int,
@@ -1017,7 +1038,10 @@ pub trait FeastComplex: Copy + 'static {
     /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
     /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature ?feast_hegv argument for argument"
+    )]
     unsafe fn feast_dense_gen_complex(
         uplo: *const c_char,
         n: *const c_int,

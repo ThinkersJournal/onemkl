@@ -283,9 +283,12 @@ Every non-MPI domain at Comprehensive:
     carry a `reason` naming the C function, each checked by argument count
     against every precision variant in the installed headers
     (`tools/w1/`, details in `docs/W1-TOO-MANY-ARGUMENTS.md`). Remaining bare
-    allows: 238 - 76 = 162; reasoned: 83. Next chunks by file: `feast.rs`,
-    `sparse`, `rng`, `vm`, `blas/*` wrappers, `lapack/mod.rs`, the 4 private
-    functions.
+    allows: 238 - 76 = 162; reasoned: 83. Chunk 2 (35 more C-mirror raw
+    declarations: compact, packed, data fitting, FEAST, LAPACKE extras, RNG,
+    summary statistics, sparse, VM) brings that to 127 bare and 118 reasoned.
+    Left: `sparse_qr_solve`, `pde` 3, `jit_create`, `compact` `gepack` /
+    `geunpack`, 4 lines of `blas/scalar.rs`, the ~70 safe wrappers (public
+    surface or restructure) and the 4 private functions.
   - **Wanted:** per item, either a `reason = "mirrors the oneMKL C signature
     <name> argument for argument"` (C mirrors: most of the trait declarations
     and wrappers above), or a restructure (a parameter struct) for the rest;

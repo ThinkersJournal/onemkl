@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased (version to be allocated by pm-assist)
+
+### Added
+
+- `data_fitting::QuadraticSpline1d` (`with_midpoint_value`: default quadratic fixed by one value, `DF_BC_Q_VAL`; `subbotin` / `subbotin_with_knots`: Subbotin quadratic with free ends and a knot array); additive. Measured: the Subbotin spline writes `order * n` coefficients, not the documented `order * (n - 1)`, and does not pass through the breakpoints.
+
 ## 0.4.11 - 2026-11-27 (allocated by pm-assist; additive: integrate_with_callbacks, df?IntegrateEx1D)
 
 ### Added

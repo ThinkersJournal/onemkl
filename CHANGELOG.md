@@ -4,6 +4,30 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.6.0 - 2026-11-27 (PM-allocated; BREAKING: non_exhaustive Error/IntegrateCallbacks/SearchRequest/IntegrationPieces, checked search call-backs)
+
+### Added
+
+- `QuadraticSpline1d::find_cells_with_callback` (`df?SearchCellsEx1D`; additive), same contract as the cubic and linear ones. Measured on oneMKL 2026.2 (4 tests, WSL rig): 1-based exact cells used as given and called once; 0-based exact cells come back shifted (vacuity control); approximate guesses refined; status -5 is `VslStatus(-5)`, 3 a warning with cells kept.
+- `IntegrateCallbacks::search` (the `search_cb` of `df?IntegrateEx1D`) with builder methods `IntegrateCallbacks::{new, left, right, interior, search}`. Measured on oneMKL 2026.2 (`df_search3.c`): it is called twice (left limits, then right); unguarded, an out-of-range exact cell gives integrals of 0 with status 0 and a positive status is swallowed, so both are now typed errors (below). `InterpolateEx1D` stays unwrapped (ROADMAP).
+
+- `SummaryStats::with_weights` (observation weights for `mean` and `variance`). Measured on oneMKL 2026.2 (`tools/size-probes/ss7.c`, 4 tests incl. a vacuity mutant): mean `sum(w x)/W`, variance `sum(w (x-mean)^2)/(W - sum(w^2)/W)`; oneMKL accepts a negative weight (mean 5.8333 on the probe data) and all-zero weights (mean 0) with status 0, so the wrapper refuses negative, non-finite, all-zero and too-few weights as `InvalidArgument`. `SsScalar` gains the required method `weight_value` (breaking for outside implementors; the trait has only the `f32` and `f64` impls).
+
+- `SummaryStats::partial_covariance(&[PartialRole])` and `PartialRole`, `PartialCovCor` (`vsl?SSEditPartialCovCor`). Measured on oneMKL 2026.2 (`tools/size-probes/ss9.c`, 3 tests incl. a vacuity mutant): the covariance equals `S_YY - S_YZ S_ZZ^-1 S_ZY` (n - 1) computed independently; results are `ny x ny` row-major; oneMKL leaves the partial variance (not 1) on the partial-correlation diagonal, documented on the field; -4073 for no-target role arrays is refused before the call. `SsScalar` gains the required method `ss_edit_partial_cov_cor`.
+
+### Changed
+
+- **BREAKING (one time; pm-assist numbers it):** to stop paying a breaking release per field, `Error`, `IntegrateCallbacks`, `SearchRequest` and `IntegrationPieces` are now `#[non_exhaustive]` (construct `IntegrateCallbacks` with `IntegrateCallbacks::new()` and its builder methods, no struct literal or `..Default::default()`; match `Error` with a wildcard arm). New fields and variants are additive from here on.
+- **BREAKING:** search call-backs (`find_cells_with_callback` on all three splines and `IntegrateCallbacks::search`) are checked: a cell declared exact (`exact[i] == 1`, or any cell when the call-back returns `DF_STATUS_EXACT_RESULT`) must satisfy `0 <= cell <= nx` and contain its site, else `Error::SearchCell { index, cell, max_cell }` before oneMKL uses it (before: wrong cells were returned or integrated silently, e.g. integrals 0 with status 0 for cell 99); a positive call-back status is now `Error::SearchCallbackStatus` (before: kept as a warning in `find_cells_with_callback`, swallowed by oneMKL in `IntegrateEx1D`). `DataFittingScalar` now requires `PartialOrd`; `integrate_with_callbacks` takes `&'a self` with `IntegrateCallbacks<'a, T>`.
+
+### Not wrapped (measured)
+
+- Pooled / group covariance: `tools/size-probes/ss8.c` shows `vsl?SSEditPooledCovariance` accepted but compute fails with -4044 because the storage format cannot be set (`vsl?SSEditTask` ids 29, 34 and 20 return -3 while `VSL_SS_ED_MEAN` returns 0). ROADMAP row.
+
+### Documentation
+
+- `docs/ILP64-DESIGN.md`: error classes, options and recommendation for ILP64 in the safe wrappers (no code; the `ilp64` feature is still refused).
+
 ## 0.5.2 - 2026-11-27 (PM-allocated; additive)
 
 ### Added

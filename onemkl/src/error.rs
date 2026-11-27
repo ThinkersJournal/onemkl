@@ -23,6 +23,7 @@ pub type Result<T, E = Error> = core::result::Result<T, E>;
 
 /// Failure modes from any oneMKL routine.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Error {
     /// A user-supplied argument failed validation before reaching MKL — for
     /// example, mismatched dimensions, a stride of zero, or a buffer too
@@ -64,6 +65,22 @@ pub enum Error {
     /// A VM (vector math) routine raised a domain error or other diagnostic.
     VmStatus(u32),
 
+    /// A data-fitting search call-back declared a cell exact that does not
+    /// contain its site (or is outside `0..=max_cell`), so oneMKL was not
+    /// allowed to use it (it would have produced silent wrong results).
+    SearchCell {
+        /// Index of the site in the call-back's `sites`.
+        index: usize,
+        /// The 1-based cell the call-back returned.
+        cell: i64,
+        /// The largest valid cell, `nx` (valid cells are `0..=max_cell`).
+        max_cell: usize,
+    },
+
+    /// A data-fitting search call-back returned a positive status. oneMKL
+    /// may swallow it, so it is reported as an error instead of being lost.
+    SearchCallbackStatus(i32),
+
     /// `MKL_malloc` (or another MKL allocator entry point) returned
     /// null — typically out of memory.
     AllocationFailure,
@@ -92,6 +109,17 @@ impl fmt::Display for Error {
                 write!(f, "PARDISO routine failure (error = {code})")
             }
             Self::VmStatus(code) => write!(f, "VM routine failure (status = {code:#x})"),
+            Self::SearchCell {
+                index,
+                cell,
+                max_cell,
+            } => write!(
+                f,
+                "search call-back returned cell {cell} for site #{index}, which does not contain it (valid cells 0..={max_cell}, 1-based)"
+            ),
+            Self::SearchCallbackStatus(code) => {
+                write!(f, "search call-back returned positive status {code}")
+            }
             Self::AllocationFailure => f.write_str("MKL allocator returned null (out of memory?)"),
         }
     }

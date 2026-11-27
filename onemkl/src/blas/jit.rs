@@ -24,12 +24,11 @@
 //!
 //! `Drop` frees the JIT'd kernel.
 
-use core::ffi::c_int;
 use core::marker::PhantomData;
 use core::ptr;
 
 use num_complex::{Complex32, Complex64};
-use onemkl_sys as sys;
+use onemkl_sys::{self as sys, MKL_INT};
 
 use crate::enums::{Layout, Transpose};
 use crate::error::{Error, Result};
@@ -85,14 +84,14 @@ pub trait JitGemmScalar: Copy + 'static {
         layout: sys::MKL_LAYOUT::Type,
         transa: sys::MKL_TRANSPOSE::Type,
         transb: sys::MKL_TRANSPOSE::Type,
-        m: c_int,
-        n: c_int,
-        k: c_int,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
         alpha: Self,
-        lda: c_int,
-        ldb: c_int,
+        lda: MKL_INT,
+        ldb: MKL_INT,
         beta: Self,
-        ldc: c_int,
+        ldc: MKL_INT,
     ) -> sys::mkl_jit_status_t::Type;
 
     /// Raw `jit_get_kernel` call.
@@ -128,14 +127,14 @@ impl JitGemmScalar for f32 {
         layout: sys::MKL_LAYOUT::Type,
         transa: sys::MKL_TRANSPOSE::Type,
         transb: sys::MKL_TRANSPOSE::Type,
-        m: c_int,
-        n: c_int,
-        k: c_int,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
         alpha: Self,
-        lda: c_int,
-        ldb: c_int,
+        lda: MKL_INT,
+        ldb: MKL_INT,
         beta: Self,
-        ldc: c_int,
+        ldc: MKL_INT,
     ) -> sys::mkl_jit_status_t::Type {
         unsafe {
             sys::mkl_cblas_jit_create_sgemm(
@@ -165,14 +164,14 @@ impl JitGemmScalar for f64 {
         layout: sys::MKL_LAYOUT::Type,
         transa: sys::MKL_TRANSPOSE::Type,
         transb: sys::MKL_TRANSPOSE::Type,
-        m: c_int,
-        n: c_int,
-        k: c_int,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
         alpha: Self,
-        lda: c_int,
-        ldb: c_int,
+        lda: MKL_INT,
+        ldb: MKL_INT,
         beta: Self,
-        ldc: c_int,
+        ldc: MKL_INT,
     ) -> sys::mkl_jit_status_t::Type {
         unsafe {
             sys::mkl_cblas_jit_create_dgemm(
@@ -207,14 +206,14 @@ impl JitGemmScalar for Complex32 {
         layout: sys::MKL_LAYOUT::Type,
         transa: sys::MKL_TRANSPOSE::Type,
         transb: sys::MKL_TRANSPOSE::Type,
-        m: c_int,
-        n: c_int,
-        k: c_int,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
         alpha: Self,
-        lda: c_int,
-        ldb: c_int,
+        lda: MKL_INT,
+        ldb: MKL_INT,
         beta: Self,
-        ldc: c_int,
+        ldc: MKL_INT,
     ) -> sys::mkl_jit_status_t::Type {
         unsafe {
             sys::mkl_cblas_jit_create_cgemm(
@@ -260,14 +259,14 @@ impl JitGemmScalar for Complex64 {
         layout: sys::MKL_LAYOUT::Type,
         transa: sys::MKL_TRANSPOSE::Type,
         transb: sys::MKL_TRANSPOSE::Type,
-        m: c_int,
-        n: c_int,
-        k: c_int,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
         alpha: Self,
-        lda: c_int,
-        ldb: c_int,
+        lda: MKL_INT,
+        ldb: MKL_INT,
         beta: Self,
-        ldc: c_int,
+        ldc: MKL_INT,
     ) -> sys::mkl_jit_status_t::Type {
         unsafe {
             sys::mkl_cblas_jit_create_zgemm(
@@ -361,12 +360,12 @@ impl<T: JitGemmScalar> JitGemm<T> {
         beta: T,
         ldc: usize,
     ) -> Result<Self> {
-        let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let k_i: c_int = k.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let lda_i: c_int = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let ldb_i: c_int = ldb.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let ldc_i: c_int = ldc.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let m_i: MKL_INT = m.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let k_i: MKL_INT = k.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let lda_i: MKL_INT = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let ldb_i: MKL_INT = ldb.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let ldc_i: MKL_INT = ldc.try_into().map_err(|_| Error::DimensionOverflow)?;
 
         let mut jitter: *mut core::ffi::c_void = ptr::null_mut();
         let raw_status = unsafe {

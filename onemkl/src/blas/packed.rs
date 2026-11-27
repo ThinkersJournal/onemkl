@@ -32,10 +32,9 @@
 //! Pack/compute is available for f32 and f64 only — MKL doesn't ship
 //! complex variants.
 
-use core::ffi::c_int;
 use core::marker::PhantomData;
 
-use onemkl_sys as sys;
+use onemkl_sys::{self as sys, MKL_INT};
 
 use crate::enums::{Layout, Transpose};
 use crate::error::{Error, Result};
@@ -70,9 +69,9 @@ pub trait PackedGemmScalar: Copy + 'static {
     /// The MKL library must be linked and usable.
     unsafe fn gemm_pack_get_size(
         identifier: sys::CBLAS_IDENTIFIER::Type,
-        m: c_int,
-        n: c_int,
-        k: c_int,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
     ) -> usize;
 
     /// Raw `gemm_pack` call.
@@ -90,12 +89,12 @@ pub trait PackedGemmScalar: Copy + 'static {
         layout: sys::CBLAS_LAYOUT::Type,
         identifier: sys::CBLAS_IDENTIFIER::Type,
         trans: sys::CBLAS_TRANSPOSE::Type,
-        m: c_int,
-        n: c_int,
-        k: c_int,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
         alpha: Self,
         src: *const Self,
-        ld: c_int,
+        ld: MKL_INT,
         dest: *mut Self,
     );
 
@@ -112,27 +111,27 @@ pub trait PackedGemmScalar: Copy + 'static {
     )]
     unsafe fn gemm_compute(
         layout: sys::CBLAS_LAYOUT::Type,
-        transa: c_int,
-        transb: c_int,
-        m: c_int,
-        n: c_int,
-        k: c_int,
+        transa: MKL_INT,
+        transb: MKL_INT,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
         a: *const Self,
-        lda: c_int,
+        lda: MKL_INT,
         b: *const Self,
-        ldb: c_int,
+        ldb: MKL_INT,
         beta: Self,
         c: *mut Self,
-        ldc: c_int,
+        ldc: MKL_INT,
     );
 }
 
 impl PackedGemmScalar for f32 {
     unsafe fn gemm_pack_get_size(
         identifier: sys::CBLAS_IDENTIFIER::Type,
-        m: c_int,
-        n: c_int,
-        k: c_int,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
     ) -> usize {
         unsafe { sys::cblas_sgemm_pack_get_size(identifier, m, n, k) }
     }
@@ -140,30 +139,30 @@ impl PackedGemmScalar for f32 {
         layout: sys::CBLAS_LAYOUT::Type,
         identifier: sys::CBLAS_IDENTIFIER::Type,
         trans: sys::CBLAS_TRANSPOSE::Type,
-        m: c_int,
-        n: c_int,
-        k: c_int,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
         alpha: Self,
         src: *const Self,
-        ld: c_int,
+        ld: MKL_INT,
         dest: *mut Self,
     ) {
         unsafe { sys::cblas_sgemm_pack(layout, identifier, trans, m, n, k, alpha, src, ld, dest) }
     }
     unsafe fn gemm_compute(
         layout: sys::CBLAS_LAYOUT::Type,
-        transa: c_int,
-        transb: c_int,
-        m: c_int,
-        n: c_int,
-        k: c_int,
+        transa: MKL_INT,
+        transb: MKL_INT,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
         a: *const Self,
-        lda: c_int,
+        lda: MKL_INT,
         b: *const Self,
-        ldb: c_int,
+        ldb: MKL_INT,
         beta: Self,
         c: *mut Self,
-        ldc: c_int,
+        ldc: MKL_INT,
     ) {
         unsafe {
             sys::cblas_sgemm_compute(
@@ -176,9 +175,9 @@ impl PackedGemmScalar for f32 {
 impl PackedGemmScalar for f64 {
     unsafe fn gemm_pack_get_size(
         identifier: sys::CBLAS_IDENTIFIER::Type,
-        m: c_int,
-        n: c_int,
-        k: c_int,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
     ) -> usize {
         unsafe { sys::cblas_dgemm_pack_get_size(identifier, m, n, k) }
     }
@@ -186,30 +185,30 @@ impl PackedGemmScalar for f64 {
         layout: sys::CBLAS_LAYOUT::Type,
         identifier: sys::CBLAS_IDENTIFIER::Type,
         trans: sys::CBLAS_TRANSPOSE::Type,
-        m: c_int,
-        n: c_int,
-        k: c_int,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
         alpha: Self,
         src: *const Self,
-        ld: c_int,
+        ld: MKL_INT,
         dest: *mut Self,
     ) {
         unsafe { sys::cblas_dgemm_pack(layout, identifier, trans, m, n, k, alpha, src, ld, dest) }
     }
     unsafe fn gemm_compute(
         layout: sys::CBLAS_LAYOUT::Type,
-        transa: c_int,
-        transb: c_int,
-        m: c_int,
-        n: c_int,
-        k: c_int,
+        transa: MKL_INT,
+        transb: MKL_INT,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
         a: *const Self,
-        lda: c_int,
+        lda: MKL_INT,
         b: *const Self,
-        ldb: c_int,
+        ldb: MKL_INT,
         beta: Self,
         c: *mut Self,
-        ldc: c_int,
+        ldc: MKL_INT,
     ) {
         unsafe {
             sys::cblas_dgemm_compute(
@@ -308,10 +307,10 @@ impl<T: PackedGemmScalar> PackedMatrix<T> {
             src,
             ld,
         } = args;
-        let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let k_i: c_int = k.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let ld_i: c_int = ld.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let m_i: MKL_INT = m.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let k_i: MKL_INT = k.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let ld_i: MKL_INT = ld.try_into().map_err(|_| Error::DimensionOverflow)?;
 
         let bytes_needed = unsafe { T::gemm_pack_get_size(identifier.as_cblas(), m_i, n_i, k_i) };
         let elem_size = core::mem::size_of::<T>();
@@ -380,11 +379,11 @@ impl<T: PackedGemmScalar> PackedMatrix<T> {
     }
 }
 
-const CBLAS_PACKED: c_int = 151; // sys::CBLAS_STORAGE::CblasPacked
+const CBLAS_PACKED: MKL_INT = 151; // sys::CBLAS_STORAGE::CblasPacked
 
 #[inline]
-fn trans_as_compute_int(t: Transpose) -> c_int {
-    t.as_cblas() as c_int
+fn trans_as_compute_int(t: Transpose) -> MKL_INT {
+    t.as_cblas() as MKL_INT
 }
 
 /// Run `C ← op(A_packed) · op(B) + beta · C` where `A_packed` was
@@ -420,14 +419,14 @@ pub fn gemm_compute_packed_a<T: PackedGemmScalar>(
             "a_packed shape does not match the requested compute shape",
         ));
     }
-    let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let k_i: c_int = k.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let ldb_i: c_int = ldb.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let ldc_i: c_int = ldc.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let m_i: MKL_INT = m.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let k_i: MKL_INT = k.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let ldb_i: MKL_INT = ldb.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let ldc_i: MKL_INT = ldc.try_into().map_err(|_| Error::DimensionOverflow)?;
     // For packed compute, MKL ignores lda but still reads it as a
     // parameter; pass m to keep it well-defined.
-    let lda_i: c_int = m_i;
+    let lda_i: MKL_INT = m_i;
     unsafe {
         T::gemm_compute(
             layout.as_cblas(),
@@ -477,12 +476,12 @@ pub fn gemm_compute_packed_b<T: PackedGemmScalar>(
             "b_packed shape does not match the requested compute shape",
         ));
     }
-    let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let k_i: c_int = k.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let lda_i: c_int = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let ldc_i: c_int = ldc.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let ldb_i: c_int = n_i;
+    let m_i: MKL_INT = m.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let k_i: MKL_INT = k.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let lda_i: MKL_INT = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let ldc_i: MKL_INT = ldc.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let ldb_i: MKL_INT = n_i;
     unsafe {
         T::gemm_compute(
             layout.as_cblas(),

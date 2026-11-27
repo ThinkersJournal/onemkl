@@ -277,7 +277,8 @@ unsafe fn run_search_callback<T: DataFittingScalar>(
                     }
                 }
                 if status > 0 && !all_exact {
-                    args.error.get_or_insert(Error::SearchCallbackStatus(status));
+                    args.error
+                        .get_or_insert(Error::SearchCallbackStatus(status));
                 }
                 status
             }
@@ -572,16 +573,12 @@ macro_rules! impl_data_fitting_real {
                     // SAFETY: oneMKL passes valid arrays and the `SearchExArgs` pointer given below.
                     unsafe { run_search_callback::<$ty>(n, site, cell, flag, user) }
                 }
-                let mut search = args
-                    .callbacks
-                    .search
-                    .take()
-                    .map(|callback| SearchExArgs {
-                        callback,
-                        x: args.x,
-                        panic: None,
-                        error: None,
-                    });
+                let mut search = args.callbacks.search.take().map(|callback| SearchExArgs {
+                    callback,
+                    x: args.x,
+                    panic: None,
+                    error: None,
+                });
                 let (scb, sp): (sys::$scbty, *const c_void) = match search.as_mut() {
                     Some(a) => (Some(search_tramp), ptr::from_mut(a).cast_const().cast()),
                     None => (None, ptr::null()),

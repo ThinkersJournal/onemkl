@@ -139,11 +139,7 @@ fn the_cubic_spline_has_the_same_call_back_form() {
         0
     };
     let with = s
-        .integrate_with_callbacks(
-            &[1.0],
-            &[9.0],
-            IntegrateCallbacks::new().right(&mut right),
-        )
+        .integrate_with_callbacks(&[1.0], &[9.0], IntegrateCallbacks::new().right(&mut right))
         .unwrap();
     let inside = s.integrate(&[1.0], &[7.0]).unwrap();
     assert!(

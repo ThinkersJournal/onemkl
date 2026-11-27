@@ -20,14 +20,8 @@ fn spline() -> LinearSpline1d<f64> {
     LinearSpline1d::new(x.clone(), x).unwrap()
 }
 
-fn run(
-    cb: &mut dyn FnMut(SearchRequest<'_, f64>) -> i32,
-) -> Result<Vec<f64>, Error> {
-    spline().integrate_with_callbacks(
-        &LEFT,
-        &RIGHT,
-        IntegrateCallbacks::new().search(cb),
-    )
+fn run(cb: &mut dyn FnMut(SearchRequest<'_, f64>) -> i32) -> Result<Vec<f64>, Error> {
+    spline().integrate_with_callbacks(&LEFT, &RIGHT, IntegrateCallbacks::new().search(cb))
 }
 
 /// The true 1-based cell of each site: 0 left of the knots, 6 right of them.

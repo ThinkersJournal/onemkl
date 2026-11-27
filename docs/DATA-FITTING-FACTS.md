@@ -7,8 +7,8 @@ Source: Intel oneMKL Developer Reference (C), 2026.0, the PDF at
 `df-integrate1d-df-integrateex1d.html`, `df-integrcallback.html`,
 `df-searchcellscallback.html`, `df-interpcallback.html`, the Data Fitting task
 editor pages). Fetched 2026-11-26. The wording below is ours; credit: "Intel
-oneMKL Developer Reference, <URL above>". Facts only; nothing here is wrapped
-yet. Where the reference and a header or a measurement disagree, the header or
+oneMKL Developer Reference, <URL above>". Facts only; the wrappers that use
+them (Hyman, integration call-backs) are separate changes. Where the reference and a header or a measurement disagree, the header or
 the measurement is stated as such.
 
 Positive control (a fact we measured before reading): the Hermite cubic takes
@@ -66,12 +66,11 @@ right). The reference says exactly that. It matches.
   with bitwise OR and travel as a 2-element array (left, right). Priority when
   combined: not-a-knot, then free-end, then periodic, then first derivative
   over second.
-- Hyman: listed with no required boundary condition and as supporting
-  periodic; it is not in the not-a-knot row. We measured earlier that the
-  call fails without `DF_BC_NOT_A_KNOT`, which contradicts the listing; and the
-  result was not monotone for monotone data. Retry plan: probe `DF_NO_BC`
-  first (what the reference lists), then periodic, and compare monotonicity
-  before any wrapper.
+- Hyman: the reference lists no required boundary condition and periodic
+  support; it is not in the not-a-knot row. What this build does, measured, is
+  in the section "Measured on oneMKL 2026.2" below (`DF_NO_BC` fails, free-end
+  and end-derivative conditions keep plateau data monotone, not-a-knot does
+  not).
 - Quadratics: default quadratic is built with `DF_PP_QUADRATIC`, type
   `DF_PP_DEFAULT` and the `DF_BC_Q_VAL` condition (one value). Subbotin uses
   free-end or end derivatives and an optional knot array through
@@ -109,11 +108,15 @@ Integration call-backs, linear spline on `[0, 7]`, call-backs that return
 
 Spline construction (8 knots of monotone plateau data):
 
-- Hyman: `DF_NO_BC` fails with -1014 (the reference's listing is wrong for
-  this build); `DF_BC_NOT_A_KNOT` constructs, and the derivative over
-  `[0, 7]` stayed at or above 0 on this data, where a natural cubic dipped to
-  -0.04. The earlier "not monotone" result came from a different dataset and
-  needs re-running with the same data before Hyman is called broken or fine.
+- Hyman, worst downward step between samples on the plateau data (natural
+  cubic control 0.0243): `DF_BC_FREE_END`, end first derivatives 0, and end
+  second derivatives 0 all 0.0 (monotone); `DF_BC_NOT_A_KNOT` 0.0140 (not
+  monotone); `DF_NO_BC` fails with -1014 (the reference lists it as
+  supported, so this build diverges). An earlier version of this section
+  claimed the derivative stayed non-negative; that came from a probe that
+  printed the minimum value, not the downward step, and is withdrawn. The
+  reference spells the second-derivative flags `DF_BC_2ST_LEFT_DER`; the
+  header has `DF_BC_2ND_LEFT_DER`.
 - Default quadratic: needs `DF_BC_Q_VAL` with one value (`DF_NO_BC` gives
   -1014).
 - Subbotin: constructs only with `DF_BC_FREE_END` plus a `DF_IC_Q_KNOT` array

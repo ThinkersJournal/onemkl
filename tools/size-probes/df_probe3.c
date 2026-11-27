@@ -24,7 +24,7 @@ static void spline_ic(const char *name, int order, int type, int bctype, const d
     memset(sc, 0, sizeof sc);
     int s = dfdEditPPSpline1D(t, order, type, bctype, (double *)bc, ictype, (double *)ic, sc, DF_NO_HINT);
     int c = DF_STATUS_OK;
-    double worst = 0, prev = -1e300;
+    double worst = 0;
     int nonmono = 0;
     if (s == DF_STATUS_OK) {
         c = dfdConstruct1D(t, DF_PP_SPLINE, DF_METHOD_STD);
@@ -32,16 +32,19 @@ static void spline_ic(const char *name, int order, int type, int bctype, const d
             double site[64], r[64];
             int n = 0;
             for (double v = 0; v <= 7.0001 && n < 64; v += 0.1) site[n++] = v;
-            MKL_INT dorder[1] = {1};
+            MKL_INT dorder[1] = {1}; /* value only (dorder[0] selects the function value) */
             int ev = dfdInterpolate1D(t, DF_INTERP, DF_METHOD_PP, n, site, DF_NON_UNIFORM_PARTITION,
                                       1, dorder, 0, r, DF_NO_HINT, 0);
             if (ev == DF_STATUS_OK) {
-                (void)prev;
-                for (int i = 0; i < n; i++) if (r[i] < worst) { worst = r[i]; nonmono = 1; }
+                for (int i = 1; i < n; i++) {
+                    double drop = r[i - 1] - r[i]; /* > 0 means the curve went down */
+                    if (drop > worst) worst = drop;
+                }
+                nonmono = worst > 1e-12;
             } else c = ev;
         }
     }
-    printf("%-34s edit=%d construct/eval=%d min_slope=%.5f nonmonotone=%d\n", name, s, c, worst, nonmono);
+    printf("%-34s edit=%d construct/eval=%d worst_drop=%.6f nonmonotone=%d\n", name, s, c, worst, nonmono);
     dfDeleteTask(&t);
 }
 
@@ -78,6 +81,9 @@ int main(void) {
     (void)nobc;
     spline("hyman NO_BC", DF_PP_CUBIC, DF_PP_HYMAN, DF_NO_BC, 0);
     spline("hyman NOT_A_KNOT", DF_PP_CUBIC, DF_PP_HYMAN, DF_BC_NOT_A_KNOT, 0);
+    spline("hyman FREE_END", DF_PP_CUBIC, DF_PP_HYMAN, DF_BC_FREE_END, 0);
+    spline("hyman 1ST_L|1ST_R = 0,0", DF_PP_CUBIC, DF_PP_HYMAN, DF_BC_1ST_LEFT_DER | DF_BC_1ST_RIGHT_DER, ends);
+    spline("hyman 2ND_L|2ND_R = 0,0", DF_PP_CUBIC, DF_PP_HYMAN, DF_BC_2ND_LEFT_DER | DF_BC_2ND_RIGHT_DER, ends);
     spline("natural FREE_END (control)", DF_PP_CUBIC, DF_PP_NATURAL, DF_BC_FREE_END, 0);
     spline("default quadratic Q_VAL", DF_PP_QUADRATIC, DF_PP_DEFAULT, DF_BC_Q_VAL, &q);
     spline("default quadratic NO_BC", DF_PP_QUADRATIC, DF_PP_DEFAULT, DF_NO_BC, 0);

@@ -187,7 +187,6 @@ fn robust_covariance_tbs_needs_more_than_2p_observations() {
         ss7.robust_covariance_tbs(&[0.25, 0.001, 0.001, 10.0])
             .is_ok()
     );
-    assert!(ss7.robust_covariance_tbs(&[0.0; 5]).is_err());
 }
 
 #[test]

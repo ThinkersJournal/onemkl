@@ -649,9 +649,6 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     /// (see [`Self::outliers_bacon`]); for a full robust covariance
     /// estimate the supported algorithm is TBS.
     pub fn robust_covariance_tbs(&mut self, params: &[T]) -> Result<(Vec<T>, Vec<T>)> {
-        if params.len() > 4 {
-            return Err(Error::InvalidArgument("TBS takes at most 4 parameters"));
-        }
         if self._n <= 2 * self.p {
             return Err(Error::InvalidArgument(
                 "robust covariance (TBS) needs more than 2 * num_variables observations",
@@ -740,7 +737,7 @@ impl SummaryStats<'_, f64> {
     #[inline]
     #[must_use]
     pub fn bacon_default_params() -> [f64; 3] {
-        [sys::VSL_SS_METHOD_BACON_MEDIAN_INIT as f64, 0.05, 0.005]
+        [sys::VSL_SS_METHOD_BACON_MEDIAN_INIT as f64, 0.05, 0.05]
     }
 }
 
@@ -749,7 +746,7 @@ impl SummaryStats<'_, f32> {
     #[inline]
     #[must_use]
     pub fn bacon_default_params() -> [f32; 3] {
-        [sys::VSL_SS_METHOD_BACON_MEDIAN_INIT as f32, 0.05, 0.005]
+        [sys::VSL_SS_METHOD_BACON_MEDIAN_INIT as f32, 0.05, 0.05]
     }
 }
 

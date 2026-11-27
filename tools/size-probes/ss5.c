@@ -33,8 +33,8 @@ static void bacon(double stop) {
   vslSSDeleteTask(&t);
 }
 int main(void) {
-  double a[4] = {0.25, 0.001, 0.001, 10};
-  for (int np = 0; np <= 4; np++) tbs(3, 40, np, a);
+  double a[6] = {0.25, 0.001, 0.001, 10, 1, 1};
+  for (int np = 0; np <= 6; np++) tbs(3, 40, np, a);
   tbs(3, 7, 4, a); tbs(3, 6, 4, a); tbs(3, 5, 4, a);
   bacon(0.005); bacon(0.05);
   return 0;

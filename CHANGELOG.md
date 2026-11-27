@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased (version to be allocated by pm-assist)
+## 0.4.16 - 2026-11-27 (allocated by pm-assist; the ilp64 feature is refused by build.rs (measured ~590 type errors with real bindgen), corr_exec extents verified, ROADMAP row for SummaryStats::impute_missing)
 
 ### Changed
 

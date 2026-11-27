@@ -341,7 +341,10 @@ impl<T: JitGemmScalar> JitGemm<T> {
     /// scaling factors. `alpha` and `beta` are baked into the kernel
     /// at compile time — to use different values, build a different
     /// `JitGemm`.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "stable public surface: published since v0.1.0 with 11 arguments; changing the signature breaks consumers"
+    )]
     pub fn new(
         layout: Layout,
         transa: Transpose,

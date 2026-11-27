@@ -401,7 +401,10 @@ pub unsafe fn geunpack<T: CompactScalar>(
 
 /// Compact GEMM: perform `num_matrices` GEMMs `C ← α · op(A) · op(B)
 /// + β · C` in lockstep on packed buffers. Wraps `mkl_*gemm_compact`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 16 arguments; changing the signature breaks consumers"
+)]
 pub fn gemm<T: CompactScalar>(
     layout: Layout,
     transa: Transpose,
@@ -735,7 +738,10 @@ fn to_c(v: usize) -> Result<c_int> {
 /// `X`. `A` is `m x m` for `Side::Left`, `n x n` for `Side::Right`; `B` is
 /// `m x n`. Both are in the compact layout of `format`. Buffer lengths are
 /// checked against [`get_size`]. Wraps `mkl_*trsm_compact`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.3.8 with 14 arguments; changing the signature breaks consumers"
+)]
 pub fn trsm<T: CompactFactorScalar>(
     layout: Layout,
     side: Side,

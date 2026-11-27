@@ -479,7 +479,10 @@ impl<T: SparseScalar> SparseMatrix<T> {
     /// `col_idx` has length `nnz_blocks`. `values` has length
     /// `nnz_blocks * block_size * block_size`, with each block stored
     /// according to `block_layout`.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+    )]
     pub fn from_bsr(
         rows: usize,
         cols: usize,
@@ -619,7 +622,10 @@ impl<T: SparseScalar> SparseMatrix<T> {
     /// `Y ← alpha * op(A) * X + beta * Y` for dense `X` and `Y`.
     /// `X` and `Y` are stored according to `layout`; `columns` is the
     /// number of columns of `X` / `Y`.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "stable public surface: published since v0.1.0 with 11 arguments; changing the signature breaks consumers"
+    )]
     pub fn mm(
         &self,
         op: Operation,
@@ -1179,7 +1185,10 @@ impl<T: RealSparseScalar> SparseMatrix<T> {
 
     /// Solve `op(A) * X = B` using the cached QR factorization.
     /// Call [`Self::qr_factor`] first.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+    )]
     pub fn qr_solve(
         &self,
         op: Operation,

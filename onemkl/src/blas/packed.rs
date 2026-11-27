@@ -241,7 +241,10 @@ impl<T: PackedGemmScalar> PackedMatrix<T> {
     /// the unpacked source matrix in the usual CBLAS convention; the
     /// resulting [`PackedMatrix`] can then be used in repeated
     /// [`gemm_compute_packed_a`] calls.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+    )]
     pub fn pack_a(
         layout: Layout,
         trans: Transpose,
@@ -256,7 +259,10 @@ impl<T: PackedGemmScalar> PackedMatrix<T> {
     }
 
     /// Pack the `B` operand of a future GEMM.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+    )]
     pub fn pack_b(
         layout: Layout,
         trans: Transpose,
@@ -367,7 +373,10 @@ fn trans_as_compute_int(t: Transpose) -> c_int {
 /// `transb` applies to the unpacked `B` operand. `alpha` is baked
 /// into `A_packed` (it was applied at pack time), so this function
 /// has no `alpha` parameter.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 11 arguments; changing the signature breaks consumers"
+)]
 pub fn gemm_compute_packed_a<T: PackedGemmScalar>(
     layout: Layout,
     transb: Transpose,
@@ -421,7 +430,10 @@ pub fn gemm_compute_packed_a<T: PackedGemmScalar>(
 
 /// Run `C ← op(A) · op(B_packed) + beta · C` where `B_packed` was
 /// produced by [`PackedMatrix::pack_b`].
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 11 arguments; changing the signature breaks consumers"
+)]
 pub fn gemm_compute_packed_b<T: PackedGemmScalar>(
     layout: Layout,
     transa: Transpose,

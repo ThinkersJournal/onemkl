@@ -118,7 +118,10 @@ fn dim(x: usize) -> Result<c_int> {
 /// `a` and `b` are slices of bf16 bit patterns (one `u16` per
 /// element). See the module-level docs for converting from your
 /// preferred bf16 representation.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 14 arguments; changing the signature breaks consumers"
+)]
 pub fn gemm_bf16_f32(
     layout: Layout,
     transa: Transpose,
@@ -218,7 +221,10 @@ pub fn gemm_f16_f32(
 ///
 /// E5M2 has wider dynamic range than E4M3 — typically used for
 /// activations and gradients during FP8 mixed-precision training.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 14 arguments; changing the signature breaks consumers"
+)]
 pub fn gemm_e5m2_f32(
     layout: Layout,
     transa: Transpose,
@@ -270,7 +276,10 @@ pub fn gemm_e5m2_f32(
 ///
 /// E4M3 has higher per-range precision than E5M2 — typically used
 /// for weights during FP8 mixed-precision inference / training.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 14 arguments; changing the signature breaks consumers"
+)]
 pub fn gemm_e4m3_f32(
     layout: Layout,
     transa: Transpose,
@@ -324,7 +333,10 @@ pub fn gemm_e4m3_f32(
 /// This is the canonical quantized-inference primitive: the `ao` /
 /// `bo` zero points and `cb` bias capture the asymmetric
 /// quantization scheme used by most quantized models.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 18 arguments; changing the signature breaks consumers"
+)]
 pub fn gemm_s8u8_s32(
     layout: Layout,
     transa: Transpose,
@@ -390,7 +402,10 @@ pub fn gemm_s8u8_s32(
 
 /// `C ← alpha · (op(A) + ao) · (op(B) + bo) + beta · C + cb` for
 /// int16 inputs and int32 output. Wraps `cblas_gemm_s16s16s32`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 18 arguments; changing the signature breaks consumers"
+)]
 pub fn gemm_s16_s32(
     layout: Layout,
     transa: Transpose,

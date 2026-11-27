@@ -286,9 +286,12 @@ Every non-MPI domain at Comprehensive:
     allows: 238 - 76 = 162; reasoned: 83. Chunk 2 (35 more C-mirror raw
     declarations: compact, packed, data fitting, FEAST, LAPACKE extras, RNG,
     summary statistics, sparse, VM) brings that to 127 bare and 118 reasoned.
-    Left: `sparse_qr_solve`, `pde` 3, `jit_create`, `compact` `gepack` /
-    `geunpack`, 4 lines of `blas/scalar.rs`, the ~70 safe wrappers (public
-    surface or restructure) and the 4 private functions.
+    Chunk 3 (60 published safe wrappers, "stable public surface" with the
+    tag and argument count as evidence) brings it to 67 bare and 178
+    reasoned (measured by `git grep`). Left: `sparse_qr_solve`, `pde` 3,
+    `jit_create`, `compact` `gepack` / `geunpack`, 4 lines of
+    `blas/scalar.rs`, 4 ambiguous-name wrappers and the 4 private functions;
+    plus the 42 allows that no longer have a flagged function (unexplained).
   - **Wanted:** per item, either a `reason = "mirrors the oneMKL C signature
     <name> argument for argument"` (C mirrors: most of the trait declarations
     and wrappers above), or a restructure (a parameter struct) for the rest;

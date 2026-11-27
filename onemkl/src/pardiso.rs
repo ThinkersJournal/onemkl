@@ -590,7 +590,10 @@ pub unsafe fn set_pardiso_pivot_callback(
 ///
 /// `b` may be empty for phases that do not solve (e.g. analyze,
 /// factorize, free); `x` similarly.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 15 arguments; changing the signature breaks consumers"
+)]
 pub fn pardiso_64_raw<T: PardisoScalar>(
     pt: &mut [*mut core::ffi::c_void; 64],
     maxfct: i64,

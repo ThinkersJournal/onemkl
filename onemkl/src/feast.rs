@@ -193,7 +193,10 @@ pub fn eigh_complex_dense<T: FeastComplex>(
 ///
 /// `sa`, `isa`, `jsa` are 1-based CSR storage of `A`. The wrapper
 /// stores only the upper or lower triangle as selected by `uplo`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn eigh_real_csr<T: FeastReal>(
     uplo: UpLo,
     n: usize,
@@ -261,7 +264,10 @@ pub fn eigh_real_csr<T: FeastReal>(
 }
 
 /// Complex Hermitian CSR FEAST solver. Wraps `?feast_hcsrev`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn eigh_complex_csr<T: FeastComplex>(
     uplo: UpLo,
     n: usize,
@@ -333,7 +339,10 @@ pub fn eigh_complex_csr<T: FeastComplex>(
 /// `kla` is the number of subdiagonals (or superdiagonals — must be
 /// equal because `A` is symmetric). The matrix `a` is stored in LAPACK
 /// band format with leading dimension `lda >= kla + 1`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn eigh_real_banded<T: FeastReal>(
     uplo: UpLo,
     n: usize,
@@ -398,7 +407,10 @@ pub fn eigh_real_banded<T: FeastReal>(
 }
 
 /// Complex Hermitian banded FEAST solver. Wraps `?feast_hbev`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn eigh_complex_banded<T: FeastComplex>(
     uplo: UpLo,
     n: usize,
@@ -465,7 +477,10 @@ pub fn eigh_complex_banded<T: FeastComplex>(
 /// Real symmetric generalized dense FEAST solver: solves
 /// `A x = λ B x` with `A` symmetric and `B` symmetric positive
 /// definite. Wraps `?feast_sygv`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 9 arguments; changing the signature breaks consumers"
+)]
 pub fn gen_eigh_real_dense<T: FeastReal>(
     uplo: UpLo,
     n: usize,
@@ -536,7 +551,10 @@ pub fn gen_eigh_real_dense<T: FeastReal>(
 /// Complex Hermitian generalized dense FEAST solver: solves
 /// `A x = λ B x` with `A` Hermitian and `B` Hermitian positive
 /// definite. Wraps `?feast_hegv`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 9 arguments; changing the signature breaks consumers"
+)]
 pub fn gen_eigh_complex_dense<T: FeastComplex>(
     uplo: UpLo,
     n: usize,

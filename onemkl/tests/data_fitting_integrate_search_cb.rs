@@ -26,16 +26,21 @@ fn run(
     spline().integrate_with_callbacks(
         &LEFT,
         &RIGHT,
-        IntegrateCallbacks {
-            search: Some(cb),
-            ..Default::default()
-        },
+        IntegrateCallbacks::new().search(cb),
     )
 }
 
+/// The true 1-based cell of each site: 0 left of the knots, 6 right of them.
 fn fill(r: &mut SearchRequest<'_, f64>, base: i64) {
     for (i, s) in r.sites.iter().enumerate() {
-        r.cells[i] = (*s as i64).clamp(0, 4) + base;
+        let truth = if *s < 0.0 {
+            0
+        } else if *s >= 5.0 {
+            6
+        } else {
+            *s as i64 + 1
+        };
+        r.cells[i] = truth - 1 + base;
     }
 }
 
@@ -60,29 +65,57 @@ fn called_twice_left_limits_then_right_limits_and_result_is_correct() {
 }
 
 #[test]
-fn out_of_range_exact_cells_give_zeros_not_an_error_vacuity_mutant() {
-    // Proves the call-back's cells reach the integrator: cell 99 declared
-    // exact changes the result, from the correct integrals to silent zeros.
+fn out_of_range_exact_cell_is_an_error_not_silent_zeros() {
+    // Unguarded, oneMKL 2026.2 returned integrals [0, 0, 0] with status 0 for
+    // this call-back (df_search3.c, mode 2): the control that fails on the
+    // unguarded path. The wrapper rejects it before oneMKL uses the cells.
     let mut cb = |r: SearchRequest<'_, f64>| {
         r.cells.fill(99);
         r.exact.fill(1);
         0
     };
-    let out = run(&mut cb).unwrap();
-    assert_eq!(out, [0.0, 0.0, 0.0]);
-    assert_ne!(out, EXPECT);
+    assert_eq!(
+        run(&mut cb),
+        Err(Error::SearchCell {
+            index: 0,
+            cell: 99,
+            max_cell: 6
+        })
+    );
 }
 
 #[test]
-fn negative_status_is_the_error_positive_status_is_swallowed() {
+fn shifted_exact_cells_are_rejected() {
+    let mut cb = |mut r: SearchRequest<'_, f64>| {
+        fill(&mut r, 0); // each cell one too small
+        r.exact.fill(1);
+        0
+    };
+    assert!(matches!(run(&mut cb), Err(Error::SearchCell { .. })));
+}
+
+#[test]
+fn approximate_cells_are_not_checked_and_the_library_refines_them() {
+    let mut cb = |r: SearchRequest<'_, f64>| {
+        r.cells.fill(99);
+        r.exact.fill(0);
+        0
+    };
+    assert_eq!(run(&mut cb).unwrap(), EXPECT);
+}
+
+#[test]
+fn negative_status_is_the_error_positive_status_is_a_typed_error() {
     let mut neg = |_: SearchRequest<'_, f64>| -5;
     assert!(matches!(run(&mut neg), Err(Error::VslStatus(-5))));
+    // Unguarded, oneMKL swallowed this status and returned correct results
+    // with status 0 (df_search3.c).
     let mut pos = |mut r: SearchRequest<'_, f64>| {
         fill(&mut r, 1);
         r.exact.fill(1);
         3
     };
-    assert_eq!(run(&mut pos).unwrap(), EXPECT);
+    assert_eq!(run(&mut pos), Err(Error::SearchCallbackStatus(3)));
 }
 
 #[test]

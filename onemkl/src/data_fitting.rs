@@ -26,7 +26,7 @@ use crate::error::{Error, Result};
 
 /// Real scalar types supported by the data-fitting interface.
 #[allow(missing_docs)]
-pub trait DataFittingScalar: Copy + 'static {
+pub trait DataFittingScalar: Copy + PartialOrd + 'static {
     /// Raw `df_new_task_1d` call.
     ///
     /// # Safety
@@ -163,6 +163,7 @@ pub trait DataFittingScalar: Copy + 'static {
 /// Cells are 1-based, as oneMKL reports them: cell `k` is
 /// `[x[k - 1], x[k])`, 0 is left of the first breakpoint and `nx` right of
 /// the last.
+#[non_exhaustive]
 pub struct SearchRequest<'a, T> {
     /// The interpolation sites to locate.
     pub sites: &'a [T],
@@ -173,6 +174,13 @@ pub struct SearchRequest<'a, T> {
     /// written) if the call-back returns [`DF_STATUS_EXACT_RESULT`].
     pub exact: &'a mut [c_int],
 }
+
+// Cells the call-back declares exact (`exact[i] == 1`, or every cell when it
+// returns `DF_STATUS_EXACT_RESULT`) are checked against the knots before
+// oneMKL uses them: cell `c` must satisfy `0 <= c <= nx` and
+// `x[c - 1] <= site <= x[c]` (no lower bound for `c == 0`, no upper for
+// `c == nx`). A violation is `Error::SearchCell`; a positive status is
+// `Error::SearchCallbackStatus`.
 
 /// `DF_STATUS_EXACT_RESULT`: returned from a search call-back to declare every
 /// cell exact.
@@ -185,14 +193,56 @@ pub type SearchCallback<'a, T> = &'a mut dyn FnMut(SearchRequest<'_, T>) -> i32;
 #[doc(hidden)]
 pub struct SearchExArgs<'a, T> {
     pub callback: SearchCallback<'a, T>,
+    /// The breakpoints of the task, to check exact cells against.
+    pub x: &'a [T],
     /// Set when the call-back panicked.
     pub panic: Option<Box<dyn Any + Send>>,
+    /// First problem found in what the call-back returned.
+    pub error: Option<Error>,
+}
+
+impl<T: DataFittingScalar> SearchExArgs<'_, T> {
+    /// The error to report for this search, if any (a call-back problem
+    /// found by the trampoline).
+    pub fn take_error(&mut self) -> Option<Error> {
+        self.error.take()
+    }
+}
+
+/// Check one exact cell (1-based, see [`SearchRequest`]) against the knots.
+fn check_exact_cell<T: DataFittingScalar>(
+    x: &[T],
+    index: usize,
+    site: T,
+    cell: i64,
+) -> Option<Error> {
+    let nx = x.len();
+    let bad = || {
+        Some(Error::SearchCell {
+            index,
+            cell,
+            max_cell: nx,
+        })
+    };
+    let Ok(c) = usize::try_from(cell) else {
+        return bad();
+    };
+    if c > nx {
+        return bad();
+    }
+    if c > 0 && !(x[c - 1] <= site) {
+        return bad();
+    }
+    if c < nx && !(site <= x[c]) {
+        return bad();
+    }
+    None
 }
 
 /// # Safety
 ///
 /// `user` is the `SearchExArgs` passed with the call-back; `n`, `site`, `cell` and `flag` are the arrays oneMKL passes (`n` elements each).
-unsafe fn run_search_callback<T>(
+unsafe fn run_search_callback<T: DataFittingScalar>(
     n: *mut c_longlong,
     site: *mut T,
     cell: *mut c_longlong,
@@ -209,7 +259,28 @@ unsafe fn run_search_callback<T>(
             exact: core::slice::from_raw_parts_mut(flag, n),
         };
         match catch_unwind(AssertUnwindSafe(|| (args.callback)(req))) {
-            Ok(status) => status,
+            Ok(status) => {
+                let all_exact = status == DF_STATUS_EXACT_RESULT;
+                // SAFETY: the same arrays, re-read after the call-back.
+                let (sites, cells, flags) = (
+                    core::slice::from_raw_parts(site, n),
+                    core::slice::from_raw_parts(cell, n),
+                    core::slice::from_raw_parts(flag, n),
+                );
+                for i in 0..n {
+                    if (all_exact || flags[i] == 1)
+                        && let Some(e) = check_exact_cell(args.x, i, sites[i], cells[i])
+                    {
+                        args.error.get_or_insert(e);
+                        // Make oneMKL stop without using the cells.
+                        return -1;
+                    }
+                }
+                if status > 0 && !all_exact {
+                    args.error.get_or_insert(Error::SearchCallbackStatus(status));
+                }
+                status
+            }
             Err(payload) => {
                 args.panic = Some(payload);
                 -1
@@ -222,6 +293,7 @@ unsafe fn run_search_callback<T>(
 /// an integration interval (`df?IntegrCallBack`). Cell indices are the 1-based
 /// ones oneMKL passes (0 left of the interpolation interval, `nx` at or
 /// right of its end).
+#[non_exhaustive]
 pub struct IntegrationPieces<'a, T> {
     /// Cells containing the left limits.
     pub left_cells: &'a [i64],
@@ -241,6 +313,7 @@ pub type IntegrationCallback<'a, T> = &'a mut dyn FnMut(IntegrationPieces<'_, T>
 
 /// The optional call-backs of `df?IntegrateEx1D`. A `None` entry uses
 /// the library's own spline integration (or cell search) for that region.
+#[non_exhaustive]
 pub struct IntegrateCallbacks<'a, T> {
     /// For the part of an interval left of the interpolation interval.
     pub left: Option<IntegrationCallback<'a, T>>,
@@ -250,15 +323,49 @@ pub struct IntegrateCallbacks<'a, T> {
     pub interior: Option<IntegrationCallback<'a, T>>,
     /// A user-defined cell search for the integration limits. oneMKL calls
     /// it twice per `integrate_with_callbacks`: first for the left limits,
-    /// then for the right ones, each time with every limit as a site. The
-    /// cells are 1-based like [`SearchRequest`]'s. **Measured caveats
-    /// (oneMKL 2026.2, `tools/size-probes/df_search3.c`)**: an exact cell
-    /// that is out of range (99) gives integrals of 0 with status 0, not an
-    /// error; cells that are shifted by one or 0 were still integrated
-    /// correctly; a positive call-back status is swallowed (the routine
-    /// returns 0). A negative one is returned as the error and the output
-    /// is left untouched.
+    /// then for the right ones, each time with every limit as a site. Cells
+    /// are 1-based like [`SearchRequest`]'s and are checked before oneMKL
+    /// uses them: see [`SearchRequest`]. (oneMKL 2026.2,
+    /// `tools/size-probes/df_search3.c`: an unchecked out-of-range exact
+    /// cell gives integrals of 0 with status 0, and a positive call-back
+    /// status is swallowed; both are errors here.)
     pub search: Option<SearchCallback<'a, T>>,
+}
+
+impl<'a, T> IntegrateCallbacks<'a, T> {
+    /// No call-backs: the library's own integration and search everywhere.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the call-back for the part left of the interpolation interval.
+    #[must_use]
+    pub fn left(mut self, f: IntegrationCallback<'a, T>) -> Self {
+        self.left = Some(f);
+        self
+    }
+
+    /// Set the call-back for the part right of the interpolation interval.
+    #[must_use]
+    pub fn right(mut self, f: IntegrationCallback<'a, T>) -> Self {
+        self.right = Some(f);
+        self
+    }
+
+    /// Set the call-back for the part inside the interpolation interval.
+    #[must_use]
+    pub fn interior(mut self, f: IntegrationCallback<'a, T>) -> Self {
+        self.interior = Some(f);
+        self
+    }
+
+    /// Set the user-defined cell search (see [`search`](Self::search) field).
+    #[must_use]
+    pub fn search(mut self, f: SearchCallback<'a, T>) -> Self {
+        self.search = Some(f);
+        self
+    }
 }
 
 impl<T> Default for IntegrateCallbacks<'_, T> {
@@ -280,9 +387,13 @@ pub struct IntegrateExArgs<'a, T: DataFittingScalar> {
     pub llim: *const T,
     pub rlim: *const T,
     pub r: *mut T,
+    /// The breakpoints of the task (for checking search cells).
+    pub x: &'a [T],
     pub callbacks: IntegrateCallbacks<'a, T>,
     /// Set when a call-back panicked.
     pub panic: Option<Box<dyn Any + Send>>,
+    /// A problem found in what the search call-back returned.
+    pub search_error: Option<Error>,
 }
 
 struct CbSlot<'a, T> {
@@ -467,7 +578,9 @@ macro_rules! impl_data_fitting_real {
                     .take()
                     .map(|callback| SearchExArgs {
                         callback,
+                        x: args.x,
                         panic: None,
+                        error: None,
                     });
                 let (scb, sp): (sys::$scbty, *const c_void) = match search.as_mut() {
                     Some(a) => (Some(search_tramp), ptr::from_mut(a).cast_const().cast()),
@@ -515,7 +628,8 @@ macro_rules! impl_data_fitting_real {
                     .and_then(|s| s.panic)
                     .or_else(|| right.and_then(|s| s.panic))
                     .or_else(|| inside.and_then(|s| s.panic))
-                    .or_else(|| search.and_then(|s| s.panic));
+                    .or_else(|| search.as_mut().and_then(|s| s.panic.take()));
+                args.search_error = search.as_mut().and_then(SearchExArgs::take_error);
                 status
             }
             unsafe fn df_search_cells_ex_1d(
@@ -973,16 +1087,16 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
     /// call-back status becomes an error, a positive one is a warning and the
     /// result is kept; a panic in a call-back is resumed here once oneMKL has
     /// returned. See `docs/DATA-FITTING-FACTS.md` for the measured details.
-    pub fn integrate_with_callbacks(
-        &self,
+    pub fn integrate_with_callbacks<'a>(
+        &'a self,
         left: &[T],
         right: &[T],
-        callbacks: IntegrateCallbacks<'_, T>,
+        callbacks: IntegrateCallbacks<'a, T>,
     ) -> Result<Vec<T>>
     where
         T: Default,
     {
-        integrate_ex_impl(self.task, left, right, callbacks)
+        integrate_ex_impl(self.task, &self._x, left, right, callbacks)
     }
 
     /// Locate `sites` with a user-defined search call-back
@@ -991,14 +1105,15 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
     /// [`find_cells`](Self::find_cells). A call-back that sets `exact[i] = 1`
     /// (or returns [`DF_STATUS_EXACT_RESULT`]) has its cells used as given;
     /// otherwise oneMKL refines them. A negative status becomes an error, a
-    /// positive one is a warning and the cells are kept; a panic in the
-    /// call-back is resumed here. Measured details: `docs/DATA-FITTING-FACTS.md`.
+    /// positive one is `Error::SearchCallbackStatus`; an exact cell that does
+    /// not contain its site is `Error::SearchCell` (checked before oneMKL uses
+    /// it); a panic in the call-back is resumed here. Measured details: `docs/DATA-FITTING-FACTS.md`.
     pub fn find_cells_with_callback(
         &self,
         sites: &[T],
         callback: SearchCallback<'_, T>,
     ) -> Result<Vec<usize>> {
-        search_cells_impl(self.task, sites, callback)
+        search_cells_impl(self.task, &self._x, sites, callback)
     }
 }
 
@@ -1155,16 +1270,16 @@ impl<T: DataFittingScalar + Default> LinearSpline1d<T> {
     /// call-back status becomes an error, a positive one is a warning and the
     /// result is kept; a panic in a call-back is resumed here once oneMKL has
     /// returned. See `docs/DATA-FITTING-FACTS.md` for the measured details.
-    pub fn integrate_with_callbacks(
-        &self,
+    pub fn integrate_with_callbacks<'a>(
+        &'a self,
         left: &[T],
         right: &[T],
-        callbacks: IntegrateCallbacks<'_, T>,
+        callbacks: IntegrateCallbacks<'a, T>,
     ) -> Result<Vec<T>>
     where
         T: Default,
     {
-        integrate_ex_impl(self.task, left, right, callbacks)
+        integrate_ex_impl(self.task, &self._x, left, right, callbacks)
     }
 
     /// Locate `sites` with a user-defined search call-back
@@ -1173,14 +1288,15 @@ impl<T: DataFittingScalar + Default> LinearSpline1d<T> {
     /// `CubicSpline1d::find_cells`. A call-back that sets `exact[i] = 1`
     /// (or returns [`DF_STATUS_EXACT_RESULT`]) has its cells used as given;
     /// otherwise oneMKL refines them. A negative status becomes an error, a
-    /// positive one is a warning and the cells are kept; a panic in the
-    /// call-back is resumed here. Measured details: `docs/DATA-FITTING-FACTS.md`.
+    /// positive one is `Error::SearchCallbackStatus`; an exact cell that does
+    /// not contain its site is `Error::SearchCell` (checked before oneMKL uses
+    /// it); a panic in the call-back is resumed here. Measured details: `docs/DATA-FITTING-FACTS.md`.
     pub fn find_cells_with_callback(
         &self,
         sites: &[T],
         callback: SearchCallback<'_, T>,
     ) -> Result<Vec<usize>> {
-        search_cells_impl(self.task, sites, callback)
+        search_cells_impl(self.task, &self._x, sites, callback)
     }
 }
 
@@ -1433,14 +1549,15 @@ impl<T: DataFittingScalar + Default + PartialOrd> QuadraticSpline1d<T> {
     /// `CubicSpline1d::find_cells_with_callback`: 1-based cells in the
     /// call-back, 0-based result, `exact[i] = 1` or
     /// [`DF_STATUS_EXACT_RESULT`] to have cells used as given, a negative
-    /// status is an error, a positive one a warning, a panic is resumed.
+    /// status is an error, a positive one `Error::SearchCallbackStatus`, an exact
+    /// cell that does not contain its site `Error::SearchCell`, a panic is resumed.
     /// Measured: `docs/DATA-FITTING-FACTS.md`.
     pub fn find_cells_with_callback(
         &self,
         sites: &[T],
         callback: SearchCallback<'_, T>,
     ) -> Result<Vec<usize>> {
-        search_cells_impl(self.task, sites, callback)
+        search_cells_impl(self.task, &self._x, sites, callback)
     }
 }
 
@@ -1455,11 +1572,12 @@ impl<T: DataFittingScalar> Drop for QuadraticSpline1d<T> {
 }
 
 #[inline]
-fn integrate_ex_impl<T: DataFittingScalar + Default>(
+fn integrate_ex_impl<'a, T: DataFittingScalar + Default>(
     task: DFTaskPtr,
+    x: &'a [T],
     left: &[T],
     right: &[T],
-    callbacks: IntegrateCallbacks<'_, T>,
+    callbacks: IntegrateCallbacks<'a, T>,
 ) -> Result<Vec<T>> {
     if left.len() != right.len() {
         return Err(Error::InvalidArgument(
@@ -1476,12 +1594,17 @@ fn integrate_ex_impl<T: DataFittingScalar + Default>(
         llim: left.as_ptr(),
         rlim: right.as_ptr(),
         r: out.as_mut_ptr(),
+        x,
         callbacks,
         panic: None,
+        search_error: None,
     };
     let status = unsafe { T::df_integrate_ex_1d(task, &mut args) };
     if let Some(payload) = args.panic.take() {
         resume_unwind(payload);
+    }
+    if let Some(e) = args.search_error.take() {
+        return Err(e);
     }
     // A positive status is a warning from a call-back; the result is kept.
     if status < 0 {
@@ -1490,10 +1613,11 @@ fn integrate_ex_impl<T: DataFittingScalar + Default>(
     Ok(out)
 }
 
-fn search_cells_impl<T: DataFittingScalar>(
+fn search_cells_impl<'a, T: DataFittingScalar>(
     task: DFTaskPtr,
+    x: &'a [T],
     sites: &[T],
-    callback: SearchCallback<'_, T>,
+    callback: SearchCallback<'a, T>,
 ) -> Result<Vec<usize>> {
     let _: c_int = sites
         .len()
@@ -1502,13 +1626,17 @@ fn search_cells_impl<T: DataFittingScalar>(
     let mut cells: Vec<c_int> = vec![0; sites.len()];
     let mut args = SearchExArgs {
         callback,
+        x,
         panic: None,
+        error: None,
     };
     let status = unsafe { T::df_search_cells_ex_1d(task, sites, &mut cells, &mut args) };
     if let Some(payload) = args.panic.take() {
         resume_unwind(payload);
     }
-    // A positive status is a warning from the call-back; the cells are kept.
+    if let Some(e) = args.take_error() {
+        return Err(e);
+    }
     if status < 0 {
         return Err(Error::VslStatus(status));
     }

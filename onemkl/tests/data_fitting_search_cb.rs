@@ -42,7 +42,7 @@ fn exact_one_based_callback_is_used_and_called_once() {
 }
 
 #[test]
-fn exact_flag_makes_the_library_trust_the_callback_vacuity_mutant() {
+fn shifted_exact_cells_are_rejected_not_silently_used() {
     // Mutant: 0-based cells declared exact are copied through, so the result
     // is shifted. This proves the call-back's output is what comes back (the
     // tests above and below could not pass if oneMKL ignored it).
@@ -52,9 +52,16 @@ fn exact_flag_makes_the_library_trust_the_callback_vacuity_mutant() {
         r.exact.fill(1);
         0
     };
-    let cells = s.find_cells_with_callback(&SITES, &mut cb).unwrap();
-    assert_eq!(cells, [0, 0, 1, 3]); // raw 0, 1, 2, 4 -> minus the 1-based offset
-    assert_ne!(cells, vec![0, 1, 2, 4]); // the true cells
+    // Unguarded, oneMKL returned the shifted cells [0, 0, 1, 3] (measured:
+    // df_search.c); the wrapper rejects them before oneMKL uses them.
+    assert_eq!(
+        s.find_cells_with_callback(&SITES, &mut cb),
+        Err(Error::SearchCell {
+            index: 0,
+            cell: 0,
+            max_cell: 6
+        })
+    );
 }
 
 #[test]
@@ -85,7 +92,7 @@ fn exact_result_status_needs_no_flags() {
 }
 
 #[test]
-fn negative_status_is_an_error_positive_is_a_warning() {
+fn negative_status_is_an_error_positive_status_is_an_error_too() {
     let s = spline();
     let mut neg = |_: SearchRequest<'_, f64>| -5;
     assert!(matches!(
@@ -98,8 +105,8 @@ fn negative_status_is_an_error_positive_is_a_warning() {
         3
     };
     assert_eq!(
-        s.find_cells_with_callback(&SITES, &mut pos).unwrap(),
-        [0, 1, 2, 4]
+        s.find_cells_with_callback(&SITES, &mut pos),
+        Err(Error::SearchCallbackStatus(3))
     );
 }
 
@@ -142,7 +149,7 @@ mod quadratic {
     }
 
     #[test]
-    fn zero_based_exact_cells_come_back_shifted_vacuity_mutant() {
+    fn shifted_exact_cells_are_rejected() {
         // Proves the call-back's output is what comes back.
         let s = qspline();
         let mut cb = |mut r: SearchRequest<'_, f64>| {
@@ -150,9 +157,14 @@ mod quadratic {
             r.exact.fill(1);
             0
         };
-        let cells = s.find_cells_with_callback(&SITES, &mut cb).unwrap();
-        assert_eq!(cells, [0, 0, 1, 3]);
-        assert_ne!(cells, vec![0, 1, 2, 4]);
+        assert_eq!(
+            s.find_cells_with_callback(&SITES, &mut cb),
+            Err(Error::SearchCell {
+                index: 0,
+                cell: 0,
+                max_cell: 6
+            })
+        );
     }
 
     #[test]
@@ -170,7 +182,7 @@ mod quadratic {
     }
 
     #[test]
-    fn negative_status_is_an_error_positive_a_warning() {
+    fn negative_and_positive_statuses_are_errors() {
         let s = qspline();
         let mut neg = |_: SearchRequest<'_, f64>| -5;
         assert!(matches!(
@@ -183,8 +195,26 @@ mod quadratic {
             3
         };
         assert_eq!(
-            s.find_cells_with_callback(&SITES, &mut pos).unwrap(),
-            [0, 1, 2, 4]
+            s.find_cells_with_callback(&SITES, &mut pos),
+            Err(Error::SearchCallbackStatus(3))
         );
     }
+}
+
+#[test]
+fn out_of_range_exact_cell_is_a_typed_error() {
+    let s = spline();
+    let mut cb = |r: SearchRequest<'_, f64>| {
+        r.cells.fill(99);
+        r.exact.fill(1);
+        0
+    };
+    assert_eq!(
+        s.find_cells_with_callback(&SITES, &mut cb),
+        Err(Error::SearchCell {
+            index: 0,
+            cell: 99,
+            max_cell: 6
+        })
+    );
 }

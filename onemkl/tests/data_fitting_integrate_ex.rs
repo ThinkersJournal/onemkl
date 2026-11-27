@@ -35,10 +35,7 @@ fn interior_callback_gets_the_interior_piece_with_one_based_cells() {
         .integrate_with_callbacks(
             &[1.0],
             &[3.0],
-            IntegrateCallbacks {
-                interior: Some(&mut interior),
-                ..Default::default()
-            },
+            IntegrateCallbacks::new().interior(&mut interior),
         )
         .unwrap();
     assert_eq!(r, vec![102.0]);
@@ -68,12 +65,7 @@ fn limits_outside_the_interval_are_split_between_the_three_callbacks() {
         .integrate_with_callbacks(
             &[-2.0],
             &[9.0],
-            IntegrateCallbacks {
-                left: Some(&mut left),
-                right: Some(&mut right),
-                interior: None,
-                search: None,
-            },
+            IntegrateCallbacks::new().left(&mut left).right(&mut right),
         )
         .unwrap();
     // Interior piece [0, 7] uses the library: integral of x = 24.5.
@@ -94,10 +86,7 @@ fn a_positive_callback_status_is_a_warning_and_the_result_is_kept() {
         .integrate_with_callbacks(
             &[1.0],
             &[3.0],
-            IntegrateCallbacks {
-                interior: Some(&mut interior),
-                ..Default::default()
-            },
+            IntegrateCallbacks::new().interior(&mut interior),
         )
         .unwrap();
     assert_eq!(r, vec![5.0]);
@@ -111,10 +100,7 @@ fn a_negative_callback_status_is_an_error() {
         .integrate_with_callbacks(
             &[1.0],
             &[3.0],
-            IntegrateCallbacks {
-                interior: Some(&mut interior),
-                ..Default::default()
-            },
+            IntegrateCallbacks::new().interior(&mut interior),
         )
         .unwrap_err();
     assert!(matches!(e, Error::VslStatus(-3)), "{e:?}");
@@ -128,10 +114,7 @@ fn a_panic_in_a_callback_is_resumed_after_the_call() {
     let _ = s.integrate_with_callbacks(
         &[1.0],
         &[3.0],
-        IntegrateCallbacks {
-            interior: Some(&mut interior),
-            ..Default::default()
-        },
+        IntegrateCallbacks::new().interior(&mut interior),
     );
 }
 
@@ -159,10 +142,7 @@ fn the_cubic_spline_has_the_same_call_back_form() {
         .integrate_with_callbacks(
             &[1.0],
             &[9.0],
-            IntegrateCallbacks {
-                right: Some(&mut right),
-                ..Default::default()
-            },
+            IntegrateCallbacks::new().right(&mut right),
         )
         .unwrap();
     let inside = s.integrate(&[1.0], &[7.0]).unwrap();

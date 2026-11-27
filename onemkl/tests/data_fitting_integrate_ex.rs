@@ -72,6 +72,7 @@ fn limits_outside_the_interval_are_split_between_the_three_callbacks() {
                 left: Some(&mut left),
                 right: Some(&mut right),
                 interior: None,
+                search: None,
             },
         )
         .unwrap();

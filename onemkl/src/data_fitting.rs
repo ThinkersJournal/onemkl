@@ -239,8 +239,8 @@ pub struct IntegrationPieces<'a, T> {
 /// error code, or a positive warning code.
 pub type IntegrationCallback<'a, T> = &'a mut dyn FnMut(IntegrationPieces<'_, T>) -> i32;
 
-/// The three optional call-backs of `df?IntegrateEx1D`. A `None` entry uses
-/// the library's own spline integration for that region.
+/// The optional call-backs of `df?IntegrateEx1D`. A `None` entry uses
+/// the library's own spline integration (or cell search) for that region.
 pub struct IntegrateCallbacks<'a, T> {
     /// For the part of an interval left of the interpolation interval.
     pub left: Option<IntegrationCallback<'a, T>>,
@@ -248,6 +248,17 @@ pub struct IntegrateCallbacks<'a, T> {
     pub right: Option<IntegrationCallback<'a, T>>,
     /// For the part inside it.
     pub interior: Option<IntegrationCallback<'a, T>>,
+    /// A user-defined cell search for the integration limits. oneMKL calls
+    /// it twice per `integrate_with_callbacks`: first for the left limits,
+    /// then for the right ones, each time with every limit as a site. The
+    /// cells are 1-based like [`SearchRequest`]'s. **Measured caveats
+    /// (oneMKL 2026.2, `tools/size-probes/df_search3.c`)**: an exact cell
+    /// that is out of range (99) gives integrals of 0 with status 0, not an
+    /// error; cells that are shifted by one or 0 were still integrated
+    /// correctly; a positive call-back status is swallowed (the routine
+    /// returns 0). A negative one is returned as the error and the output
+    /// is left untouched.
+    pub search: Option<SearchCallback<'a, T>>,
 }
 
 impl<T> Default for IntegrateCallbacks<'_, T> {
@@ -256,6 +267,7 @@ impl<T> Default for IntegrateCallbacks<'_, T> {
             left: None,
             right: None,
             interior: None,
+            search: None,
         }
     }
 }
@@ -321,7 +333,7 @@ macro_rules! impl_data_fitting_real {
         construct=$ctor:ident, interpolate=$interp:ident,
         integrate=$integ:ident,
         integrate_ex=$integ_ex:ident, integr_cb=$cbty:ident,
-        search_ex=$search_ex:ident,
+        search_ex=$search_ex:ident, search_cb=$scbty:ident,
     ) => {
         impl DataFittingScalar for $ty {
             unsafe fn df_new_task_1d(
@@ -438,6 +450,29 @@ macro_rules! impl_data_fitting_real {
                     .interior
                     .take()
                     .map(|f| CbSlot { f, panic: None });
+                unsafe extern "C" fn search_tramp(
+                    n: *mut c_longlong,
+                    site: *mut $ty,
+                    cell: *mut c_longlong,
+                    flag: *mut c_int,
+                    user: *mut c_void,
+                    _library_params: *mut sys::dfSearchCallBackLibraryParams,
+                ) -> c_int {
+                    // SAFETY: oneMKL passes valid arrays and the `SearchExArgs` pointer given below.
+                    unsafe { run_search_callback::<$ty>(n, site, cell, flag, user) }
+                }
+                let mut search = args
+                    .callbacks
+                    .search
+                    .take()
+                    .map(|callback| SearchExArgs {
+                        callback,
+                        panic: None,
+                    });
+                let (scb, sp): (sys::$scbty, *const c_void) = match search.as_mut() {
+                    Some(a) => (Some(search_tramp), ptr::from_mut(a).cast_const().cast()),
+                    None => (None, ptr::null()),
+                };
                 fn slot_ptr<T>(s: &mut Option<CbSlot<'_, T>>) -> *const c_void {
                     s.as_mut()
                         .map_or(ptr::null(), |s| ptr::from_mut(s).cast_const().cast())
@@ -472,14 +507,15 @@ macro_rules! impl_data_fitting_real {
                         rp,
                         icb,
                         ip,
-                        None,
-                        ptr::null(),
+                        scb,
+                        sp,
                     )
                 };
                 args.panic = left
                     .and_then(|s| s.panic)
                     .or_else(|| right.and_then(|s| s.panic))
-                    .or_else(|| inside.and_then(|s| s.panic));
+                    .or_else(|| inside.and_then(|s| s.panic))
+                    .or_else(|| search.and_then(|s| s.panic));
                 status
             }
             unsafe fn df_search_cells_ex_1d(
@@ -528,6 +564,7 @@ impl_data_fitting_real!(
     integrate_ex = dfsIntegrateEx1D,
     integr_cb = dfsIntegrCallBack,
     search_ex = dfsSearchCellsEx1D,
+    search_cb = dfsSearchCellsCallBack,
 );
 impl_data_fitting_real!(
     f64,
@@ -539,6 +576,7 @@ impl_data_fitting_real!(
     integrate_ex = dfdIntegrateEx1D,
     integr_cb = dfdIntegrCallBack,
     search_ex = dfdSearchCellsEx1D,
+    search_cb = dfdSearchCellsCallBack,
 );
 
 // Note: oneMKL's data-fitting routines expose only real (`?s` / `?d`)

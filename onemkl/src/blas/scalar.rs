@@ -104,7 +104,10 @@ pub trait BlasScalar: Scalar {
     /// # Safety
     /// Buffers must satisfy the dimensional requirements implied by the
     /// arguments; `y` must be uniquely accessible.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?gemv argument for argument"
+    )]
     unsafe fn cblas_gemv(
         layout: sys::CBLAS_LAYOUT::Type,
         trans: sys::CBLAS_TRANSPOSE::Type,
@@ -126,7 +129,10 @@ pub trait BlasScalar: Scalar {
     /// As [`cblas_gemv`](Self::cblas_gemv); `a` is a banded matrix in the
     /// CBLAS band-storage layout with `kl` sub-diagonals and `ku`
     /// super-diagonals.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?gbmv argument for argument"
+    )]
     unsafe fn cblas_gbmv(
         layout: sys::CBLAS_LAYOUT::Type,
         trans: sys::CBLAS_TRANSPOSE::Type,
@@ -149,7 +155,10 @@ pub trait BlasScalar: Scalar {
     /// # Safety
     /// `a` is `n × n` with leading dimension `lda`; `x` is uniquely
     /// accessible with at least `(n - 1) * |incx| + 1` elements.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?trmv argument for argument"
+    )]
     unsafe fn cblas_trmv(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -167,7 +176,10 @@ pub trait BlasScalar: Scalar {
     /// # Safety
     /// As [`cblas_trmv`](Self::cblas_trmv); `A` must be non-singular when
     /// `diag` is [`Diag::NonUnit`](crate::Diag::NonUnit).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?trsv argument for argument"
+    )]
     unsafe fn cblas_trsv(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -184,7 +196,10 @@ pub trait BlasScalar: Scalar {
     ///
     /// # Safety
     /// `a` is in CBLAS triangular-band storage with `k` off-diagonals.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?tbmv argument for argument"
+    )]
     unsafe fn cblas_tbmv(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -202,7 +217,10 @@ pub trait BlasScalar: Scalar {
     ///
     /// # Safety
     /// As [`cblas_tbmv`](Self::cblas_tbmv).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?tbsv argument for argument"
+    )]
     unsafe fn cblas_tbsv(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -263,7 +281,10 @@ pub trait BlasScalar: Scalar {
     /// `a`, `b`, `c` must each point to a matrix of the dimensions implied
     /// by `m`, `n`, `k`, `transa`, `transb`, the chosen `layout`, and the
     /// leading dimensions; `c` must be uniquely accessible.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?gemm argument for argument"
+    )]
     unsafe fn cblas_gemm(
         layout: sys::CBLAS_LAYOUT::Type,
         transa: sys::CBLAS_TRANSPOSE::Type,
@@ -293,7 +314,10 @@ pub trait BlasScalar: Scalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?symm argument for argument"
+    )]
     unsafe fn cblas_symm(
         layout: sys::CBLAS_LAYOUT::Type,
         side: sys::CBLAS_SIDE::Type,
@@ -320,7 +344,10 @@ pub trait BlasScalar: Scalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?syrk argument for argument"
+    )]
     unsafe fn cblas_syrk(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -346,7 +373,10 @@ pub trait BlasScalar: Scalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?syr2k argument for argument"
+    )]
     unsafe fn cblas_syr2k(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -373,7 +403,10 @@ pub trait BlasScalar: Scalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`b`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?trmm argument for argument"
+    )]
     unsafe fn cblas_trmm(
         layout: sys::CBLAS_LAYOUT::Type,
         side: sys::CBLAS_SIDE::Type,
@@ -399,7 +432,10 @@ pub trait BlasScalar: Scalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`b`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?trsm argument for argument"
+    )]
     unsafe fn cblas_trsm(
         layout: sys::CBLAS_LAYOUT::Type,
         side: sys::CBLAS_SIDE::Type,
@@ -426,7 +462,10 @@ pub trait BlasScalar: Scalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?gemmt argument for argument"
+    )]
     unsafe fn cblas_gemmt(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -569,7 +608,10 @@ pub trait BlasScalar: Scalar {
     /// `y` must be valid for read and/or written of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
     /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?axpy_batch_strided argument for argument"
+    )]
     unsafe fn cblas_axpy_batch_strided(
         n: MKL_INT,
         alpha: Self,
@@ -590,7 +632,10 @@ pub trait BlasScalar: Scalar {
     /// `y` must be valid for read and/or written of `1 + (len - 1) * |incy|` elements, where `len` is the vector length the routine defines for `y` from its dimension arguments (and `trans`), and `incy` must be non-zero.
     /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?copy_batch_strided argument for argument"
+    )]
     unsafe fn cblas_copy_batch_strided(
         n: MKL_INT,
         x: *const Self,
@@ -612,7 +657,10 @@ pub trait BlasScalar: Scalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?gemv_batch_strided argument for argument"
+    )]
     unsafe fn cblas_gemv_batch_strided(
         layout: sys::CBLAS_LAYOUT::Type,
         trans: sys::CBLAS_TRANSPOSE::Type,
@@ -642,7 +690,10 @@ pub trait BlasScalar: Scalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?gemm_batch_strided argument for argument"
+    )]
     unsafe fn cblas_gemm_batch_strided(
         layout: sys::CBLAS_LAYOUT::Type,
         transa: sys::CBLAS_TRANSPOSE::Type,
@@ -675,7 +726,10 @@ pub trait BlasScalar: Scalar {
     /// Pointer-array batch: `group_count` groups; each `*_array` argument holds one entry per group, `group_size` holds `group_count` entries, and `a_array`/`b_array`/`c_array`/`x_array`/`y_array` hold `sum(group_size)` buffer pointers. Every buffer pointer must satisfy, with its group's dimensions and leading dimension, the same extent rule as the corresponding single call; outputs must not overlap each other or any input.
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?gemm_batch argument for argument"
+    )]
     unsafe fn cblas_gemm_batch(
         layout: sys::CBLAS_LAYOUT::Type,
         transa_array: *const sys::CBLAS_TRANSPOSE::Type,
@@ -702,7 +756,10 @@ pub trait BlasScalar: Scalar {
     /// Pointer-array batch: `group_count` groups; each `*_array` argument holds one entry per group, `group_size` holds `group_count` entries, and `a_array`/`b_array`/`c_array`/`x_array`/`y_array` hold `sum(group_size)` buffer pointers. Every buffer pointer must satisfy, with its group's dimensions and leading dimension, the same extent rule as the corresponding single call; outputs must not overlap each other or any input.
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?gemv_batch argument for argument"
+    )]
     unsafe fn cblas_gemv_batch(
         layout: sys::CBLAS_LAYOUT::Type,
         trans_array: *const sys::CBLAS_TRANSPOSE::Type,
@@ -727,7 +784,10 @@ pub trait BlasScalar: Scalar {
     /// Pointer-array batch: `group_count` groups; each `*_array` argument holds one entry per group, `group_size` holds `group_count` entries, and `a_array`/`b_array`/`c_array`/`x_array`/`y_array` hold `sum(group_size)` buffer pointers. Every buffer pointer must satisfy, with its group's dimensions and leading dimension, the same extent rule as the corresponding single call; outputs must not overlap each other or any input.
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?trsm_batch argument for argument"
+    )]
     unsafe fn cblas_trsm_batch(
         layout: sys::CBLAS_LAYOUT::Type,
         side_array: *const sys::CBLAS_SIDE::Type,
@@ -754,7 +814,10 @@ pub trait BlasScalar: Scalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`b`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?trsm_batch_strided argument for argument"
+    )]
     unsafe fn cblas_trsm_batch_strided(
         layout: sys::CBLAS_LAYOUT::Type,
         side: sys::CBLAS_SIDE::Type,
@@ -785,7 +848,10 @@ pub trait BlasScalar: Scalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?dgmm_batch_strided argument for argument"
+    )]
     unsafe fn cblas_dgmm_batch_strided(
         layout: sys::CBLAS_LAYOUT::Type,
         side: sys::CBLAS_SIDE::Type,
@@ -858,7 +924,10 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`a`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?ger argument for argument"
+    )]
     unsafe fn cblas_ger(
         layout: sys::CBLAS_LAYOUT::Type,
         m: MKL_INT,
@@ -882,7 +951,10 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?symv argument for argument"
+    )]
     unsafe fn cblas_symv(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -906,7 +978,10 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`a`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?syr argument for argument"
+    )]
     unsafe fn cblas_syr(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -929,7 +1004,10 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`a`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?syr2 argument for argument"
+    )]
     unsafe fn cblas_syr2(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -953,7 +1031,10 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?sbmv argument for argument"
+    )]
     unsafe fn cblas_sbmv(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -979,7 +1060,10 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?spmv argument for argument"
+    )]
     unsafe fn cblas_spmv(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -1022,7 +1106,10 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`ap`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?spr2 argument for argument"
+    )]
     unsafe fn cblas_spr2(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -1095,7 +1182,10 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`a`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?gerc argument for argument"
+    )]
     unsafe fn cblas_gerc(
         layout: sys::CBLAS_LAYOUT::Type,
         m: MKL_INT,
@@ -1120,7 +1210,10 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`a`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?geru argument for argument"
+    )]
     unsafe fn cblas_geru(
         layout: sys::CBLAS_LAYOUT::Type,
         m: MKL_INT,
@@ -1144,7 +1237,10 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?hemv argument for argument"
+    )]
     unsafe fn cblas_hemv(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -1169,7 +1265,10 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`a`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?her argument for argument"
+    )]
     unsafe fn cblas_her(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -1192,7 +1291,10 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`a`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?her2 argument for argument"
+    )]
     unsafe fn cblas_her2(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -1216,7 +1318,10 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?hbmv argument for argument"
+    )]
     unsafe fn cblas_hbmv(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -1242,7 +1347,10 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`y`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?hpmv argument for argument"
+    )]
     unsafe fn cblas_hpmv(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -1285,7 +1393,10 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`ap`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?hpr2 argument for argument"
+    )]
     unsafe fn cblas_hpr2(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -1308,7 +1419,10 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?hemm argument for argument"
+    )]
     unsafe fn cblas_hemm(
         layout: sys::CBLAS_LAYOUT::Type,
         side: sys::CBLAS_SIDE::Type,
@@ -1335,7 +1449,10 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?herk argument for argument"
+    )]
     unsafe fn cblas_herk(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -1361,7 +1478,10 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?her2k argument for argument"
+    )]
     unsafe fn cblas_her2k(
         layout: sys::CBLAS_LAYOUT::Type,
         uplo: sys::CBLAS_UPLO::Type,
@@ -1389,7 +1509,10 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?gemm3m argument for argument"
+    )]
     unsafe fn cblas_gemm3m(
         layout: sys::CBLAS_LAYOUT::Type,
         transa: sys::CBLAS_TRANSPOSE::Type,
@@ -1417,7 +1540,10 @@ pub trait ComplexBlasScalar: BlasScalar + ComplexScalar {
     /// `layout`, `trans*`, `uplo`, `side` and `diag` must be valid CBLAS enumerators and consistent with how the buffers were laid out; dimensions must be non-negative.
     /// Buffers written by the routine (`c`) must not overlap each other or any read-only input, except where the routine is documented in-place; no Rust reference to them may be live during the call.
     /// The MKL library must be linked and usable. Invalid dimensions are reported by MKL via its error handler (xerbla), not by this wrapper.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?gemm3m_batch_strided argument for argument"
+    )]
     unsafe fn cblas_gemm3m_batch_strided(
         layout: sys::CBLAS_LAYOUT::Type,
         transa: sys::CBLAS_TRANSPOSE::Type,

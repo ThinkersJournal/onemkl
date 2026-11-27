@@ -28,7 +28,10 @@ use crate::util::{dim_to_mkl_int, stride_to_mkl_int, vector_min_len};
 /// Dimensions: `A` is `m × n`. With [`Transpose::NoTrans`], `x` has `n`
 /// elements and `y` has `m`. With [`Transpose::Trans`] /
 /// [`Transpose::ConjTrans`], `x` has `m` and `y` has `n`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn gemv<T: BlasScalar>(
     trans: Transpose,
     alpha: T,
@@ -72,7 +75,10 @@ pub fn gemv<T: BlasScalar>(
 /// (column-major) or `(kl + ku + 1) × m` (row-major) buffer with leading
 /// dimension `lda ≥ kl + ku + 1`. See the oneMKL reference for the exact
 /// layout.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 12 arguments; changing the signature breaks consumers"
+)]
 pub fn gbmv<T: BlasScalar>(
     trans: Transpose,
     a: &MatrixRef<'_, T>,
@@ -280,7 +286,10 @@ pub fn trsv<T: BlasScalar>(
 ///
 /// `A` is `n × n` triangular with `k` off-diagonals stored in band format
 /// with leading dimension `lda ≥ k + 1`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn tbmv<T: BlasScalar>(
     uplo: UpLo,
     trans: Transpose,
@@ -315,7 +324,10 @@ pub fn tbmv<T: BlasScalar>(
 }
 
 /// Banded triangular solve.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn tbsv<T: BlasScalar>(
     uplo: UpLo,
     trans: Transpose,
@@ -427,7 +439,10 @@ pub fn tpsv<T: BlasScalar>(
 // =====================================================================
 
 /// `y ← alpha * A * x + beta * y` for a real symmetric `A`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn symv<T: RealBlasScalar>(
     uplo: UpLo,
     alpha: T,
@@ -521,7 +536,10 @@ pub fn syr2<T: RealBlasScalar>(
 
 /// Symmetric banded matrix-vector multiply. `A` is `n × n` symmetric
 /// banded with `k` super-diagonals (mirrored to sub-diagonals).
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 10 arguments; changing the signature breaks consumers"
+)]
 pub fn sbmv<T: RealBlasScalar>(
     uplo: UpLo,
     n: usize,
@@ -561,7 +579,10 @@ pub fn sbmv<T: RealBlasScalar>(
 }
 
 /// Symmetric packed matrix-vector multiply.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 10 arguments; changing the signature breaks consumers"
+)]
 pub fn spmv<T: RealBlasScalar>(
     layout: crate::Layout,
     uplo: UpLo,
@@ -621,7 +642,10 @@ pub fn spr<T: RealBlasScalar>(
 }
 
 /// Packed symmetric rank-2 update.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 9 arguments; changing the signature breaks consumers"
+)]
 pub fn spr2<T: RealBlasScalar>(
     layout: crate::Layout,
     uplo: UpLo,
@@ -657,7 +681,10 @@ pub fn spr2<T: RealBlasScalar>(
 // =====================================================================
 
 /// `y ← alpha * A * x + beta * y` for a Hermitian `A` (complex types).
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn hemv<T: ComplexBlasScalar>(
     uplo: UpLo,
     alpha: T,
@@ -751,7 +778,10 @@ pub fn her2<T: ComplexBlasScalar>(
 }
 
 /// Hermitian banded matrix-vector multiply.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 10 arguments; changing the signature breaks consumers"
+)]
 pub fn hbmv<T: ComplexBlasScalar>(
     uplo: UpLo,
     n: usize,
@@ -791,7 +821,10 @@ pub fn hbmv<T: ComplexBlasScalar>(
 }
 
 /// Hermitian packed matrix-vector multiply.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 10 arguments; changing the signature breaks consumers"
+)]
 pub fn hpmv<T: ComplexBlasScalar>(
     layout: crate::Layout,
     uplo: UpLo,
@@ -851,7 +884,10 @@ pub fn hpr<T: ComplexBlasScalar>(
 }
 
 /// Packed Hermitian rank-2 update with complex `alpha`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 9 arguments; changing the signature breaks consumers"
+)]
 pub fn hpr2<T: ComplexBlasScalar>(
     layout: crate::Layout,
     uplo: UpLo,

@@ -274,7 +274,10 @@ pub trait RealVmScalar: VmScalar + RealScalar {
     /// `b` must be valid for reads of `n` consecutive elements.
     /// `r` must be valid for writes of `n` consecutive elements.
     /// Output buffers (`r`) must not partially overlap any other buffer; exact aliasing is permitted only where MKL VM documents in-place use.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature v?LinearFrac argument for argument"
+    )]
     unsafe fn vm_linear_frac(
         n: MKL_INT,
         a: *const Self,

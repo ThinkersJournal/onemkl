@@ -82,7 +82,10 @@ pub trait PackedGemmScalar: Copy + 'static {
     /// `src` must be valid for reads of the matrix `identifier` selects (`A`: `m x k`, `B`: `k x n`, after `trans`) with leading dimension `ld` per `layout`: `ld * cols` elements (column-major, `ld >= rows`) or `ld * rows` (row-major, `ld >= cols`).
     /// `dest` must be valid for writes of at least `gemm_pack_get_size(identifier, m, n, k)` bytes and suitably aligned as MKL requires (at least `Self` alignment; MKL recommends 64 bytes); it must not overlap `src`. `alpha` is folded into the packed data.
     /// The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?gemm_pack argument for argument"
+    )]
     unsafe fn gemm_pack(
         layout: sys::CBLAS_LAYOUT::Type,
         identifier: sys::CBLAS_IDENTIFIER::Type,
@@ -103,7 +106,10 @@ pub trait PackedGemmScalar: Copy + 'static {
     /// `a` and `b` are either ordinary matrices or buffers produced by `gemm_pack` with the same `layout`, dimensions and operand `identifier`, matching `transa`/`transb` (`CblasPacked` for a packed operand); a packed buffer must not have been freed, resized or modified since packing, and the `alpha` used when packing is the one applied.
     /// For an unpacked operand the usual extent rule holds: `ld * cols` (column-major) or `ld * rows` (row-major) elements, `ld` at least the row/column length. `c` is `m x n` with `ldc`, read when `beta != 0` and written; it must be valid for `ldc * n` (column-major) or `ldc * m` (row-major) elements and must not overlap `a` or `b`.
     /// The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature cblas_?gemm_compute argument for argument"
+    )]
     unsafe fn gemm_compute(
         layout: sys::CBLAS_LAYOUT::Type,
         transa: c_int,
@@ -235,7 +241,10 @@ impl<T: PackedGemmScalar> PackedMatrix<T> {
     /// the unpacked source matrix in the usual CBLAS convention; the
     /// resulting [`PackedMatrix`] can then be used in repeated
     /// [`gemm_compute_packed_a`] calls.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+    )]
     pub fn pack_a(
         layout: Layout,
         trans: Transpose,
@@ -250,7 +259,10 @@ impl<T: PackedGemmScalar> PackedMatrix<T> {
     }
 
     /// Pack the `B` operand of a future GEMM.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+    )]
     pub fn pack_b(
         layout: Layout,
         trans: Transpose,
@@ -361,7 +373,10 @@ fn trans_as_compute_int(t: Transpose) -> c_int {
 /// `transb` applies to the unpacked `B` operand. `alpha` is baked
 /// into `A_packed` (it was applied at pack time), so this function
 /// has no `alpha` parameter.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 11 arguments; changing the signature breaks consumers"
+)]
 pub fn gemm_compute_packed_a<T: PackedGemmScalar>(
     layout: Layout,
     transb: Transpose,
@@ -415,7 +430,10 @@ pub fn gemm_compute_packed_a<T: PackedGemmScalar>(
 
 /// Run `C ← op(A) · op(B_packed) + beta · C` where `B_packed` was
 /// produced by [`PackedMatrix::pack_b`].
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 11 arguments; changing the signature breaks consumers"
+)]
 pub fn gemm_compute_packed_b<T: PackedGemmScalar>(
     layout: Layout,
     transa: Transpose,

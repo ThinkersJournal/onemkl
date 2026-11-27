@@ -74,7 +74,10 @@ pub fn gemm<T: BlasScalar>(
 /// `C` is known to be symmetric / Hermitian. `C` must be square.
 ///
 /// The other triangle of `C` is left unchanged.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn gemmt<T: BlasScalar>(
     uplo: UpLo,
     transa: Transpose,

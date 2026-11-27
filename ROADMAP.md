@@ -278,6 +278,20 @@ Every non-MPI domain at Comprehensive:
     `feast.rs` `finish_real_result` and `finish_complex_result`,
     `pardiso.rs` `run_phase`: restructure or reason). 7 already carry a
     counted `reason`. Mechanical, unreviewed.
+  - **Chunk 1 done (2026-11-27):** the 44 `cblas_*` and 34 `lapacke_*` raw
+    trait declarations (76 bare allows; 2 of the 44 already had a reason) now
+    carry a `reason` naming the C function, each checked by argument count
+    against every precision variant in the installed headers
+    (`tools/w1/`, details in `docs/W1-TOO-MANY-ARGUMENTS.md`). Remaining bare
+    allows: 238 - 76 = 162; reasoned: 83. Chunk 2 (35 more C-mirror raw
+    declarations: compact, packed, data fitting, FEAST, LAPACKE extras, RNG,
+    summary statistics, sparse, VM) brings that to 127 bare and 118 reasoned.
+    Chunk 3 (60 published safe wrappers, "stable public surface" with the
+    tag and argument count as evidence) brings it to 67 bare and 178
+    reasoned (measured by `git grep`). Left: `sparse_qr_solve`, `pde` 3,
+    `jit_create`, `compact` `gepack` / `geunpack`, 4 lines of
+    `blas/scalar.rs`, 4 ambiguous-name wrappers and the 4 private functions;
+    plus the 42 allows that no longer have a flagged function (unexplained).
   - **Wanted:** per item, either a `reason = "mirrors the oneMKL C signature
     <name> argument for argument"` (C mirrors: most of the trait declarations
     and wrappers above), or a restructure (a parameter struct) for the rest;

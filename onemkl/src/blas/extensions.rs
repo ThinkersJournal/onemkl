@@ -73,7 +73,10 @@ pub fn axpby_inc<T: BlasScalar>(
 /// - For [`Layout::ColMajor`], `max(cols * lda, post_cols * ldb)` similarly.
 ///
 /// See the oneMKL reference for the exact buffer-size formula.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn imatcopy<T: BlasScalar>(
     layout: Layout,
     trans: Transpose,
@@ -103,7 +106,10 @@ pub fn imatcopy<T: BlasScalar>(
 /// Out-of-place matrix transposition with scaling: `B ← alpha * op(A)`.
 ///
 /// `rows` × `cols` describes `A`. The output `B` has shape `op(rows × cols)`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 9 arguments; changing the signature breaks consumers"
+)]
 pub fn omatcopy<T: BlasScalar>(
     layout: Layout,
     trans: Transpose,
@@ -140,7 +146,10 @@ pub fn omatcopy<T: BlasScalar>(
 /// Out-of-place 2-D strided transposition with scaling: like [`omatcopy`]
 /// but accepts an extra inter-element stride along the contiguous
 /// dimension (`stridea`/`strideb`).
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 11 arguments; changing the signature breaks consumers"
+)]
 pub fn omatcopy2<T: BlasScalar>(
     layout: Layout,
     trans: Transpose,
@@ -177,7 +186,10 @@ pub fn omatcopy2<T: BlasScalar>(
 
 /// Out-of-place add: `C ← alpha * op(A) + beta * op(B)`. `op(A)` and
 /// `op(B)` must have the same shape (which becomes the shape of `C`).
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 13 arguments; changing the signature breaks consumers"
+)]
 pub fn omatadd<T: BlasScalar>(
     layout: Layout,
     transa: Transpose,
@@ -291,7 +303,10 @@ fn check_imatcopy_buf(
 /// `axpy` operations: for `b in 0..batch_size`,
 /// `y[b*stridey..] ← alpha * x[b*stridex..] + y[b*stridey..]`,
 /// each addressing `n` elements at increment `incx` / `incy`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 9 arguments; changing the signature breaks consumers"
+)]
 pub fn axpy_batch_strided<T: BlasScalar>(
     n: usize,
     alpha: T,
@@ -322,7 +337,10 @@ pub fn axpy_batch_strided<T: BlasScalar>(
 }
 
 /// Batched [`super::level1::copy`].
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn copy_batch_strided<T: BlasScalar>(
     n: usize,
     x: &[T],
@@ -353,7 +371,10 @@ pub fn copy_batch_strided<T: BlasScalar>(
 /// Batched [`super::level2::gemv`]. The same `m`, `n`, `lda`, `trans`,
 /// and increments apply to every batch entry; only the buffer offsets
 /// differ between entries.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 16 arguments; changing the signature breaks consumers"
+)]
 pub fn gemv_batch_strided<T: BlasScalar>(
     layout: Layout,
     trans: Transpose,
@@ -403,7 +424,10 @@ pub fn gemv_batch_strided<T: BlasScalar>(
 /// `gemm` operations sharing the same shapes and transpositions, with
 /// element-strides `stridea`, `strideb`, `stridec` between adjacent
 /// matrices in the `a`, `b`, `c` buffers.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 18 arguments; changing the signature breaks consumers"
+)]
 pub fn gemm_batch_strided<T: BlasScalar>(
     layout: Layout,
     transa: Transpose,
@@ -784,7 +808,10 @@ pub struct GemmBatchGroup<'a, T: BlasScalar> {
 }
 
 /// Batched [`super::level3::trsm`].
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 15 arguments; changing the signature breaks consumers"
+)]
 pub fn trsm_batch_strided<T: BlasScalar>(
     layout: Layout,
     side: Side,
@@ -831,7 +858,10 @@ pub fn trsm_batch_strided<T: BlasScalar>(
 /// Batched diagonal-matrix multiply: for each batch entry,
 /// `C[i] ← A[i] * diag(x[i])` (`side == Right`) or
 /// `C[i] ← diag(x[i]) * A[i]` (`side == Left`).
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 14 arguments; changing the signature breaks consumers"
+)]
 pub fn dgmm_batch_strided<T: BlasScalar>(
     layout: Layout,
     side: Side,
@@ -875,7 +905,10 @@ pub fn dgmm_batch_strided<T: BlasScalar>(
 
 /// Batched complex `gemm3m`. Complex-only counterpart of
 /// [`gemm_batch_strided`].
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 18 arguments; changing the signature breaks consumers"
+)]
 pub fn gemm3m_batch_strided<T: ComplexBlasScalar>(
     layout: Layout,
     transa: Transpose,

@@ -27,7 +27,10 @@ pub trait SparseScalar: Scalar {
     /// `indexing` must match how the index arrays are actually based (zero or one).
     /// `rows_start` and `rows_end` must each hold `rows` entries (`rows_end[i]` is the exclusive end of row `i`); `col_indx` and `values` must each hold `rows_end[rows-1] - indexing` entries, with every column index in `[0, cols)` after removing the base.
     /// The MKL library must be linked and usable. The returned status is MKL's; on a non-success status `*a` must not be used.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature mkl_sparse_?_create_csr argument for argument"
+    )]
     unsafe fn sparse_create_csr(
         a: *mut sparse_matrix_t,
         indexing: sparse_index_base_t::Type,
@@ -48,7 +51,10 @@ pub trait SparseScalar: Scalar {
     /// `indexing` must match how the index arrays are actually based (zero or one).
     /// `row_indx`, `col_indx` and `values` must each hold `nnz` entries, with every row index in `[0, rows)` and column index in `[0, cols)` after removing the base.
     /// The MKL library must be linked and usable. The returned status is MKL's; on a non-success status `*a` must not be used.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature mkl_sparse_?_create_coo argument for argument"
+    )]
     unsafe fn sparse_create_coo(
         a: *mut sparse_matrix_t,
         indexing: sparse_index_base_t::Type,
@@ -69,7 +75,10 @@ pub trait SparseScalar: Scalar {
     /// `indexing` must match how the index arrays are actually based (zero or one).
     /// `cols_start` and `cols_end` must each hold `cols` entries; `row_indx` and `values` must each hold `cols_end[cols-1] - indexing` entries, with every row index in `[0, rows)` after removing the base.
     /// The MKL library must be linked and usable. The returned status is MKL's; on a non-success status `*a` must not be used.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature mkl_sparse_?_create_csc argument for argument"
+    )]
     unsafe fn sparse_create_csc(
         a: *mut sparse_matrix_t,
         indexing: sparse_index_base_t::Type,
@@ -90,7 +99,10 @@ pub trait SparseScalar: Scalar {
     /// `indexing` must match how the index arrays are actually based (zero or one).
     /// `rows` and `cols` count blocks, not scalar rows/columns; `block_size` is the square block edge and `block_layout` the in-block storage order. `rows_start` and `rows_end` must each hold `rows` entries; `col_indx` must hold one entry per stored block and `values` `block_size * block_size` entries per stored block.
     /// The MKL library must be linked and usable. The returned status is MKL's; on a non-success status `*a` must not be used.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature mkl_sparse_?_create_bsr argument for argument"
+    )]
     unsafe fn sparse_create_bsr(
         a: *mut sparse_matrix_t,
         indexing: sparse_index_base_t::Type,
@@ -128,7 +140,10 @@ pub trait SparseScalar: Scalar {
     /// `a` must be a live handle created by one of the `sparse_create_*` calls and not yet destroyed; `descr` must describe its structure.
     /// `x` is a dense matrix of `cols(op(A))` rows by `columns` columns and `y` one of `rows(op(A))` rows by `columns` columns, both stored per `layout` (row-major: leading dimension is the row stride and must be `>= columns`; column-major: it is the column stride and must be `>=` the row count). `x` must be valid for reads of the whole strided extent, `y` for reads (when `beta != 0`) and writes. `x` and `y` must not overlap.
     /// The MKL library must be linked and usable. The returned status is MKL's; on a non-success status `*a` must not be used.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature mkl_sparse_?_mm argument for argument"
+    )]
     unsafe fn sparse_mm(
         op: sparse_operation_t::Type,
         alpha: Self,
@@ -181,7 +196,10 @@ pub trait SparseScalar: Scalar {
     /// `a` must be a live, square handle created by `sparse_create_*` and not yet destroyed; `descr` must describe it.
     /// `x` must be valid for reads of `cols(op(A))` elements and `y` for reads (when `beta != 0`) and writes of `rows(op(A))` elements; `d` must be valid for a write of exactly one `Self` (the dot product `x . y`). `x`, `y` and `d` must not overlap.
     /// The MKL library must be linked and usable. The returned status is MKL's; on a non-success status `*a` must not be used.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature mkl_sparse_?_dotmv argument for argument"
+    )]
     unsafe fn sparse_dotmv(
         op: sparse_operation_t::Type,
         alpha: Self,

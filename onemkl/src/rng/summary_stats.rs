@@ -69,7 +69,10 @@ pub trait SsScalar: Copy + Default + 'static {
     /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `mean` and `r2m` (raw 2nd moment): p elements each; note 2C_MOM needs the 2R_MOM output registered, status -4007 otherwise; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature vsl?SSEditMoments argument for argument"
+    )]
     unsafe fn ss_edit_moments(
         task: VSLSSTaskPtr,
         mean: *mut Self,
@@ -176,7 +179,10 @@ pub trait SsScalar: Copy + Default + 'static {
     /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature vsl?SSEditMissingValues argument for argument"
+    )]
     unsafe fn ss_edit_missing_values(
         task: VSLSSTaskPtr,
         n_params: *const c_int,

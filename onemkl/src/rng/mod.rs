@@ -880,7 +880,10 @@ pub trait RngFloat: Copy + 'static {
     /// `r` must be valid for writes of `n` consecutive elements (contents need not be initialised; all `n` are overwritten on success); no Rust reference to that buffer may be live during the call.
     /// Parameters: `sigma > 0` and `scale > 0`; `displacement` any finite value.
     /// A non-zero return is the VSL status; `r` may be partially written on failure.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature v?RngLognormal argument for argument"
+    )]
     unsafe fn rng_lognormal(
         method: c_int,
         stream: VSLStreamStatePtr,
@@ -953,7 +956,10 @@ pub trait RngFloat: Copy + 'static {
     /// `r` must be valid for writes of `n` consecutive elements (contents need not be initialised; all `n` are overwritten on success); no Rust reference to that buffer may be live during the call.
     /// Parameters: `p > 0`, `q > 0` and `scale > 0`; `displacement` any finite value.
     /// A non-zero return is the VSL status; `r` may be partially written on failure.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature v?RngBeta argument for argument"
+    )]
     unsafe fn rng_beta(
         method: c_int,
         stream: VSLStreamStatePtr,
@@ -1040,7 +1046,10 @@ pub trait RngFloat: Copy + 'static {
     /// `r` must be valid for writes of `n * dimen` elements, laid out as `n` consecutive vectors of length `dimen`.
     /// `mean` must be valid for reads of `dimen` elements. `cov_factor` must be valid for reads of the Cholesky-style factor `T` of the covariance, stored per `mstorage` (full `dimen x dimen`, packed triangular `dimen * (dimen + 1) / 2`, or diagonal `dimen`), with `mstorage` one of the matching `VSL_MATRIX_STORAGE_*` constants.
     /// `r`, `mean` and `cov_factor` must not overlap. A non-zero return is the VSL status; `r` may be partially written on failure.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature v?RngGaussianMV argument for argument"
+    )]
     unsafe fn rng_gaussian_mv(
         method: c_int,
         stream: VSLStreamStatePtr,

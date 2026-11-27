@@ -747,7 +747,10 @@ fn ensure_layout(layouts: &[Layout]) -> Result<Layout> {
 /// Solve `A * X = B` with a general banded `A`. `A` is `n × n` with
 /// `kl` sub-diagonals and `ku` super-diagonals, stored in CBLAS-style
 /// band format with leading dimension `ldab ≥ 2*kl + ku + 1`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 10 arguments; changing the signature breaks consumers"
+)]
 pub fn gbsv<T: LapackScalar>(
     layout: Layout,
     n: usize,
@@ -781,7 +784,10 @@ pub fn gbsv<T: LapackScalar>(
 }
 
 /// LU factorization of a general banded matrix.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn gbtrf<T: LapackScalar>(
     layout: Layout,
     m: usize,
@@ -813,7 +819,10 @@ pub fn gbtrf<T: LapackScalar>(
 }
 
 /// Solve with the LU factor produced by [`gbtrf`].
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 11 arguments; changing the signature breaks consumers"
+)]
 pub fn gbtrs<T: LapackScalar>(
     layout: Layout,
     trans: Transpose,
@@ -850,7 +859,10 @@ pub fn gbtrs<T: LapackScalar>(
 
 /// Solve `A * X = B` with a general tridiagonal `A` given by sub-,
 /// main-, and super-diagonals `dl`, `d`, `du`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn gtsv<T: LapackScalar>(
     layout: Layout,
     n: usize,
@@ -909,7 +921,10 @@ pub fn gttrf<T: LapackScalar>(
 }
 
 /// Solve with the LU factor produced by [`gttrf`].
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 11 arguments; changing the signature breaks consumers"
+)]
 pub fn gttrs<T: LapackScalar>(
     layout: Layout,
     trans: Transpose,
@@ -942,7 +957,10 @@ pub fn gttrs<T: LapackScalar>(
 }
 
 /// Solve `A * X = B` with symmetric / Hermitian PD banded `A`.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 9 arguments; changing the signature breaks consumers"
+)]
 pub fn pbsv<T: LapackScalar>(
     layout: Layout,
     uplo: UpLo,
@@ -993,7 +1011,10 @@ pub fn pbtrf<T: LapackScalar>(
 }
 
 /// Solve with the Cholesky factor produced by [`pbtrf`].
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 9 arguments; changing the signature breaks consumers"
+)]
 pub fn pbtrs<T: LapackScalar>(
     layout: Layout,
     uplo: UpLo,
@@ -1090,7 +1111,10 @@ pub fn pttrs_real<T: RealLapackScalar>(
 /// Solve with the PD-tridiagonal Cholesky factor (complex types).
 /// Takes `uplo` because the off-diagonal `e` is complex and the
 /// upper / lower convention selects the conjugation.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn pttrs_complex<T: ComplexLapackScalar>(
     layout: Layout,
     uplo: UpLo,
@@ -1124,7 +1148,10 @@ pub fn pttrs_complex<T: ComplexLapackScalar>(
 /// has length `n*(n+1)/2`. Works for all four scalar types — the
 /// complex variant is "complex symmetric" (rare; the more common
 /// Hermitian case is [`hpsv`]).
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn spsv<T: LapackScalar>(
     layout: Layout,
     uplo: UpLo,
@@ -1187,7 +1214,10 @@ pub fn sptrf<T: LapackScalar>(
 }
 
 /// Solve with the symmetric packed factor produced by [`sptrf`].
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn sptrs<T: LapackScalar>(
     layout: Layout,
     uplo: UpLo,
@@ -1288,7 +1318,10 @@ pub fn pptrs<T: LapackScalar>(
 
 /// Solve `A * X = B` with Hermitian `A` stored in packed form.
 /// Complex-only.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn hpsv<T: ComplexLapackScalar>(
     layout: Layout,
     uplo: UpLo,
@@ -1351,7 +1384,10 @@ pub fn hptrf<T: ComplexLapackScalar>(
 }
 
 /// Solve with the Hermitian packed factor produced by [`hptrf`].
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn hptrs<T: ComplexLapackScalar>(
     layout: Layout,
     uplo: UpLo,
@@ -1485,7 +1521,10 @@ pub fn hegv<T: ComplexLapackScalar>(
 /// Real general (non-symmetric) generalized eigenproblem
 /// `A x = lambda B x`. Eigenvalues are returned as
 /// `(alphar + i * alphai) / beta`. Real types only.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 9 arguments; changing the signature breaks consumers"
+)]
 pub fn ggev_real<T: RealLapackScalar>(
     jobvl: Job,
     jobvr: Job,
@@ -1811,7 +1850,10 @@ where
 
 /// Complex general generalized eigenproblem. Eigenvalues are
 /// returned as `alpha / beta`, both complex.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "stable public surface: published since v0.1.0 with 8 arguments; changing the signature breaks consumers"
+)]
 pub fn ggev_complex<T: ComplexLapackScalar>(
     jobvl: Job,
     jobvr: Job,
@@ -2423,7 +2465,10 @@ pub trait ComplexAuxScalar: Copy + 'static {
     ///
     /// `a` is a complex `m x n` matrix and `b` a real `n x n` matrix, `c` the complex `m x n` result (`C = A * B`). Per `layout`, `a`, `b`, `c` must be valid for `lda * n` / `ldb * n` / `ldc * n` elements (column-major, `ld* >= rows`) or `lda * m` / `ldb * n` / `ldc * m` (row-major, `ld* >= cols`). `c` must not overlap `a` or `b`.
     /// The returned value is LAPACK's `info` (0 success, negative `-i` argument `i` invalid, positive numerical failure); outputs may be partly overwritten on non-zero. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?lacrm argument for argument"
+    )]
     unsafe fn lapacke_lacrm(
         layout: core::ffi::c_int,
         m: core::ffi::c_int,
@@ -2563,7 +2608,10 @@ pub trait SymConvScalar: Copy + 'static {
     ///
     /// `a` and `ipiv` must be the output of a successful `lapacke_sytrf` with the same `uplo` and `n` (`a`: `lda * n` elements, `ipiv`: `n` entries, readable). `a` is converted in place (`way` is `C` convert or `R` revert); `e` must be valid for writes of `n` elements (off-diagonal entries of the block diagonal). `a`, `e` and `ipiv` must not overlap.
     /// The returned value is LAPACK's `info` (0 success, negative `-i` argument `i` invalid, positive numerical failure); outputs may be partly overwritten on non-zero. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?syconv argument for argument"
+    )]
     unsafe fn lapacke_syconv(
         layout: core::ffi::c_int,
         uplo: core::ffi::c_char,

@@ -22,7 +22,10 @@ pub trait LapackScalar: Scalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?gesv argument for argument"
+    )]
     unsafe fn lapacke_gesv(
         layout: c_int,
         n: MKL_INT,
@@ -60,7 +63,10 @@ pub trait LapackScalar: Scalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?getrs argument for argument"
+    )]
     unsafe fn lapacke_getrs(
         layout: c_int,
         trans: c_char,
@@ -97,7 +103,10 @@ pub trait LapackScalar: Scalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?posv argument for argument"
+    )]
     unsafe fn lapacke_posv(
         layout: c_int,
         uplo: c_char,
@@ -132,7 +141,10 @@ pub trait LapackScalar: Scalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?potrs argument for argument"
+    )]
     unsafe fn lapacke_potrs(
         layout: c_int,
         uplo: c_char,
@@ -208,7 +220,10 @@ pub trait LapackScalar: Scalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?gels argument for argument"
+    )]
     unsafe fn lapacke_gels(
         layout: c_int,
         trans: c_char,
@@ -231,7 +246,10 @@ pub trait LapackScalar: Scalar {
     /// `rank` must be valid for a write of one `MKL_INT`.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?gelsd argument for argument"
+    )]
     unsafe fn lapacke_gelsd(
         layout: c_int,
         m: MKL_INT,
@@ -258,7 +276,10 @@ pub trait LapackScalar: Scalar {
     /// `vt` must be valid for reads and writes of `ldvt * stored_cols` elements for column-major or `ldvt * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `vt` from its dimension arguments, and `ldvt >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?gesdd argument for argument"
+    )]
     unsafe fn lapacke_gesdd(
         layout: c_int,
         jobz: c_char,
@@ -284,7 +305,10 @@ pub trait LapackScalar: Scalar {
     /// `superb` must be valid for writes of the length the routine defines for `superb` (`n`, `n - 1` for off-diagonals, `min(m, n)` for `tau`/`s`, `2 * m` for `isuppz`).
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?gesvd argument for argument"
+    )]
     unsafe fn lapacke_gesvd(
         layout: c_int,
         jobu: c_char,
@@ -312,7 +336,10 @@ pub trait LapackScalar: Scalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?gbsv argument for argument"
+    )]
     unsafe fn lapacke_gbsv(
         layout: c_int,
         n: MKL_INT,
@@ -334,7 +361,10 @@ pub trait LapackScalar: Scalar {
     /// `ipiv` must be valid for writes of `min(m, n)` `MKL_INT` entries.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?gbtrf argument for argument"
+    )]
     unsafe fn lapacke_gbtrf(
         layout: c_int,
         m: MKL_INT,
@@ -355,7 +385,10 @@ pub trait LapackScalar: Scalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?gbtrs argument for argument"
+    )]
     unsafe fn lapacke_gbtrs(
         layout: c_int,
         trans: c_char,
@@ -380,7 +413,10 @@ pub trait LapackScalar: Scalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?gtsv argument for argument"
+    )]
     unsafe fn lapacke_gtsv(
         layout: c_int,
         n: MKL_INT,
@@ -425,7 +461,10 @@ pub trait LapackScalar: Scalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?gttrs argument for argument"
+    )]
     unsafe fn lapacke_gttrs(
         layout: c_int,
         trans: c_char,
@@ -449,7 +488,10 @@ pub trait LapackScalar: Scalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?pbsv argument for argument"
+    )]
     unsafe fn lapacke_pbsv(
         layout: c_int,
         uplo: c_char,
@@ -487,7 +529,10 @@ pub trait LapackScalar: Scalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?pbtrs argument for argument"
+    )]
     unsafe fn lapacke_pbtrs(
         layout: c_int,
         uplo: c_char,
@@ -542,7 +587,10 @@ pub trait LapackScalar: Scalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?spsv argument for argument"
+    )]
     unsafe fn lapacke_spsv(
         layout: c_int,
         uplo: c_char,
@@ -579,7 +627,10 @@ pub trait LapackScalar: Scalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?sptrs argument for argument"
+    )]
     unsafe fn lapacke_sptrs(
         layout: c_int,
         uplo: c_char,
@@ -648,7 +699,10 @@ pub trait LapackScalar: Scalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?lacpy argument for argument"
+    )]
     unsafe fn lapacke_lacpy(
         layout: c_int,
         uplo: c_char,
@@ -723,7 +777,10 @@ pub trait LapackScalar: Scalar {
     /// `t` must be valid for reads and writes of `ldt * stored_cols` elements for column-major or `ldt * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `t` from its dimension arguments, and `ldt >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?larft argument for argument"
+    )]
     unsafe fn lapacke_larft(
         layout: c_int,
         direct: c_char,
@@ -747,7 +804,10 @@ pub trait LapackScalar: Scalar {
     /// `c` must be valid for reads and writes of `ldc * stored_cols` elements for column-major or `ldc * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `c` from its dimension arguments, and `ldc >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?larfb argument for argument"
+    )]
     unsafe fn lapacke_larfb(
         layout: c_int,
         side: c_char,
@@ -774,7 +834,10 @@ pub trait LapackScalar: Scalar {
     /// `ipiv` must be valid for reads of `n` `MKL_INT` entries as produced by the matching factorization (1-based pivot indices).
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?laswp argument for argument"
+    )]
     unsafe fn lapacke_laswp(
         layout: c_int,
         n: MKL_INT,
@@ -799,7 +862,10 @@ pub trait RealLapackScalar: LapackScalar + RealScalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?sysv argument for argument"
+    )]
     unsafe fn lapacke_sysv(
         layout: c_int,
         uplo: c_char,
@@ -842,7 +908,10 @@ pub trait RealLapackScalar: LapackScalar + RealScalar {
     /// `vr` must be valid for reads and writes of `ldvr * stored_cols` elements for column-major or `ldvr * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `vr` from its dimension arguments, and `ldvr >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?geev argument for argument"
+    )]
     unsafe fn lapacke_geev(
         layout: c_int,
         jobvl: c_char,
@@ -890,7 +959,10 @@ pub trait RealLapackScalar: LapackScalar + RealScalar {
     /// `w` must be valid for writes of the length the routine defines for `w` (`n`, `n - 1` for off-diagonals, `min(m, n)` for `tau`/`s`, `2 * m` for `isuppz`).
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?sygv argument for argument"
+    )]
     unsafe fn lapacke_sygv(
         layout: c_int,
         itype: c_int,
@@ -918,7 +990,10 @@ pub trait RealLapackScalar: LapackScalar + RealScalar {
     /// `vr` must be valid for reads and writes of `ldvr * stored_cols` elements for column-major or `ldvr * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `vr` from its dimension arguments, and `ldvr >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?ggev argument for argument"
+    )]
     unsafe fn lapacke_ggev(
         layout: c_int,
         jobvl: c_char,
@@ -969,7 +1044,10 @@ pub trait RealLapackScalar: LapackScalar + RealScalar {
     /// `isuppz` must be valid for writes of the length the routine defines for `isuppz` (`n`, `n - 1` for off-diagonals, `min(m, n)` for `tau`/`s`, `2 * m` for `isuppz`).
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?syevr argument for argument"
+    )]
     unsafe fn lapacke_syevr(
         layout: c_int,
         jobz: c_char,
@@ -1003,7 +1081,10 @@ pub trait ComplexLapackScalar: LapackScalar + ComplexScalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?hesv argument for argument"
+    )]
     unsafe fn lapacke_hesv(
         layout: c_int,
         uplo: c_char,
@@ -1045,7 +1126,10 @@ pub trait ComplexLapackScalar: LapackScalar + ComplexScalar {
     /// `vr` must be valid for reads and writes of `ldvr * stored_cols` elements for column-major or `ldvr * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `vr` from its dimension arguments, and `ldvr >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_{c,z}geev argument for argument"
+    )]
     unsafe fn lapacke_geev_complex(
         layout: c_int,
         jobvl: c_char,
@@ -1070,7 +1154,10 @@ pub trait ComplexLapackScalar: LapackScalar + ComplexScalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_{c,z}pttrs argument for argument"
+    )]
     unsafe fn lapacke_pttrs_complex(
         layout: c_int,
         uplo: c_char,
@@ -1091,7 +1178,10 @@ pub trait ComplexLapackScalar: LapackScalar + ComplexScalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?hpsv argument for argument"
+    )]
     unsafe fn lapacke_hpsv(
         layout: c_int,
         uplo: c_char,
@@ -1128,7 +1218,10 @@ pub trait ComplexLapackScalar: LapackScalar + ComplexScalar {
     /// `b` must be valid for reads and writes of `ldb * stored_cols` elements for column-major or `ldb * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `b` from its dimension arguments, and `ldb >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?hptrs argument for argument"
+    )]
     unsafe fn lapacke_hptrs(
         layout: c_int,
         uplo: c_char,
@@ -1150,7 +1243,10 @@ pub trait ComplexLapackScalar: LapackScalar + ComplexScalar {
     /// `w` must be valid for writes of the length the routine defines for `w` (`n`, `n - 1` for off-diagonals, `min(m, n)` for `tau`/`s`, `2 * m` for `isuppz`).
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?hegv argument for argument"
+    )]
     unsafe fn lapacke_hegv(
         layout: c_int,
         itype: c_int,
@@ -1178,7 +1274,10 @@ pub trait ComplexLapackScalar: LapackScalar + ComplexScalar {
     /// `vr` must be valid for reads and writes of `ldvr * stored_cols` elements for column-major or `ldvr * stored_rows` for row-major, where `stored_rows x stored_cols` is the matrix the routine defines for `vr` from its dimension arguments, and `ldvr >= max(1, stored_cols)` (row-major) or `max(1, stored_rows)` (column-major). Contents are overwritten with the routine's output.
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_{c,z}ggev argument for argument"
+    )]
     unsafe fn lapacke_ggev_complex(
         layout: c_int,
         jobvl: c_char,
@@ -1226,7 +1325,10 @@ pub trait ComplexLapackScalar: LapackScalar + ComplexScalar {
     /// `isuppz` must be valid for writes of the length the routine defines for `isuppz` (`n`, `n - 1` for off-diagonals, `min(m, n)` for `tau`/`s`, `2 * m` for `isuppz`).
     /// `matrix_layout` must be a valid LAPACKE layout and `uplo`, `trans`, `jobz`/`job*` valid LAPACKE characters; dimensions non-negative; buffers must not overlap each other, and no Rust reference to a written buffer may be live during the call.
     /// The returned `info` is LAPACK's: `0` success, negative `-i` means argument `i` was invalid, positive means a numerical failure (singular, not converged); buffers may be partially overwritten on a nonzero return. The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature LAPACKE_?heevr argument for argument"
+    )]
     unsafe fn lapacke_heevr(
         layout: c_int,
         jobz: c_char,

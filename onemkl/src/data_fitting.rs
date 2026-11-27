@@ -54,7 +54,10 @@ pub trait DataFittingScalar: Copy + 'static {
     /// **Pointer retention:** the task stores the pointers passed to it; each such buffer must stay allocated at a stable address and be neither mutated nor aliased by a `&mut` while MKL may read it (outputs: not accessed at all) until the task is deleted (`dfDeleteTask`) or the pointer replaced.
     /// The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `scoeff`: ny * (nx - 1) * 4 elements for a cubic spline (s_order = 4), with `bc`/`ic` null for free-end/no-IC; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature df?EditPPSpline1D argument for argument"
+    )]
     unsafe fn df_edit_pp_spline_1d(
         task: DFTaskPtr,
         s_order: c_int,
@@ -83,7 +86,10 @@ pub trait DataFittingScalar: Copy + 'static {
     /// `nsite` is the number of evaluation sites and `site` must hold `nsite` values (2 for a uniform `sitehint`). `ndorder` is the number of derivative orders and `dorder` must hold `ndorder` entries (non-zero flag per requested derivative). `datahint` may be null or point to the 1-element hint array MKL documents. `r` must be valid for writes of `ny * nsite * (number of nonzero dorder entries)` elements laid out per `rhint`; `cell` may be null, otherwise it must be valid for writes of `nsite` `c_int` values.
     /// `r` and `cell` must not overlap `site`, `dorder` or any task-registered buffer. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `site`: nsite, `dorder`: ndorder entries, `r`: nsite * ny * ndorder for ndorder = 2 with both flags set, `cell` null; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature df?Interpolate1D argument for argument"
+    )]
     unsafe fn df_interpolate_1d(
         task: DFTaskPtr,
         estimation_type: c_int,
@@ -106,7 +112,10 @@ pub trait DataFittingScalar: Copy + 'static {
     /// `nlim` is the number of integration intervals; `llim` and `rlim` must each hold `nlim` values (or one value when the corresponding hint says so), with `llim <= rlim` inside the breakpoint range. `ldatahint` and `rdatahint` may be null or point to the hint arrays MKL documents. `r` must be valid for writes of `ny * nlim` elements laid out per `rhint`; `r` must not overlap any input or task-registered buffer.
     /// The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `llim`: nlim, `r`: nlim * ny; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature df?Integrate1D argument for argument"
+    )]
     unsafe fn df_integrate_1d(
         task: DFTaskPtr,
         method: c_int,

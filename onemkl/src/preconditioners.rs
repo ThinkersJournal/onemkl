@@ -10,8 +10,8 @@
 //! use onemkl::preconditioners::ilu0;
 //!
 //! // 3x3 SPD CSR (1-based): same pattern as A.
-//! let ia = vec![1_i32, 4, 7, 10];
-//! let ja = vec![1_i32, 2, 3,
+//! let ia = vec![1, 4, 7, 10];
+//! let ja = vec![1, 2, 3,
 //!               1, 2, 3,
 //!               1, 2, 3];
 //! let a = vec![4.0_f64, -1.0, 0.0,
@@ -23,18 +23,18 @@
 //! Both routines are double-precision only (oneMKL doesn't expose
 //! `?csrilu0` / `?csrilut` for other types).
 
-use core::ffi::c_int;
 use core::ptr;
 
-use onemkl_sys as sys;
+use onemkl_sys::{self as sys, MKL_INT};
 
 use crate::error::{Error, Result, SparseStatus};
+use crate::util::status_i32;
 
 /// Compute the ILU(0) factorization of a square CSR matrix.
 ///
 /// Returns the factored values `alu` in the same sparsity pattern as
 /// the input. `ia` / `ja` follow oneMKL's 1-based CSR convention.
-pub fn ilu0(n: usize, a: &[f64], ia: &[i32], ja: &[i32]) -> Result<Vec<f64>> {
+pub fn ilu0(n: usize, a: &[f64], ia: &[MKL_INT], ja: &[MKL_INT]) -> Result<Vec<f64>> {
     if ia.len() != n + 1 {
         return Err(Error::InvalidArgument(
             "ia must have length n + 1 for CSR storage",
@@ -43,13 +43,13 @@ pub fn ilu0(n: usize, a: &[f64], ia: &[i32], ja: &[i32]) -> Result<Vec<f64>> {
     if a.len() != ja.len() {
         return Err(Error::InvalidArgument("a and ja must have the same length"));
     }
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let mut alu = vec![0.0_f64; a.len()];
     // ipar / dpar are configuration arrays expected by RCI conventions.
     // For ILU0, only a few entries are read; the rest can stay zero.
-    let ipar: [c_int; 128] = [0; 128];
+    let ipar: [MKL_INT; 128] = [0; 128];
     let dpar: [f64; 128] = [0.0; 128];
-    let mut ierr: c_int = 0;
+    let mut ierr: MKL_INT = 0;
 
     unsafe {
         sys::dcsrilu0(
@@ -64,7 +64,9 @@ pub fn ilu0(n: usize, a: &[f64], ia: &[i32], ja: &[i32]) -> Result<Vec<f64>> {
         );
     }
     if ierr != 0 {
-        return Err(Error::LapackComputationFailure { info: ierr });
+        return Err(Error::LapackComputationFailure {
+            info: status_i32(ierr),
+        });
     }
     Ok(alu)
 }
@@ -76,9 +78,9 @@ pub struct IlutResult {
     /// Factored values.
     pub alut: Vec<f64>,
     /// Row pointer of the factor (length `n + 1`, 1-based).
-    pub ialut: Vec<i32>,
+    pub ialut: Vec<MKL_INT>,
     /// Column indices of the factor (1-based).
-    pub jalut: Vec<i32>,
+    pub jalut: Vec<MKL_INT>,
 }
 
 /// Compute the threshold-based ILUT factorization of a CSR matrix.
@@ -94,10 +96,10 @@ pub struct IlutResult {
 pub fn ilut(
     n: usize,
     a: &[f64],
-    ia: &[i32],
-    ja: &[i32],
+    ia: &[MKL_INT],
+    ja: &[MKL_INT],
     tol: f64,
-    max_fill: i32,
+    max_fill: MKL_INT,
 ) -> Result<IlutResult> {
     if ia.len() != n + 1 {
         return Err(Error::InvalidArgument(
@@ -110,22 +112,22 @@ pub fn ilut(
     if max_fill < 0 {
         return Err(Error::InvalidArgument("max_fill must be non-negative"));
     }
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let mf = max_fill as usize;
     let max_nnz = (2 * mf + 1) * n - mf.checked_mul(mf + 1).ok_or(Error::DimensionOverflow)? + 1;
     let mut alut = vec![0.0_f64; max_nnz];
-    let mut jalut = vec![0_i32; max_nnz];
-    let mut ialut = vec![0_i32; n + 1];
+    let mut jalut = vec![0; max_nnz];
+    let mut ialut = vec![0; n + 1];
     // ipar / dpar must be configured for ILUT — defaults shown below
     // come from oneMKL's recommended settings.
-    let mut ipar: [c_int; 128] = [0; 128];
+    let mut ipar: [MKL_INT; 128] = [0; 128];
     let mut dpar: [f64; 128] = [0.0; 128];
     ipar[1] = 6; // stdout for diagnostics
     ipar[5] = 1; // produce error messages
     ipar[30] = 1; // replace zero pivots
     dpar[30] = 1.0e-16; // pivot replacement threshold
     dpar[31] = 1.0e-10; // pivot replacement value
-    let mut ierr: c_int = 0;
+    let mut ierr: MKL_INT = 0;
 
     unsafe {
         sys::dcsrilut(
@@ -146,7 +148,9 @@ pub fn ilut(
     // Negative ierr = error; positive ierr = warning (maxfil >= n
     // clamped, tol negated, etc.). Both shapes return a usable factor.
     if ierr < 0 {
-        return Err(Error::LapackComputationFailure { info: ierr });
+        return Err(Error::LapackComputationFailure {
+            info: status_i32(ierr),
+        });
     }
 
     // Trim alut / jalut to the actual nnz reported by ialut.
@@ -165,7 +169,13 @@ pub fn ilut(
 ///
 /// `v` is the input vector. Returns a freshly allocated solution
 /// vector of length `n`.
-pub fn apply_ilu(n: usize, alu: &[f64], ia: &[i32], ja: &[i32], v: &[f64]) -> Result<Vec<f64>> {
+pub fn apply_ilu(
+    n: usize,
+    alu: &[f64],
+    ia: &[MKL_INT],
+    ja: &[MKL_INT],
+    v: &[f64],
+) -> Result<Vec<f64>> {
     if ia.len() != n + 1 {
         return Err(Error::InvalidArgument(
             "ia must have length n + 1 for CSR storage",
@@ -179,7 +189,7 @@ pub fn apply_ilu(n: usize, alu: &[f64], ia: &[i32], ja: &[i32], v: &[f64]) -> Re
             "alu and ja must have the same length",
         ));
     }
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let mut tmp = vec![0.0_f64; n];
     let mut out = vec![0.0_f64; n];
 
@@ -188,7 +198,7 @@ pub fn apply_ilu(n: usize, alu: &[f64], ia: &[i32], ja: &[i32], v: &[f64]) -> Re
     // does not mutate them during a triangular solve; casting away
     // const is safe here.
     let mut handle: sys::sparse_matrix_t = ptr::null_mut();
-    let rows_start_ptr = ia.as_ptr() as *mut c_int;
+    let rows_start_ptr = ia.as_ptr() as *mut MKL_INT;
     let rows_end_ptr = unsafe { rows_start_ptr.add(1) };
     let status = unsafe {
         sys::mkl_sparse_d_create_csr(
@@ -198,7 +208,7 @@ pub fn apply_ilu(n: usize, alu: &[f64], ia: &[i32], ja: &[i32], v: &[f64]) -> Re
             n_i,
             rows_start_ptr,
             rows_end_ptr,
-            ja.as_ptr() as *mut c_int,
+            ja.as_ptr() as *mut MKL_INT,
             alu.as_ptr() as *mut f64,
         )
     };

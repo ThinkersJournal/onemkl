@@ -58,3 +58,11 @@ pub(crate) fn vector_min_len(n: usize, inc: i64) -> usize {
     }
     1 + (n - 1) * inc.unsigned_abs() as usize
 }
+
+/// Narrow a routine status (`MKL_INT`) to the `i32` carried by [`crate::Error`]
+/// variants. Under `lp64` this is the identity; under `ilp64` a status that
+/// does not fit saturates (statuses are small).
+#[inline]
+pub(crate) fn status_i32(status: MKL_INT) -> i32 {
+    i32::try_from(status).unwrap_or(if status < 0 { i32::MIN } else { i32::MAX })
+}

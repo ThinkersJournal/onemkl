@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Scalar dispatch trait for Inspector-Executor Sparse BLAS.
 
-use core::ffi::c_int;
-
 use num_complex::{Complex32, Complex64};
+use onemkl_sys::MKL_INT;
 use onemkl_sys::{
     self as sys, matrix_descr, sparse_index_base_t, sparse_layout_t, sparse_matrix_t,
     sparse_operation_t, sparse_status_t,
@@ -34,11 +33,11 @@ pub trait SparseScalar: Scalar {
     unsafe fn sparse_create_csr(
         a: *mut sparse_matrix_t,
         indexing: sparse_index_base_t::Type,
-        rows: c_int,
-        cols: c_int,
-        rows_start: *mut c_int,
-        rows_end: *mut c_int,
-        col_indx: *mut c_int,
+        rows: MKL_INT,
+        cols: MKL_INT,
+        rows_start: *mut MKL_INT,
+        rows_end: *mut MKL_INT,
+        col_indx: *mut MKL_INT,
         values: *mut Self,
     ) -> sparse_status_t::Type;
 
@@ -58,11 +57,11 @@ pub trait SparseScalar: Scalar {
     unsafe fn sparse_create_coo(
         a: *mut sparse_matrix_t,
         indexing: sparse_index_base_t::Type,
-        rows: c_int,
-        cols: c_int,
-        nnz: c_int,
-        row_indx: *mut c_int,
-        col_indx: *mut c_int,
+        rows: MKL_INT,
+        cols: MKL_INT,
+        nnz: MKL_INT,
+        row_indx: *mut MKL_INT,
+        col_indx: *mut MKL_INT,
         values: *mut Self,
     ) -> sparse_status_t::Type;
 
@@ -82,11 +81,11 @@ pub trait SparseScalar: Scalar {
     unsafe fn sparse_create_csc(
         a: *mut sparse_matrix_t,
         indexing: sparse_index_base_t::Type,
-        rows: c_int,
-        cols: c_int,
-        cols_start: *mut c_int,
-        cols_end: *mut c_int,
-        row_indx: *mut c_int,
+        rows: MKL_INT,
+        cols: MKL_INT,
+        cols_start: *mut MKL_INT,
+        cols_end: *mut MKL_INT,
+        row_indx: *mut MKL_INT,
         values: *mut Self,
     ) -> sparse_status_t::Type;
 
@@ -107,12 +106,12 @@ pub trait SparseScalar: Scalar {
         a: *mut sparse_matrix_t,
         indexing: sparse_index_base_t::Type,
         block_layout: onemkl_sys::sparse_layout_t::Type,
-        rows: c_int,
-        cols: c_int,
-        block_size: c_int,
-        rows_start: *mut c_int,
-        rows_end: *mut c_int,
-        col_indx: *mut c_int,
+        rows: MKL_INT,
+        cols: MKL_INT,
+        block_size: MKL_INT,
+        rows_start: *mut MKL_INT,
+        rows_end: *mut MKL_INT,
+        col_indx: *mut MKL_INT,
         values: *mut Self,
     ) -> sparse_status_t::Type;
 
@@ -151,11 +150,11 @@ pub trait SparseScalar: Scalar {
         descr: matrix_descr,
         layout: sparse_layout_t::Type,
         x: *const Self,
-        columns: c_int,
-        ldx: c_int,
+        columns: MKL_INT,
+        ldx: MKL_INT,
         beta: Self,
         y: *mut Self,
-        ldy: c_int,
+        ldy: MKL_INT,
     ) -> sparse_status_t::Type;
 
     /// Raw `sparse_trsv` call.
@@ -257,7 +256,7 @@ pub trait SparseScalar: Scalar {
         b: sparse_matrix_t,
         layout: onemkl_sys::sparse_layout_t::Type,
         c: *mut Self,
-        ldc: c_int,
+        ldc: MKL_INT,
     ) -> sparse_status_t::Type;
 }
 
@@ -273,11 +272,11 @@ macro_rules! impl_sparse_real {
             unsafe fn sparse_create_csr(
                 a: *mut sparse_matrix_t,
                 indexing: sparse_index_base_t::Type,
-                rows: c_int,
-                cols: c_int,
-                rows_start: *mut c_int,
-                rows_end: *mut c_int,
-                col_indx: *mut c_int,
+                rows: MKL_INT,
+                cols: MKL_INT,
+                rows_start: *mut MKL_INT,
+                rows_end: *mut MKL_INT,
+                col_indx: *mut MKL_INT,
                 values: *mut Self,
             ) -> sparse_status_t::Type {
                 unsafe {
@@ -289,11 +288,11 @@ macro_rules! impl_sparse_real {
             unsafe fn sparse_create_coo(
                 a: *mut sparse_matrix_t,
                 indexing: sparse_index_base_t::Type,
-                rows: c_int,
-                cols: c_int,
-                nnz: c_int,
-                row_indx: *mut c_int,
-                col_indx: *mut c_int,
+                rows: MKL_INT,
+                cols: MKL_INT,
+                nnz: MKL_INT,
+                row_indx: *mut MKL_INT,
+                col_indx: *mut MKL_INT,
                 values: *mut Self,
             ) -> sparse_status_t::Type {
                 unsafe {
@@ -303,11 +302,11 @@ macro_rules! impl_sparse_real {
             unsafe fn sparse_create_csc(
                 a: *mut sparse_matrix_t,
                 indexing: sparse_index_base_t::Type,
-                rows: c_int,
-                cols: c_int,
-                cols_start: *mut c_int,
-                cols_end: *mut c_int,
-                row_indx: *mut c_int,
+                rows: MKL_INT,
+                cols: MKL_INT,
+                cols_start: *mut MKL_INT,
+                cols_end: *mut MKL_INT,
+                row_indx: *mut MKL_INT,
                 values: *mut Self,
             ) -> sparse_status_t::Type {
                 unsafe {
@@ -320,12 +319,12 @@ macro_rules! impl_sparse_real {
                 a: *mut sparse_matrix_t,
                 indexing: sparse_index_base_t::Type,
                 block_layout: onemkl_sys::sparse_layout_t::Type,
-                rows: c_int,
-                cols: c_int,
-                block_size: c_int,
-                rows_start: *mut c_int,
-                rows_end: *mut c_int,
-                col_indx: *mut c_int,
+                rows: MKL_INT,
+                cols: MKL_INT,
+                block_size: MKL_INT,
+                rows_start: *mut MKL_INT,
+                rows_end: *mut MKL_INT,
+                col_indx: *mut MKL_INT,
                 values: *mut Self,
             ) -> sparse_status_t::Type {
                 unsafe {
@@ -361,11 +360,11 @@ macro_rules! impl_sparse_real {
                 descr: matrix_descr,
                 layout: sparse_layout_t::Type,
                 x: *const Self,
-                columns: c_int,
-                ldx: c_int,
+                columns: MKL_INT,
+                ldx: MKL_INT,
                 beta: Self,
                 y: *mut Self,
-                ldy: c_int,
+                ldy: MKL_INT,
             ) -> sparse_status_t::Type {
                 unsafe { sys::$mm(op, alpha, a, descr, layout, x, columns, ldx, beta, y, ldy) }
             }
@@ -394,7 +393,7 @@ macro_rules! impl_sparse_real {
                 b: sparse_matrix_t,
                 layout: onemkl_sys::sparse_layout_t::Type,
                 c: *mut Self,
-                ldc: c_int,
+                ldc: MKL_INT,
             ) -> sparse_status_t::Type {
                 unsafe { sys::$spmmd(op, a, b, layout, c, ldc) }
             }
@@ -478,11 +477,11 @@ macro_rules! impl_sparse_complex {
             unsafe fn sparse_create_csr(
                 a: *mut sparse_matrix_t,
                 indexing: sparse_index_base_t::Type,
-                rows: c_int,
-                cols: c_int,
-                rows_start: *mut c_int,
-                rows_end: *mut c_int,
-                col_indx: *mut c_int,
+                rows: MKL_INT,
+                cols: MKL_INT,
+                rows_start: *mut MKL_INT,
+                rows_end: *mut MKL_INT,
+                col_indx: *mut MKL_INT,
                 values: *mut Self,
             ) -> sparse_status_t::Type {
                 unsafe {
@@ -501,11 +500,11 @@ macro_rules! impl_sparse_complex {
             unsafe fn sparse_create_coo(
                 a: *mut sparse_matrix_t,
                 indexing: sparse_index_base_t::Type,
-                rows: c_int,
-                cols: c_int,
-                nnz: c_int,
-                row_indx: *mut c_int,
-                col_indx: *mut c_int,
+                rows: MKL_INT,
+                cols: MKL_INT,
+                nnz: MKL_INT,
+                row_indx: *mut MKL_INT,
+                col_indx: *mut MKL_INT,
                 values: *mut Self,
             ) -> sparse_status_t::Type {
                 unsafe {
@@ -524,11 +523,11 @@ macro_rules! impl_sparse_complex {
             unsafe fn sparse_create_csc(
                 a: *mut sparse_matrix_t,
                 indexing: sparse_index_base_t::Type,
-                rows: c_int,
-                cols: c_int,
-                cols_start: *mut c_int,
-                cols_end: *mut c_int,
-                row_indx: *mut c_int,
+                rows: MKL_INT,
+                cols: MKL_INT,
+                cols_start: *mut MKL_INT,
+                cols_end: *mut MKL_INT,
+                row_indx: *mut MKL_INT,
                 values: *mut Self,
             ) -> sparse_status_t::Type {
                 unsafe {
@@ -548,12 +547,12 @@ macro_rules! impl_sparse_complex {
                 a: *mut sparse_matrix_t,
                 indexing: sparse_index_base_t::Type,
                 block_layout: onemkl_sys::sparse_layout_t::Type,
-                rows: c_int,
-                cols: c_int,
-                block_size: c_int,
-                rows_start: *mut c_int,
-                rows_end: *mut c_int,
-                col_indx: *mut c_int,
+                rows: MKL_INT,
+                cols: MKL_INT,
+                block_size: MKL_INT,
+                rows_start: *mut MKL_INT,
+                rows_end: *mut MKL_INT,
+                col_indx: *mut MKL_INT,
                 values: *mut Self,
             ) -> sparse_status_t::Type {
                 unsafe {
@@ -599,11 +598,11 @@ macro_rules! impl_sparse_complex {
                 descr: matrix_descr,
                 layout: sparse_layout_t::Type,
                 x: *const Self,
-                columns: c_int,
-                ldx: c_int,
+                columns: MKL_INT,
+                ldx: MKL_INT,
                 beta: Self,
                 y: *mut Self,
-                ldy: c_int,
+                ldy: MKL_INT,
             ) -> sparse_status_t::Type {
                 unsafe {
                     sys::$mm(
@@ -655,7 +654,7 @@ macro_rules! impl_sparse_complex {
                 b: sparse_matrix_t,
                 layout: onemkl_sys::sparse_layout_t::Type,
                 c: *mut Self,
-                ldc: c_int,
+                ldc: MKL_INT,
             ) -> sparse_status_t::Type {
                 unsafe { sys::$spmmd(op, a, b, layout, c.cast(), ldc) }
             }

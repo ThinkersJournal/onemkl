@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Changed
+
+- ILP64 package 2 of 4 (`docs/ILP64-DESIGN.md`): `sparse/`, `pardiso`, `dss`, `iss` and `preconditioners` spell every extent, index, `MKL_INT`-typed handle parameter and status as `MKL_INT` instead of `c_int` / `i32`. `MKL_INT` is `i32` under the default `lp64` interface, so no public signature changes for callers (checked: the unchanged tests and examples compile and pass against this library under `lp64`). `util::status_i32` saturates an `MKL_INT` status into the `i32` payload of `Error`. The `ilp64` feature is still refused by `onemkl/build.rs` until package 4.
+
 ## 0.6.1 - 2026-11-27 (PM-allocated; additive: ILP64 package 1 of 4, blas and lapack; MKL_INT is i32 under lp64: no change)
 
 ### Changed

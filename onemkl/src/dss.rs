@@ -14,15 +14,15 @@
 //!
 //! Drop frees the handle.
 
-use core::ffi::c_int;
 use core::marker::PhantomData;
 use core::ptr;
 use std::ffi::CString;
 
 use num_complex::{Complex32, Complex64};
-use onemkl_sys as sys;
+use onemkl_sys::{self as sys, MKL_INT};
 
 use crate::error::{Error, Result};
+use crate::util::status_i32;
 
 /// Symmetry pattern of a sparse matrix passed to DSS.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -43,7 +43,7 @@ pub enum Symmetry {
 
 impl Symmetry {
     #[inline]
-    fn as_opt(self) -> c_int {
+    fn as_opt(self) -> MKL_INT {
         let v = match self {
             Self::NonSymmetric => sys::MKL_DSS_NON_SYMMETRIC,
             Self::Symmetric => sys::MKL_DSS_SYMMETRIC,
@@ -52,7 +52,7 @@ impl Symmetry {
             Self::SymmetricComplex => sys::MKL_DSS_SYMMETRIC_COMPLEX,
             Self::SymmetricStructureComplex => sys::MKL_DSS_SYMMETRIC_STRUCTURE_COMPLEX,
         };
-        v as c_int
+        v as MKL_INT
     }
 }
 
@@ -72,14 +72,14 @@ pub enum Definite {
 
 impl Definite {
     #[inline]
-    fn as_opt(self) -> c_int {
+    fn as_opt(self) -> MKL_INT {
         let v = match self {
             Self::PositiveDefinite => sys::MKL_DSS_POSITIVE_DEFINITE,
             Self::Indefinite => sys::MKL_DSS_INDEFINITE,
             Self::HermitianPositiveDefinite => sys::MKL_DSS_HERMITIAN_POSITIVE_DEFINITE,
             Self::HermitianIndefinite => sys::MKL_DSS_HERMITIAN_INDEFINITE,
         };
-        v as c_int
+        v as MKL_INT
     }
 }
 
@@ -105,7 +105,7 @@ impl<T> Dss<T> {
     /// Create a fresh DSS handle.
     pub fn new() -> Result<Self> {
         let mut handle: sys::_MKL_DSS_HANDLE_t = ptr::null_mut();
-        let opt: c_int = sys::MKL_DSS_DEFAULTS as c_int;
+        let opt: MKL_INT = sys::MKL_DSS_DEFAULTS as MKL_INT;
         let status = unsafe { sys::dss_create_(&mut handle, &opt) };
         check_dss(status)?;
         Ok(Self {
@@ -121,23 +121,23 @@ impl<T> Dss<T> {
         symmetry: Symmetry,
         rows: usize,
         cols: usize,
-        row_ptr: &[i32],
-        col_idx: &[i32],
+        row_ptr: &[MKL_INT],
+        col_idx: &[MKL_INT],
         indexing: IndexBase,
     ) -> Result<()> {
-        let mut opt: c_int = symmetry.as_opt();
+        let mut opt: MKL_INT = symmetry.as_opt();
         if matches!(indexing, IndexBase::Zero) {
-            opt |= sys::MKL_DSS_ZERO_BASED_INDEXING as c_int;
+            opt |= sys::MKL_DSS_ZERO_BASED_INDEXING as MKL_INT;
         }
         if row_ptr.len() != rows + 1 {
             return Err(Error::InvalidArgument("row_ptr must have length rows + 1"));
         }
-        let nnz: c_int = col_idx
+        let nnz: MKL_INT = col_idx
             .len()
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
-        let nrows: c_int = rows.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let ncols: c_int = cols.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let nrows: MKL_INT = rows.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let ncols: MKL_INT = cols.try_into().map_err(|_| Error::DimensionOverflow)?;
         let status = unsafe {
             sys::dss_define_structure_(
                 &mut self.handle,
@@ -154,8 +154,8 @@ impl<T> Dss<T> {
 
     /// Reorder the matrix for fill-in reduction.
     pub fn reorder(&mut self) -> Result<()> {
-        let opt: c_int = sys::MKL_DSS_DEFAULTS as c_int;
-        let perm: [c_int; 0] = [];
+        let opt: MKL_INT = sys::MKL_DSS_DEFAULTS as MKL_INT;
+        let perm: [MKL_INT; 0] = [];
         let status = unsafe { sys::dss_reorder_(&mut self.handle, &opt, perm.as_ptr()) };
         check_dss(status)
     }
@@ -220,7 +220,7 @@ impl<T> Dss<T> {
     }
 
     fn read_statistics(&mut self, name: &str, count: usize) -> Result<Vec<f64>> {
-        let opt: c_int = sys::MKL_DSS_DEFAULTS as c_int;
+        let opt: MKL_INT = sys::MKL_DSS_DEFAULTS as MKL_INT;
         let name_c = CString::new(name)
             .map_err(|_| Error::InvalidArgument("statistic name contains a null byte"))?;
         let mut out: Vec<f64> = vec![0.0; count];
@@ -259,7 +259,7 @@ impl Dss<f64> {
     /// Numerical factorization of a real matrix with the supplied
     /// definiteness hint.
     pub fn factor_real(&mut self, definite: Definite, values: &[f64]) -> Result<()> {
-        let opt: c_int = definite.as_opt();
+        let opt: MKL_INT = definite.as_opt();
         let status =
             unsafe { sys::dss_factor_real_(&mut self.handle, &opt, values.as_ptr().cast()) };
         check_dss(status)
@@ -267,8 +267,8 @@ impl Dss<f64> {
 
     /// Solve `A * X = B` for real `B`. `b` and `x` are interpreted as
     /// `n × nrhs` column-major matrices.
-    pub fn solve_real(&mut self, b: &[f64], nrhs: i32, x: &mut [f64]) -> Result<()> {
-        let opt: c_int = sys::MKL_DSS_DEFAULTS as c_int;
+    pub fn solve_real(&mut self, b: &[f64], nrhs: MKL_INT, x: &mut [f64]) -> Result<()> {
+        let opt: MKL_INT = sys::MKL_DSS_DEFAULTS as MKL_INT;
         let status = unsafe {
             sys::dss_solve_real_(
                 &mut self.handle,
@@ -285,15 +285,20 @@ impl Dss<f64> {
 impl Dss<Complex64> {
     /// Numerical factorization of a complex matrix.
     pub fn factor_complex(&mut self, definite: Definite, values: &[Complex64]) -> Result<()> {
-        let opt: c_int = definite.as_opt();
+        let opt: MKL_INT = definite.as_opt();
         let status =
             unsafe { sys::dss_factor_complex_(&mut self.handle, &opt, values.as_ptr().cast()) };
         check_dss(status)
     }
 
     /// Solve `A * X = B` for complex `B`.
-    pub fn solve_complex(&mut self, b: &[Complex64], nrhs: i32, x: &mut [Complex64]) -> Result<()> {
-        let opt: c_int = sys::MKL_DSS_DEFAULTS as c_int;
+    pub fn solve_complex(
+        &mut self,
+        b: &[Complex64],
+        nrhs: MKL_INT,
+        x: &mut [Complex64],
+    ) -> Result<()> {
+        let opt: MKL_INT = sys::MKL_DSS_DEFAULTS as MKL_INT;
         let status = unsafe {
             sys::dss_solve_complex_(
                 &mut self.handle,
@@ -310,15 +315,20 @@ impl Dss<Complex64> {
 impl Dss<Complex32> {
     /// Numerical factorization of a complex (single-precision) matrix.
     pub fn factor_complex(&mut self, definite: Definite, values: &[Complex32]) -> Result<()> {
-        let opt: c_int = definite.as_opt();
+        let opt: MKL_INT = definite.as_opt();
         let status =
             unsafe { sys::dss_factor_complex_(&mut self.handle, &opt, values.as_ptr().cast()) };
         check_dss(status)
     }
 
     /// Solve `A * X = B` for complex (single-precision) `B`.
-    pub fn solve_complex(&mut self, b: &[Complex32], nrhs: i32, x: &mut [Complex32]) -> Result<()> {
-        let opt: c_int = sys::MKL_DSS_DEFAULTS as c_int;
+    pub fn solve_complex(
+        &mut self,
+        b: &[Complex32],
+        nrhs: MKL_INT,
+        x: &mut [Complex32],
+    ) -> Result<()> {
+        let opt: MKL_INT = sys::MKL_DSS_DEFAULTS as MKL_INT;
         let status = unsafe {
             sys::dss_solve_complex_(
                 &mut self.handle,
@@ -335,7 +345,7 @@ impl Dss<Complex32> {
 impl<T> Drop for Dss<T> {
     fn drop(&mut self) {
         if !self.handle.is_null() {
-            let opt: c_int = sys::MKL_DSS_DEFAULTS as c_int;
+            let opt: MKL_INT = sys::MKL_DSS_DEFAULTS as MKL_INT;
             unsafe {
                 let _ = sys::dss_delete_(&self.handle, &opt);
             }
@@ -344,11 +354,11 @@ impl<T> Drop for Dss<T> {
 }
 
 #[inline]
-fn check_dss(status: c_int) -> Result<()> {
+fn check_dss(status: MKL_INT) -> Result<()> {
     // DSS uses MKL_DSS_SUCCESS = 0 for success.
     if status == 0 {
         Ok(())
     } else {
-        Err(Error::PardisoStatus(status))
+        Err(Error::PardisoStatus(status_i32(status)))
     }
 }

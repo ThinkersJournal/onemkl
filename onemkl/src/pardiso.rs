@@ -17,8 +17,8 @@
 //!
 //! // Real symmetric positive-definite 3x3 stored in upper-triangular
 //! // CSR (one-indexed):
-//! let ia = vec![1_i32, 4, 6, 7];
-//! let ja = vec![1_i32, 2, 3, 2, 3, 3];
+//! let ia = vec![1, 4, 6, 7];
+//! let ja = vec![1, 2, 3, 2, 3, 3];
 //! let a = vec![4.0_f64, -1.0, 0.0, 4.0, -1.0, 4.0];
 //! let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd)
 //!     .with_indexing(IndexBase::One);
@@ -27,16 +27,16 @@
 //! solver.solve(3, &a, &ia, &ja, &b, &mut x).unwrap();
 //! ```
 
-use core::ffi::c_int;
 use core::marker::PhantomData;
 use core::ptr;
 use std::ffi::CString;
 use std::path::Path;
 
 use num_complex::{Complex32, Complex64};
-use onemkl_sys as sys;
+use onemkl_sys::{self as sys, MKL_INT};
 
 use crate::error::{Error, Result};
+use crate::util::status_i32;
 
 /// PARDISO matrix type (`mtype` parameter).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -63,7 +63,7 @@ pub enum PardisoMatrixType {
 
 impl PardisoMatrixType {
     #[inline]
-    fn as_int(self) -> i32 {
+    fn as_int(self) -> MKL_INT {
         match self {
             Self::RealStructSym => 1,
             Self::RealSpd => 2,
@@ -116,9 +116,9 @@ impl PardisoScalar for Complex64 {
 #[derive(Debug)]
 pub struct Pardiso<T> {
     pt: [*mut core::ffi::c_void; 64],
-    iparm: [c_int; 64],
-    mtype: c_int,
-    msglvl: c_int,
+    iparm: [MKL_INT; 64],
+    mtype: MKL_INT,
+    msglvl: MKL_INT,
     indexing: IndexBase,
     // Optional permutation array. If `None`, MKL receives NULL and
     // chooses a fill-reducing permutation internally. Stored on the
@@ -126,10 +126,10 @@ pub struct Pardiso<T> {
     // read it mid-pipeline). Used in particular for Schur complement
     // extraction (`iparm[35] = 1`) where a non-NULL perm marks which
     // rows / columns are in the Schur block.
-    perm: Option<Vec<c_int>>,
+    perm: Option<Vec<MKL_INT>>,
     initialized: bool,
     factorized: bool,
-    factorized_n: c_int,
+    factorized_n: MKL_INT,
     _marker: PhantomData<T>,
 }
 
@@ -155,7 +155,7 @@ impl<T: PardisoScalar> Pardiso<T> {
         );
 
         let mut pt: [*mut core::ffi::c_void; 64] = [ptr::null_mut(); 64];
-        let mut iparm: [c_int; 64] = [0; 64];
+        let mut iparm: [MKL_INT; 64] = [0; 64];
         let mtype_int = mtype.as_int();
 
         unsafe {
@@ -191,7 +191,7 @@ impl<T: PardisoScalar> Pardiso<T> {
     /// Set the verbosity level (`msglvl` argument). `0` is silent
     /// (default), `1` prints statistics to stdout.
     #[must_use]
-    pub fn with_message_level(mut self, level: i32) -> Self {
+    pub fn with_message_level(mut self, level: MKL_INT) -> Self {
         self.msglvl = level;
         self
     }
@@ -199,7 +199,7 @@ impl<T: PardisoScalar> Pardiso<T> {
     /// Borrow the `iparm` array — see the oneMKL PARDISO reference for
     /// the meaning of each entry.
     #[inline]
-    pub fn iparm(&mut self) -> &mut [c_int; 64] {
+    pub fn iparm(&mut self) -> &mut [MKL_INT; 64] {
         &mut self.iparm
     }
 
@@ -217,7 +217,7 @@ impl<T: PardisoScalar> Pardiso<T> {
     ///   the Schur complement block; `perm[i] = 0` marks it as
     ///   interior. The Schur complement can then be read out via
     ///   [`export`](Self::export).
-    pub fn set_perm(&mut self, perm: Option<Vec<c_int>>) {
+    pub fn set_perm(&mut self, perm: Option<Vec<MKL_INT>>) {
         self.perm = perm;
     }
 
@@ -225,7 +225,7 @@ impl<T: PardisoScalar> Pardiso<T> {
     /// reading back the fill-reducing permutation MKL wrote when
     /// `iparm[4] = 2`.
     #[inline]
-    pub fn perm(&self) -> Option<&[c_int]> {
+    pub fn perm(&self) -> Option<&[MKL_INT]> {
         self.perm.as_deref()
     }
 
@@ -236,8 +236,8 @@ impl<T: PardisoScalar> Pardiso<T> {
         &mut self,
         n: usize,
         a: &[T],
-        ia: &[i32],
-        ja: &[i32],
+        ia: &[MKL_INT],
+        ja: &[MKL_INT],
     ) -> Result<()> {
         self.run_phase(12, n, CsrRef { a, ia, ja }, 0, &[], &mut [])
     }
@@ -250,8 +250,8 @@ impl<T: PardisoScalar> Pardiso<T> {
         &mut self,
         n: usize,
         a: &[T],
-        ia: &[i32],
-        ja: &[i32],
+        ia: &[MKL_INT],
+        ja: &[MKL_INT],
         b: &[T],
         x: &mut [T],
     ) -> Result<()> {
@@ -261,7 +261,7 @@ impl<T: PardisoScalar> Pardiso<T> {
         } else {
             13
         };
-        self.run_phase(phase, n, CsrRef { a, ia, ja }, nrhs as i32, b, x)
+        self.run_phase(phase, n, CsrRef { a, ia, ja }, nrhs as MKL_INT, b, x)
     }
 
     /// Solve with multiple right-hand sides simultaneously. `b` and
@@ -277,10 +277,10 @@ impl<T: PardisoScalar> Pardiso<T> {
     pub fn solve_multi(
         &mut self,
         n: usize,
-        nrhs: i32,
+        nrhs: MKL_INT,
         a: &[T],
-        ia: &[i32],
-        ja: &[i32],
+        ia: &[MKL_INT],
+        ja: &[MKL_INT],
         b: &[T],
         x: &mut [T],
     ) -> Result<()> {
@@ -298,7 +298,7 @@ impl<T: PardisoScalar> Pardiso<T> {
     pub fn release_factorization(&mut self) -> Result<()> {
         // Empty arrays — phase 0 only inspects pt and iparm.
         let dummy_a: [T; 0] = [];
-        let dummy_i: [i32; 0] = [];
+        let dummy_i: [MKL_INT; 0] = [];
         self.run_phase(
             0,
             0,
@@ -350,8 +350,8 @@ impl<T: PardisoScalar> Pardiso<T> {
         }
         let mut df: Vec<T> = (0..n).map(|_| T::default()).collect();
         let mut da: Vec<T> = (0..n).map(|_| T::default()).collect();
-        let mnum: c_int = 1;
-        let mut error: c_int = 0;
+        let mnum: MKL_INT = 1;
+        let mut error: MKL_INT = 0;
         unsafe {
             sys::pardiso_getdiag(
                 self.pt.as_mut_ptr() as sys::_MKL_DSS_HANDLE_t,
@@ -362,7 +362,7 @@ impl<T: PardisoScalar> Pardiso<T> {
             );
         }
         if error != 0 {
-            return Err(Error::PardisoStatus(error));
+            return Err(Error::PardisoStatus(status_i32(error)));
         }
         Ok((df, da))
     }
@@ -373,7 +373,7 @@ impl<T: PardisoScalar> Pardiso<T> {
     /// [`load_handle`](Self::load_handle). Wraps `pardiso_handle_store`.
     pub fn save_handle<P: AsRef<Path>>(&mut self, dir: P) -> Result<()> {
         let dir_c = path_to_cstring(dir.as_ref())?;
-        let mut error: c_int = 0;
+        let mut error: MKL_INT = 0;
         unsafe {
             sys::pardiso_handle_store(
                 self.pt.as_mut_ptr() as sys::_MKL_DSS_HANDLE_t,
@@ -382,7 +382,7 @@ impl<T: PardisoScalar> Pardiso<T> {
             );
         }
         if error != 0 {
-            return Err(Error::PardisoStatus(error));
+            return Err(Error::PardisoStatus(status_i32(error)));
         }
         Ok(())
     }
@@ -393,7 +393,7 @@ impl<T: PardisoScalar> Pardiso<T> {
     /// was called. Wraps `pardiso_handle_restore`.
     pub fn load_handle<P: AsRef<Path>>(&mut self, dir: P) -> Result<()> {
         let dir_c = path_to_cstring(dir.as_ref())?;
-        let mut error: c_int = 0;
+        let mut error: MKL_INT = 0;
         unsafe {
             sys::pardiso_handle_restore(
                 self.pt.as_mut_ptr() as sys::_MKL_DSS_HANDLE_t,
@@ -402,7 +402,7 @@ impl<T: PardisoScalar> Pardiso<T> {
             );
         }
         if error != 0 {
-            return Err(Error::PardisoStatus(error));
+            return Err(Error::PardisoStatus(status_i32(error)));
         }
         // We don't know n until the user solves, but the handle is now
         // valid for solve calls. Mark it factorized — the user is
@@ -432,13 +432,13 @@ impl<T: PardisoScalar> Pardiso<T> {
     /// in place once the correct call sequence is determined.
     pub fn export(
         &mut self,
-        step: i32,
+        step: MKL_INT,
         values: Option<&mut [T]>,
-        ia: &mut [i32],
-        ja: Option<&mut [i32]>,
+        ia: &mut [MKL_INT],
+        ja: Option<&mut [MKL_INT]>,
     ) -> Result<()> {
-        let step_c: c_int = step;
-        let mut error: c_int = 0;
+        let step_c: MKL_INT = step;
+        let mut error: MKL_INT = 0;
         let values_ptr = values
             .map(|v| v.as_mut_ptr().cast::<core::ffi::c_void>())
             .unwrap_or(ptr::null_mut());
@@ -455,7 +455,7 @@ impl<T: PardisoScalar> Pardiso<T> {
             );
         }
         if error != 0 {
-            return Err(Error::PardisoStatus(error));
+            return Err(Error::PardisoStatus(status_i32(error)));
         }
         Ok(())
     }
@@ -466,12 +466,12 @@ impl<T: PardisoScalar> Pardiso<T> {
     /// `pardiso_handle_delete`.
     pub fn delete_handle_files<P: AsRef<Path>>(dir: P) -> Result<()> {
         let dir_c = path_to_cstring(dir.as_ref())?;
-        let mut error: c_int = 0;
+        let mut error: MKL_INT = 0;
         unsafe {
             sys::pardiso_handle_delete(dir_c.as_ptr(), &mut error);
         }
         if error != 0 {
-            return Err(Error::PardisoStatus(error));
+            return Err(Error::PardisoStatus(status_i32(error)));
         }
         Ok(())
     }
@@ -480,7 +480,7 @@ impl<T: PardisoScalar> Pardiso<T> {
     /// rebuilt with [`Pardiso::new`].
     pub fn reset(&mut self) -> Result<()> {
         let dummy_a: [T; 0] = [];
-        let dummy_i: [i32; 0] = [];
+        let dummy_i: [MKL_INT; 0] = [];
         self.run_phase(
             -1,
             0,
@@ -500,26 +500,26 @@ impl<T: PardisoScalar> Pardiso<T> {
 
     fn run_phase(
         &mut self,
-        phase: i32,
+        phase: MKL_INT,
         n: usize,
         csr: CsrRef<'_, T>,
-        nrhs: i32,
+        nrhs: MKL_INT,
         b: &[T],
         x: &mut [T],
     ) -> Result<()> {
         let CsrRef { a, ia, ja } = csr;
-        let n_i32: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let n_i32: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
         let phase_c = phase;
-        let maxfct: c_int = 1;
-        let mnum: c_int = 1;
-        let mut error: c_int = 0;
+        let maxfct: MKL_INT = 1;
+        let mnum: MKL_INT = 1;
+        let mut error: MKL_INT = 0;
         // 0 → Fortran/1-based; 1 → C/0-based.
         self.iparm[34] = match self.indexing {
             IndexBase::One => 0,
             IndexBase::Zero => 1,
         };
         let mtype = self.mtype;
-        let perm_ptr: *mut c_int = match self.perm.as_mut() {
+        let perm_ptr: *mut MKL_INT = match self.perm.as_mut() {
             Some(p) => p.as_mut_ptr(),
             None => ptr::null_mut(),
         };
@@ -546,7 +546,7 @@ impl<T: PardisoScalar> Pardiso<T> {
         }
 
         if error != 0 {
-            return Err(Error::PardisoStatus(error));
+            return Err(Error::PardisoStatus(status_i32(error)));
         }
         if phase == 22 || phase == 12 || phase == 13 {
             self.factorized = true;
@@ -663,9 +663,9 @@ pub fn pardiso_64_raw<T: PardisoScalar>(
         );
     }
     if error != 0 {
-        // Truncate to c_int for the unified PardisoStatus error type;
+        // Truncate to MKL_INT for the unified PardisoStatus error type;
         // PARDISO error codes are small and fit in i32.
-        return Err(Error::PardisoStatus(error as c_int));
+        return Err(Error::PardisoStatus(status_i32(error as MKL_INT)));
     }
     Ok(())
 }
@@ -676,13 +676,13 @@ impl<T> Drop for Pardiso<T> {
             return;
         }
         // Best-effort cleanup; ignore any error here.
-        let phase: c_int = -1;
-        let maxfct: c_int = 1;
-        let mnum: c_int = 1;
-        let n: c_int = 0;
-        let nrhs: c_int = 0;
-        let msglvl: c_int = 0;
-        let mut error: c_int = 0;
+        let phase: MKL_INT = -1;
+        let maxfct: MKL_INT = 1;
+        let mnum: MKL_INT = 1;
+        let n: MKL_INT = 0;
+        let nrhs: MKL_INT = 0;
+        let msglvl: MKL_INT = 0;
+        let mut error: MKL_INT = 0;
         unsafe {
             sys::pardiso(
                 self.pt.as_mut_ptr() as sys::_MKL_DSS_HANDLE_t,
@@ -709,6 +709,6 @@ impl<T> Drop for Pardiso<T> {
 /// The three CSR arrays of the matrix handed to a PARDISO phase.
 struct CsrRef<'a, T> {
     a: &'a [T],
-    ia: &'a [i32],
-    ja: &'a [i32],
+    ia: &'a [MKL_INT],
+    ja: &'a [MKL_INT],
 }

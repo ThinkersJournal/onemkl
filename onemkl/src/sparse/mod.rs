@@ -33,6 +33,7 @@ pub use scalar::SparseScalar;
 
 use core::marker::PhantomData;
 use core::ptr;
+use onemkl_sys::MKL_INT;
 
 use onemkl_sys::{
     self as sys, matrix_descr, sparse_diag_type_t, sparse_fill_mode_t, sparse_index_base_t,
@@ -290,8 +291,8 @@ pub struct SparseMatrix<T: SparseScalar> {
     // owned by this struct, with MKL holding `*mut` pointers into them.
     // Do not access them directly — even reads could race with MKL's
     // executor stage.
-    _idx_a: Box<[i32]>,
-    _idx_b: Box<[i32]>,
+    _idx_a: Box<[MKL_INT]>,
+    _idx_b: Box<[MKL_INT]>,
     _values: Box<[T]>,
     rows: usize,
     cols: usize,
@@ -313,8 +314,8 @@ impl<T: SparseScalar> SparseMatrix<T> {
         rows: usize,
         cols: usize,
         indexing: IndexBase,
-        row_ptr: Vec<i32>,
-        col_idx: Vec<i32>,
+        row_ptr: Vec<MKL_INT>,
+        col_idx: Vec<MKL_INT>,
         values: Vec<T>,
     ) -> Result<Self> {
         if row_ptr.len() != rows + 1 {
@@ -325,8 +326,8 @@ impl<T: SparseScalar> SparseMatrix<T> {
                 "col_idx and values must have the same length",
             ));
         }
-        let m: i32 = rows.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let n: i32 = cols.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let m: MKL_INT = rows.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let n: MKL_INT = cols.try_into().map_err(|_| Error::DimensionOverflow)?;
 
         let mut row_ptr_box = row_ptr.into_boxed_slice();
         let mut col_idx_box = col_idx.into_boxed_slice();
@@ -370,8 +371,8 @@ impl<T: SparseScalar> SparseMatrix<T> {
         rows: usize,
         cols: usize,
         indexing: IndexBase,
-        row_indx: Vec<i32>,
-        col_indx: Vec<i32>,
+        row_indx: Vec<MKL_INT>,
+        col_indx: Vec<MKL_INT>,
         values: Vec<T>,
     ) -> Result<Self> {
         if row_indx.len() != col_indx.len() || col_indx.len() != values.len() {
@@ -379,9 +380,9 @@ impl<T: SparseScalar> SparseMatrix<T> {
                 "row_indx, col_indx, and values must all have the same length",
             ));
         }
-        let m: i32 = rows.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let n: i32 = cols.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let nnz: i32 = values
+        let m: MKL_INT = rows.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let n: MKL_INT = cols.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let nnz: MKL_INT = values
             .len()
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
@@ -424,8 +425,8 @@ impl<T: SparseScalar> SparseMatrix<T> {
         rows: usize,
         cols: usize,
         indexing: IndexBase,
-        col_ptr: Vec<i32>,
-        row_indx: Vec<i32>,
+        col_ptr: Vec<MKL_INT>,
+        row_indx: Vec<MKL_INT>,
         values: Vec<T>,
     ) -> Result<Self> {
         if col_ptr.len() != cols + 1 {
@@ -436,8 +437,8 @@ impl<T: SparseScalar> SparseMatrix<T> {
                 "row_indx and values must have the same length",
             ));
         }
-        let m: i32 = rows.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let n: i32 = cols.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let m: MKL_INT = rows.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let n: MKL_INT = cols.try_into().map_err(|_| Error::DimensionOverflow)?;
 
         let mut col_ptr_box = col_ptr.into_boxed_slice();
         let mut row_indx_box = row_indx.into_boxed_slice();
@@ -489,8 +490,8 @@ impl<T: SparseScalar> SparseMatrix<T> {
         block_size: usize,
         block_layout: BlockLayout,
         indexing: IndexBase,
-        row_ptr: Vec<i32>,
-        col_idx: Vec<i32>,
+        row_ptr: Vec<MKL_INT>,
+        col_idx: Vec<MKL_INT>,
         values: Vec<T>,
     ) -> Result<Self> {
         if block_size == 0 {
@@ -515,13 +516,13 @@ impl<T: SparseScalar> SparseMatrix<T> {
             ));
         }
         // MKL takes rows/cols in block units, not element units.
-        let m: i32 = block_rows
+        let m: MKL_INT = block_rows
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
-        let n: i32 = block_cols
+        let n: MKL_INT = block_cols
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
-        let bs: i32 = block_size
+        let bs: MKL_INT = block_size
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
 
@@ -736,7 +737,7 @@ impl<T: SparseScalar> SparseMatrix<T> {
         block_layout: BlockLayout,
         op: Operation,
     ) -> Result<Self> {
-        let bs: core::ffi::c_int = block_size
+        let bs: MKL_INT = block_size
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
         let mut dest: sparse_matrix_t = ptr::null_mut();
@@ -772,7 +773,7 @@ impl<T: SparseScalar> SparseMatrix<T> {
         descr: impl Into<MatrixDescr>,
         expected_calls: usize,
     ) -> Result<()> {
-        let calls: core::ffi::c_int = expected_calls
+        let calls: MKL_INT = expected_calls
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
         let descr_inner = descr.into().inner;
@@ -791,10 +792,10 @@ impl<T: SparseScalar> SparseMatrix<T> {
         dense_matrix_size: usize,
         expected_calls: usize,
     ) -> Result<()> {
-        let dms: core::ffi::c_int = dense_matrix_size
+        let dms: MKL_INT = dense_matrix_size
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
-        let calls: core::ffi::c_int = expected_calls
+        let calls: MKL_INT = expected_calls
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
         let descr_inner = descr.into().inner;
@@ -819,7 +820,7 @@ impl<T: SparseScalar> SparseMatrix<T> {
         descr: impl Into<MatrixDescr>,
         expected_calls: usize,
     ) -> Result<()> {
-        let calls: core::ffi::c_int = expected_calls
+        let calls: MKL_INT = expected_calls
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
         let descr_inner = descr.into().inner;
@@ -933,7 +934,7 @@ impl<T: SparseScalar> SparseMatrix<T> {
             DenseLayout::RowMajor => result_rows.saturating_mul(ldc),
             DenseLayout::ColMajor => result_cols.saturating_mul(ldc),
         };
-        let ldc_i: core::ffi::c_int = ldc.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let ldc_i: MKL_INT = ldc.try_into().map_err(|_| Error::DimensionOverflow)?;
         let mut out: Vec<T> = (0..needed).map(|_| T::default()).collect();
         let status = unsafe {
             T::sparse_spmmd(
@@ -1121,11 +1122,11 @@ pub trait RealSparseScalar: SparseScalar {
         a: sparse_matrix_t,
         alt_values: *mut Self,
         layout: sparse_layout_t::Type,
-        columns: core::ffi::c_int,
+        columns: MKL_INT,
         x: *mut Self,
-        ldx: core::ffi::c_int,
+        ldx: MKL_INT,
         b: *const Self,
-        ldb: core::ffi::c_int,
+        ldb: MKL_INT,
     ) -> sparse_status_t::Type;
 }
 
@@ -1141,11 +1142,11 @@ impl RealSparseScalar for f32 {
         a: sparse_matrix_t,
         alt_values: *mut f32,
         layout: sparse_layout_t::Type,
-        columns: core::ffi::c_int,
+        columns: MKL_INT,
         x: *mut f32,
-        ldx: core::ffi::c_int,
+        ldx: MKL_INT,
         b: *const f32,
-        ldb: core::ffi::c_int,
+        ldb: MKL_INT,
     ) -> sparse_status_t::Type {
         unsafe { sys::mkl_sparse_s_qr_solve(op, a, alt_values, layout, columns, x, ldx, b, ldb) }
     }
@@ -1162,11 +1163,11 @@ impl RealSparseScalar for f64 {
         a: sparse_matrix_t,
         alt_values: *mut f64,
         layout: sparse_layout_t::Type,
-        columns: core::ffi::c_int,
+        columns: MKL_INT,
         x: *mut f64,
-        ldx: core::ffi::c_int,
+        ldx: MKL_INT,
         b: *const f64,
-        ldb: core::ffi::c_int,
+        ldb: MKL_INT,
     ) -> sparse_status_t::Type {
         unsafe { sys::mkl_sparse_d_qr_solve(op, a, alt_values, layout, columns, x, ldx, b, ldb) }
     }

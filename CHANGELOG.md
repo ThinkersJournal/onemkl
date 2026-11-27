@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.5.2 - 2026-11-27 (PM-allocated; additive)
+
+### Added
+
+- `CubicSpline1d::find_cells_with_callback` and `LinearSpline1d::find_cells_with_callback` (`df?SearchCellsEx1D` with a user-defined search call-back; additive), with `SearchRequest`, `SearchCallback`, `DF_STATUS_EXACT_RESULT`. Measured on oneMKL 2026.2 (`tools/size-probes/df_search.c`): the call-back is called once with every site, **cells are 1-based in this build** (an exact call-back must return 1-based cells; 0-based ones come back shifted; `exact[i] = 0` lets the library refine), a negative call-back status is the routine's error, a positive one a warning with the cells kept. `docs/DATA-FITTING-FACTS.md`: the cell-indexing bullet that said 0-based is replaced by the measured 1-based rule. Also measured (`df_search2.c`, not wrapped): inside `IntegrateEx1D` the search call-back runs twice (left limits, `limit_type_flag` 0; right limits, 1), inside `InterpolateEx1D` once with `library_params` NULL. Not measured: a search call-back returning wrong cells inside those two routines; `QuadraticSpline1d` has no such method.
+
 ## 0.5.1 - 2026-11-27 (PM-allocated; no call that succeeded before now fails or differs)
 
 ### Changed

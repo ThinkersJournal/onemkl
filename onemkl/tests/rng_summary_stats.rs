@@ -166,3 +166,26 @@ fn impute_missing_f32() {
     assert_eq!(out.simulated.len(), 2);
     assert!(out.simulated.iter().all(|v| v.is_finite()));
 }
+
+#[test]
+fn robust_covariance_tbs_needs_more_than_2p_observations() {
+    // oneMKL returns -4002 for p = 3, n = 6 (probe ss5.c); the wrapper refuses first.
+    let data: Vec<f64> = (0..18).map(|i| (i * 7 % 11) as f64).collect();
+    let mut ss = SummaryStats::<f64>::new(&data, 3, 6).unwrap();
+    assert!(ss.robust_covariance_tbs(&[]).is_err());
+    let mut state = 99_u64;
+    let data7: Vec<f64> = (0..36)
+        .map(|_| {
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            (state >> 11) as f64 / (1u64 << 53) as f64
+        })
+        .collect();
+    let mut ss7 = SummaryStats::<f64>::new(&data7, 3, 12).unwrap();
+    assert!(
+        ss7.robust_covariance_tbs(&[0.25, 0.001, 0.001, 10.0])
+            .is_ok()
+    );
+    assert!(ss7.robust_covariance_tbs(&[0.0; 5]).is_err());
+}

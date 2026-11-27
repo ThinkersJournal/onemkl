@@ -619,15 +619,30 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     /// (`VSL_SS_METHOD_TBS` in MKL).
     ///
     /// Returns `(mean, cov)` where `cov` is the `p × p` covariance
-    /// stored in column-major (full) layout. `params` is the TBS
-    /// configuration — pass an empty slice to accept MKL's defaults,
-    /// or supply `[breakdown_point]` (typical value `0.5`) to control
-    /// the maximum fraction of outliers the estimator tolerates.
+    /// stored in full layout. `params` holds up to four values, in this
+    /// order (oneMKL 2026.0 C reference, `vslSSEditRobustCovariance`):
+    /// breakdown point (default `(n - p) / (2 n)`), asymptotic
+    /// rejection probability (default 0.001), stopping tolerance
+    /// (default 0.001), maximum iterations (default 10; 0 returns the
+    /// Maronna initial estimate only). An empty slice accepts every
+    /// default; a shorter slice sets the leading values. oneMKL
+    /// requires `n > 2 p`: otherwise this returns `InvalidArgument`
+    /// (measured on oneMKL 2026.2: the call itself fails with -4002 for
+    /// `p = 3`, `n = 6`; `n = 7` works; counts 0 to 4 are accepted;
+    /// `tools/size-probes/ss5.c`).
     ///
     /// Note: MKL exposes BACON only for *outlier weights*
     /// (see [`Self::outliers_bacon`]); for a full robust covariance
     /// estimate the supported algorithm is TBS.
     pub fn robust_covariance_tbs(&mut self, params: &[T]) -> Result<(Vec<T>, Vec<T>)> {
+        if params.len() > 4 {
+            return Err(Error::InvalidArgument("TBS takes at most 4 parameters"));
+        }
+        if self._n <= 2 * self.p {
+            return Err(Error::InvalidArgument(
+                "robust covariance (TBS) needs more than 2 * num_variables observations",
+            ));
+        }
         let cov_storage: c_int = sys::VSL_SS_MATRIX_STORAGE_FULL as c_int;
         let n_params: c_int = params
             .len()
@@ -672,7 +687,11 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     ///   (`VSL_SS_METHOD_BACON_MEDIAN_INIT` or
     ///   `VSL_SS_METHOD_BACON_MAHALANOBIS_INIT` from `onemkl-sys`),
     /// - `params[1]` = significance level (e.g. `0.05`),
-    /// - `params[2]` = initial subset size as fraction of `n`.
+    /// - `params[2]` = stopping criterion: the algorithm ends when the
+    ///   size of the basic subset changes by less than this (oneMKL
+    ///   default 0.005; the reference describes it so, an earlier
+    ///   version of this comment called it an initial subset fraction).
+    ///   The reference recommends `params[1]` = α / n.
     ///
     /// Use [`SummaryStats::<f64>::bacon_default_params`] for sensible
     /// defaults.
@@ -701,12 +720,13 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
 }
 
 impl SummaryStats<'_, f64> {
-    /// Default BACON parameters: median initialization, α = 0.05,
-    /// β = 0.05.
+    /// Default BACON parameters: median initialization, 0.05
+    /// probability, 0.005 stopping criterion (oneMKL's documented
+    /// defaults).
     #[inline]
     #[must_use]
     pub fn bacon_default_params() -> [f64; 3] {
-        [sys::VSL_SS_METHOD_BACON_MEDIAN_INIT as f64, 0.05, 0.05]
+        [sys::VSL_SS_METHOD_BACON_MEDIAN_INIT as f64, 0.05, 0.005]
     }
 }
 
@@ -715,7 +735,7 @@ impl SummaryStats<'_, f32> {
     #[inline]
     #[must_use]
     pub fn bacon_default_params() -> [f32; 3] {
-        [sys::VSL_SS_METHOD_BACON_MEDIAN_INIT as f32, 0.05, 0.05]
+        [sys::VSL_SS_METHOD_BACON_MEDIAN_INIT as f32, 0.05, 0.005]
     }
 }
 

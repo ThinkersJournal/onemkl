@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Changed
+
+- `SummaryStats::robust_covariance_tbs` returns `InvalidArgument` when `n <= 2 * p` (oneMKL fails with -4002 there; measured p = 3, n = 6, `tools/size-probes/ss5.c`) or more than 4 parameters are given; its doc now lists the four TBS parameters and defaults from the oneMKL 2026.0 reference. `bacon_default_params()` third value is 0.005 (was 0.05): it is the stopping criterion, not an initial subset fraction as the old comment said. Not measured: BACON's flagged set against a known-answer dataset.
+
 ## 0.5.0 - 2026-11-27 (PM-allocated; BREAKING)
 
 ### Changed (breaking)

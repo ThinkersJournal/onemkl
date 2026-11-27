@@ -45,7 +45,10 @@ fn stored(t: u8, rows: usize, cols: usize) -> (usize, usize) {
 macro_rules! fortran_gemm_fn {
     ($name:ident, $t:ty) => {
         /// `?gemm_(transa, transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc)`.
-        #[allow(clippy::too_many_arguments)]
+        #[allow(
+            clippy::too_many_arguments,
+            reason = "mirrors the Fortran BLAS ?gemm_ argument list, plus a test-only mutation selector"
+        )]
         fn $name(
             mutant: Mutant,
             ta: u8,
@@ -95,7 +98,10 @@ fortran_gemm_fn!(dgemm_map, f64);
 /// Reference: C(i,j) = alpha * sum_l opA(i,l) * opB(l,j) + beta * C(i,j), column-major with ld.
 macro_rules! ref_gemm_fn {
     ($name:ident, $t:ty) => {
-        #[allow(clippy::too_many_arguments)]
+        #[allow(
+            clippy::too_many_arguments,
+            reason = "mirrors the Fortran BLAS ?gemm_ argument list"
+        )]
         fn $name(
             ta: u8,
             tb: u8,

@@ -1829,7 +1829,10 @@ impl<T: FftScalar> StridedBatchedRealFftPlan<T> {
     }
 
     /// Batch with explicit forward / backward scales (per transform).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "stable public surface: published since v0.3.10 with 8 arguments; changing the signature breaks consumers"
+    )]
     pub fn with_scales(
         n: usize,
         howmany: usize,

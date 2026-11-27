@@ -76,7 +76,10 @@ pub trait JitGemmScalar: Copy + 'static {
     /// `jitter` must be valid for a write of one `*mut c_void`; on success it receives an opaque JIT handle the caller must release with `mkl_jit_destroy` exactly once. On a non-success status `*jitter` must not be used.
     /// `layout`, `transa`, `transb` must be valid MKL enumerators; `m`, `n`, `k` non-negative; `lda`, `ldb`, `ldc` must satisfy the usual GEMM leading-dimension constraints for the chosen layout because the kernel does no checking. `alpha` and `beta` are baked into the kernel.
     /// The MKL library must be linked and usable.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature mkl_cblas_jit_create_?gemm argument for argument"
+    )]
     unsafe fn jit_create(
         jitter: *mut *mut core::ffi::c_void,
         layout: sys::MKL_LAYOUT::Type,

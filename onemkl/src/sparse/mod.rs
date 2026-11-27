@@ -1112,7 +1112,10 @@ pub trait RealSparseScalar: SparseScalar {
     /// `a` must be the live handle previously passed to a successful `sparse_qr_factorize`, with the same `alt_values` pointer (or null) as in that call.
     /// `b` is a dense `rows(op(A)) x columns` matrix and `x` a dense `cols(op(A)) x columns` matrix, both per `layout` with leading dimensions `ldb`/`ldx` at least the row-major row length or column-major column length. `b` must be valid for reads and `x` for writes of the whole strided extent, and `x` and `b` must not overlap.
     /// The MKL library must be linked and usable. The returned status is MKL's; on a non-success status `*a` must not be used.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "mirrors the oneMKL C signature mkl_sparse_?_qr_solve argument for argument"
+    )]
     unsafe fn sparse_qr_solve(
         op: sparse_operation_t::Type,
         a: sparse_matrix_t,

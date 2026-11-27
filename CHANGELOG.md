@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- `#[allow(clippy::too_many_arguments)]` now carry a `reason` on 171 more functions: 111 raw `cblas_*`, `lapacke_*`, compact, packed, data fitting, FEAST, RNG, summary statistics, sparse and VM trait declarations that mirror a C function (argument count checked against the installed oneMKL headers; count only, not types or order) and 60 published safe wrappers ("stable public surface": same name and argument count since the cited release tag). No behaviour change. Tools in `tools/w1/`, table in `docs/W1-TOO-MANY-ARGUMENTS.md`.
+- The last bare `#[allow(clippy::too_many_arguments)]` are gone: 9 more raw C-mirror declarations, 6 published wrappers and 2 test mirrors carry a `reason`; 4 private functions take a parameter struct instead (`PackArgs`, `FeastStatus`, `CsrRef`; no API change); 50 allows on functions clippy does not flag were removed; the trait-level allow on `HelmholtzScalar` is split into one reasoned allow per method. No behaviour change.
 
 ## 0.4.13 - 2026-11-27 (allocated by pm-assist; docs only: W1 classification table of the 196 flagged functions)
 

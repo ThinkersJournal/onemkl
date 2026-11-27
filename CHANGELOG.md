@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - `QuadraticSpline1d::find_cells_with_callback` (`df?SearchCellsEx1D`; additive), same contract as the cubic and linear ones. Measured on oneMKL 2026.2 (4 tests, WSL rig): 1-based exact cells used as given and called once; 0-based exact cells come back shifted (vacuity control); approximate guesses refined; status -5 is `VslStatus(-5)`, 3 a warning with cells kept.
-
 - **BREAKING (pre-1.0 minor):** `IntegrateCallbacks` gains a `search: Option<SearchCallback>` field (the `search_cb` of `df?IntegrateEx1D`), so a struct literal without `..Default::default()` no longer compiles. Measured on oneMKL 2026.2 (`df_search3.c`, 4 tests incl. a vacuity mutant): called twice (left limits, then right), an out-of-range exact cell gives integrals of 0 with status 0, a negative status is the error, a positive one is swallowed. `InterpolateEx1D` stays unwrapped.
 
 ### Documentation

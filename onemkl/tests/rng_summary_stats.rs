@@ -189,3 +189,18 @@ fn robust_covariance_tbs_needs_more_than_2p_observations() {
     );
     assert!(ss7.robust_covariance_tbs(&[0.0; 5]).is_err());
 }
+
+#[test]
+fn stream_quantiles_zw_accuracy_and_refusals() {
+    let n = 1000_usize;
+    let data: Vec<f64> = (0..n).map(|i| ((i * 7919) % n) as f64 / n as f64).collect();
+    let mut ss = SummaryStats::<f64>::new(&data, 1, n).unwrap();
+    let q = ss.stream_quantiles(&[0.25, 0.5, 0.9], &[0.01]).unwrap();
+    for (got, want) in q.iter().zip([0.25, 0.5, 0.9]) {
+        assert!((got - want).abs() < 0.02, "{got} vs {want}");
+    }
+    // oneMKL refuses 0 or 2 parameters and accuracy 0 (probe ss6.c): the wrapper and the library agree
+    assert!(ss.stream_quantiles(&[0.5], &[]).is_err());
+    assert!(ss.stream_quantiles(&[0.5], &[0.01, 0.01]).is_err());
+    assert!(ss.stream_quantiles(&[0.5], &[0.0]).is_err());
+}

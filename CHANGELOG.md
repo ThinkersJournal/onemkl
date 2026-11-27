@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - `SummaryStats::robust_covariance_tbs` returns `InvalidArgument` when `n <= 2 * p` (oneMKL fails with -4002 there; measured p = 3, n = 6, `tools/size-probes/ss5.c`) or more than 4 parameters are given; its doc now lists the four TBS parameters and defaults from the oneMKL 2026.0 reference. `bacon_default_params()` third value is 0.005 (was 0.05): it is the stopping criterion, not an initial subset fraction as the old comment said. Not measured: BACON's flagged set against a known-answer dataset.
+- `SummaryStats::stream_quantiles` never worked: it asked oneMKL for `VSL_SS_METHOD_FAST` (refused, -4029). It now uses `VSL_SS_METHOD_SQUANTS_ZW`, requires exactly one parameter (the accuracy, in (0, 1)) and returns `InvalidArgument` otherwise; measured on oneMKL 2026.2 (`tools/size-probes/ss6.c`): 0.25 / 0.5 / 0.9 of 1000 distinct values came back 0.25 / 0.497 / 0.898 at accuracy 0.01. The parameter layout is from the probe, not from the Application Notes.
 
 ## 0.5.0 - 2026-11-27 (PM-allocated; BREAKING)
 

@@ -575,14 +575,28 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
         Ok(out)
     }
 
-    /// Streaming-quantile estimator (Zhang-Wang). Suitable for
-    /// online data where you can't hold the full sample but want an
-    /// approximate quantile. `params` controls the estimator
-    /// (typically `[buffer_size_per_quantile]`). Returns the same
-    /// `num_variables × orders.len()` layout as [`Self::quantiles`].
+    /// Streaming-quantile estimator (Zhang-Wang, `VSL_SS_METHOD_SQUANTS_ZW`).
+    /// Returns the same `num_variables × orders.len()` layout as
+    /// [`Self::quantiles`].
+    ///
+    /// `params` must hold exactly one value, the accuracy of the
+    /// estimate, in `(0, 1)` (typical 0.01). Measured on oneMKL 2026.2
+    /// (`tools/size-probes/ss6.c`): 0 or 2 parameters and an accuracy of
+    /// 0 or 2 are refused by oneMKL (-4064 / -4066 / -4067), and the
+    /// `VSL_SS_METHOD_FAST` method that earlier versions of this wrapper
+    /// passed is refused with -4029, so earlier versions always failed.
+    /// With accuracy 0.01 on 1000 distinct values the orders 0.25, 0.5,
+    /// 0.9 came back as 0.25, 0.497, 0.898. The Summary Statistics
+    /// Application Notes, which would define the parameter, were not
+    /// consulted: the layout is from the probe.
     pub fn stream_quantiles(&mut self, orders: &[T], params: &[T]) -> Result<Vec<T>> {
         if orders.is_empty() {
             return Err(Error::InvalidArgument("orders must be non-empty"));
+        }
+        if params.len() != 1 {
+            return Err(Error::InvalidArgument(
+                "stream quantiles take exactly one parameter, the accuracy",
+            ));
         }
         let order_n: c_int = orders
             .len()
@@ -608,7 +622,7 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
             T::ss_compute(
                 self.task,
                 sys::VSL_SS_STREAM_QUANTS as u64,
-                sys::VSL_SS_METHOD_FAST as c_int,
+                sys::VSL_SS_METHOD_SQUANTS_ZW as c_int,
             )
         };
         check_vsl(status)?;

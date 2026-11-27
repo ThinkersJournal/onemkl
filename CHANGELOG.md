@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- `QuadraticSpline1d::find_cells_with_callback` (`df?SearchCellsEx1D`; additive), same contract as the cubic and linear ones. Measured on oneMKL 2026.2 (4 tests, WSL rig): 1-based exact cells used as given and called once; 0-based exact cells come back shifted (vacuity control); approximate guesses refined; status -5 is `VslStatus(-5)`, 3 a warning with cells kept.
+
+### Documentation
+
+- `docs/ILP64-DESIGN.md`: error classes, options and recommendation for ILP64 in the safe wrappers (no code; the `ilp64` feature is still refused).
+
 ## 0.5.2 - 2026-11-27 (PM-allocated; additive)
 
 ### Added

@@ -1389,6 +1389,21 @@ impl<T: DataFittingScalar + Default + PartialOrd> QuadraticSpline1d<T> {
         })?;
         Ok(out)
     }
+
+    /// Locate `sites` with a user-defined search call-back
+    /// (`df?SearchCellsEx1D`). Same contract as
+    /// `CubicSpline1d::find_cells_with_callback`: 1-based cells in the
+    /// call-back, 0-based result, `exact[i] = 1` or
+    /// [`DF_STATUS_EXACT_RESULT`] to have cells used as given, a negative
+    /// status is an error, a positive one a warning, a panic is resumed.
+    /// Measured: `docs/DATA-FITTING-FACTS.md`.
+    pub fn find_cells_with_callback(
+        &self,
+        sites: &[T],
+        callback: SearchCallback<'_, T>,
+    ) -> Result<Vec<usize>> {
+        search_cells_impl(self.task, sites, callback)
+    }
 }
 
 impl<T: DataFittingScalar> Drop for QuadraticSpline1d<T> {

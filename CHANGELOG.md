@@ -4,11 +4,17 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## 0.4.13 - 2026-11-27 (allocated by pm-assist; docs only: W1 classification table of the 196 flagged functions)
+## Unreleased (version to be allocated by pm-assist)
 
 ### Changed
 
 - `#[allow(clippy::too_many_arguments)]` now carry a `reason` on 171 more functions: 111 raw `cblas_*`, `lapacke_*`, compact, packed, data fitting, FEAST, RNG, summary statistics, sparse and VM trait declarations that mirror a C function (argument count checked against the installed oneMKL headers; count only, not types or order) and 60 published safe wrappers ("stable public surface": same name and argument count since the cited release tag). No behaviour change. Tools in `tools/w1/`, table in `docs/W1-TOO-MANY-ARGUMENTS.md`.
+
+## 0.4.13 - 2026-11-27 (allocated by pm-assist; docs only: W1 classification table of the 196 flagged functions)
+
+### Changed
+
+- `docs/W1-TOO-MANY-ARGUMENTS.md`: first-pass classification of the 196 functions flagged by `clippy::too_many_arguments` (124 raw FFI methods, 68 published safe wrappers, 4 private), and the ROADMAP row W1 corrected (the "impl allows do nothing" hypothesis is not supported). Docs only.
 
 ## 0.4.12 - 2026-11-27 (allocated by pm-assist; additive: QuadraticSpline1d; Subbotin writes order*n coefficients, the wrapper sizes by the measured extent)
 

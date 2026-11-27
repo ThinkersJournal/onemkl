@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "data-fitting")]
 
 //! `CubicSpline1d::hyman` (`DF_PP_HYMAN` with `DF_BC_FREE_END`).

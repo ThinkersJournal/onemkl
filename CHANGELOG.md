@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Changed
+
+- ILP64 package 1 (`docs/ILP64-DESIGN.md` schedule): `blas/` and `lapack/` spell every extent, stride, `ipiv`, `info`, `isuppz`, `itype`, `m` (found eigenvalue count) and compact-format size as `MKL_INT` instead of `c_int` / `i32`. Under the default `lp64` interface `MKL_INT` is `i32`, so nothing changes for callers (all rig tests pass under `lp64`); under `ilp64` those public types are `i64`. `LapackIllegalArgument` / `LapackComputationFailure` keep `i32` fields and saturate a value that does not fit. Measured with real bindgen on the rig (`--features ilp64`, all modules, the build.rs guard bypassed): 412 errors on main e3c72cc, 200 after this change, 0 of them in `blas/` or `lapack/`. `onemkl` still refuses `ilp64` in `build.rs` until package 4.
+
 ## 0.5.2 - 2026-11-27 (PM-allocated; additive)
 
 ### Added

@@ -31,9 +31,8 @@
 //! Complex GEMM exists but lacks a matching pack / unpack pair, so
 //! the Rust wrapper restricts this module to real types.
 
-use core::ffi::c_int;
 
-use onemkl_sys as sys;
+use onemkl_sys::{self as sys, MKL_INT};
 
 use crate::enums::{Diag, Layout, Side, Transpose, UpLo};
 use crate::error::{Error, Result};
@@ -87,11 +86,11 @@ pub trait CompactScalar: Copy + 'static {
     /// `ld` is the leading dimension, `sd` the second dimension of one matrix, `format` a `MKL_COMPACT_*` constant, `nm >= 0` the number of matrices; there are no pointers. Returns the buffer size in **bytes** MKL needs for the matching compact buffer (**verified**: `mkl_dget_size_compact(100, 100, MKL_COMPACT_AVX, 10)` returned 960000 = 3 groups x 4 lanes x 8 bytes x 100 x 100, i.e. `nm` rounded up to whole SIMD groups; and 1600000 for `nm = 20`; oneMKL 2026.2, Linux x86_64). Callers must check it is non-negative and fits `usize`.
     /// The MKL library must be linked and usable; invalid arguments are reported through MKL's error handler, not by this wrapper.
     unsafe fn get_size_compact(
-        ld: c_int,
-        sd: c_int,
+        ld: MKL_INT,
+        sd: MKL_INT,
         format: sys::MKL_COMPACT_PACK::Type,
-        nm: c_int,
-    ) -> c_int;
+        nm: MKL_INT,
+    ) -> MKL_INT;
 
     /// Raw `gepack_compact` call.
     ///
@@ -106,14 +105,14 @@ pub trait CompactScalar: Copy + 'static {
     )]
     unsafe fn gepack_compact(
         layout: sys::MKL_LAYOUT::Type,
-        rows: c_int,
-        cols: c_int,
+        rows: MKL_INT,
+        cols: MKL_INT,
         a: *const *const Self,
-        lda: c_int,
+        lda: MKL_INT,
         ap: *mut Self,
-        ldap: c_int,
+        ldap: MKL_INT,
         format: sys::MKL_COMPACT_PACK::Type,
-        nm: c_int,
+        nm: MKL_INT,
     );
 
     /// Raw `geunpack_compact` call.
@@ -128,14 +127,14 @@ pub trait CompactScalar: Copy + 'static {
     )]
     unsafe fn geunpack_compact(
         layout: sys::MKL_LAYOUT::Type,
-        rows: c_int,
-        cols: c_int,
+        rows: MKL_INT,
+        cols: MKL_INT,
         a: *const *mut Self,
-        lda: c_int,
+        lda: MKL_INT,
         ap: *const Self,
-        ldap: c_int,
+        ldap: MKL_INT,
         format: sys::MKL_COMPACT_PACK::Type,
-        nm: c_int,
+        nm: MKL_INT,
     );
 
     /// Raw `gemm_compact` call.
@@ -152,54 +151,54 @@ pub trait CompactScalar: Copy + 'static {
         layout: sys::MKL_LAYOUT::Type,
         transa: sys::MKL_TRANSPOSE::Type,
         transb: sys::MKL_TRANSPOSE::Type,
-        m: c_int,
-        n: c_int,
-        k: c_int,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
         alpha: Self,
         a: *const Self,
-        ldap: c_int,
+        ldap: MKL_INT,
         b: *const Self,
-        ldbp: c_int,
+        ldbp: MKL_INT,
         beta: Self,
         c: *mut Self,
-        ldcp: c_int,
+        ldcp: MKL_INT,
         format: sys::MKL_COMPACT_PACK::Type,
-        nm: c_int,
+        nm: MKL_INT,
     );
 }
 
 impl CompactScalar for f32 {
     unsafe fn get_size_compact(
-        ld: c_int,
-        sd: c_int,
+        ld: MKL_INT,
+        sd: MKL_INT,
         format: sys::MKL_COMPACT_PACK::Type,
-        nm: c_int,
-    ) -> c_int {
+        nm: MKL_INT,
+    ) -> MKL_INT {
         unsafe { sys::mkl_sget_size_compact(ld, sd, format, nm) }
     }
     unsafe fn gepack_compact(
         layout: sys::MKL_LAYOUT::Type,
-        rows: c_int,
-        cols: c_int,
+        rows: MKL_INT,
+        cols: MKL_INT,
         a: *const *const Self,
-        lda: c_int,
+        lda: MKL_INT,
         ap: *mut Self,
-        ldap: c_int,
+        ldap: MKL_INT,
         format: sys::MKL_COMPACT_PACK::Type,
-        nm: c_int,
+        nm: MKL_INT,
     ) {
         unsafe { sys::mkl_sgepack_compact(layout, rows, cols, a, lda, ap, ldap, format, nm) }
     }
     unsafe fn geunpack_compact(
         layout: sys::MKL_LAYOUT::Type,
-        rows: c_int,
-        cols: c_int,
+        rows: MKL_INT,
+        cols: MKL_INT,
         a: *const *mut Self,
-        lda: c_int,
+        lda: MKL_INT,
         ap: *const Self,
-        ldap: c_int,
+        ldap: MKL_INT,
         format: sys::MKL_COMPACT_PACK::Type,
-        nm: c_int,
+        nm: MKL_INT,
     ) {
         unsafe { sys::mkl_sgeunpack_compact(layout, rows, cols, a, lda, ap, ldap, format, nm) }
     }
@@ -207,19 +206,19 @@ impl CompactScalar for f32 {
         layout: sys::MKL_LAYOUT::Type,
         transa: sys::MKL_TRANSPOSE::Type,
         transb: sys::MKL_TRANSPOSE::Type,
-        m: c_int,
-        n: c_int,
-        k: c_int,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
         alpha: Self,
         a: *const Self,
-        ldap: c_int,
+        ldap: MKL_INT,
         b: *const Self,
-        ldbp: c_int,
+        ldbp: MKL_INT,
         beta: Self,
         c: *mut Self,
-        ldcp: c_int,
+        ldcp: MKL_INT,
         format: sys::MKL_COMPACT_PACK::Type,
-        nm: c_int,
+        nm: MKL_INT,
     ) {
         unsafe {
             sys::mkl_sgemm_compact(
@@ -231,36 +230,36 @@ impl CompactScalar for f32 {
 
 impl CompactScalar for f64 {
     unsafe fn get_size_compact(
-        ld: c_int,
-        sd: c_int,
+        ld: MKL_INT,
+        sd: MKL_INT,
         format: sys::MKL_COMPACT_PACK::Type,
-        nm: c_int,
-    ) -> c_int {
+        nm: MKL_INT,
+    ) -> MKL_INT {
         unsafe { sys::mkl_dget_size_compact(ld, sd, format, nm) }
     }
     unsafe fn gepack_compact(
         layout: sys::MKL_LAYOUT::Type,
-        rows: c_int,
-        cols: c_int,
+        rows: MKL_INT,
+        cols: MKL_INT,
         a: *const *const Self,
-        lda: c_int,
+        lda: MKL_INT,
         ap: *mut Self,
-        ldap: c_int,
+        ldap: MKL_INT,
         format: sys::MKL_COMPACT_PACK::Type,
-        nm: c_int,
+        nm: MKL_INT,
     ) {
         unsafe { sys::mkl_dgepack_compact(layout, rows, cols, a, lda, ap, ldap, format, nm) }
     }
     unsafe fn geunpack_compact(
         layout: sys::MKL_LAYOUT::Type,
-        rows: c_int,
-        cols: c_int,
+        rows: MKL_INT,
+        cols: MKL_INT,
         a: *const *mut Self,
-        lda: c_int,
+        lda: MKL_INT,
         ap: *const Self,
-        ldap: c_int,
+        ldap: MKL_INT,
         format: sys::MKL_COMPACT_PACK::Type,
-        nm: c_int,
+        nm: MKL_INT,
     ) {
         unsafe { sys::mkl_dgeunpack_compact(layout, rows, cols, a, lda, ap, ldap, format, nm) }
     }
@@ -268,19 +267,19 @@ impl CompactScalar for f64 {
         layout: sys::MKL_LAYOUT::Type,
         transa: sys::MKL_TRANSPOSE::Type,
         transb: sys::MKL_TRANSPOSE::Type,
-        m: c_int,
-        n: c_int,
-        k: c_int,
+        m: MKL_INT,
+        n: MKL_INT,
+        k: MKL_INT,
         alpha: Self,
         a: *const Self,
-        ldap: c_int,
+        ldap: MKL_INT,
         b: *const Self,
-        ldbp: c_int,
+        ldbp: MKL_INT,
         beta: Self,
         c: *mut Self,
-        ldcp: c_int,
+        ldcp: MKL_INT,
         format: sys::MKL_COMPACT_PACK::Type,
-        nm: c_int,
+        nm: MKL_INT,
     ) {
         unsafe {
             sys::mkl_dgemm_compact(
@@ -299,14 +298,16 @@ pub fn get_size<T: CompactScalar>(
     format: CompactFormat,
     num_matrices: usize,
 ) -> Result<usize> {
-    let ld_i: c_int = ld.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let sd_i: c_int = sd.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let nm_i: c_int = num_matrices
+    let ld_i: MKL_INT = ld.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let sd_i: MKL_INT = sd.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let nm_i: MKL_INT = num_matrices
         .try_into()
         .map_err(|_| Error::DimensionOverflow)?;
     let bytes = unsafe { T::get_size_compact(ld_i, sd_i, format.as_mkl(), nm_i) };
     if bytes < 0 {
-        return Err(Error::LapackComputationFailure { info: bytes });
+        return Err(Error::LapackComputationFailure {
+            info: i32::try_from(bytes).unwrap_or(i32::MAX),
+        });
     }
     let elem_size = core::mem::size_of::<T>();
     if elem_size == 0 {
@@ -341,11 +342,11 @@ pub unsafe fn gepack<T: CompactScalar>(
     ldap: usize,
     format: CompactFormat,
 ) -> Result<()> {
-    let rows_i: c_int = rows.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let cols_i: c_int = cols.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let lda_i: c_int = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let ldap_i: c_int = ldap.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let nm_i: c_int = a.len().try_into().map_err(|_| Error::DimensionOverflow)?;
+    let rows_i: MKL_INT = rows.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let cols_i: MKL_INT = cols.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let lda_i: MKL_INT = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let ldap_i: MKL_INT = ldap.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let nm_i: MKL_INT = a.len().try_into().map_err(|_| Error::DimensionOverflow)?;
     unsafe {
         T::gepack_compact(
             map_layout(layout),
@@ -384,11 +385,11 @@ pub unsafe fn geunpack<T: CompactScalar>(
     ldap: usize,
     format: CompactFormat,
 ) -> Result<()> {
-    let rows_i: c_int = rows.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let cols_i: c_int = cols.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let lda_i: c_int = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let ldap_i: c_int = ldap.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let nm_i: c_int = a.len().try_into().map_err(|_| Error::DimensionOverflow)?;
+    let rows_i: MKL_INT = rows.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let cols_i: MKL_INT = cols.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let lda_i: MKL_INT = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let ldap_i: MKL_INT = ldap.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let nm_i: MKL_INT = a.len().try_into().map_err(|_| Error::DimensionOverflow)?;
     unsafe {
         T::geunpack_compact(
             map_layout(layout),
@@ -429,13 +430,13 @@ pub fn gemm<T: CompactScalar>(
     format: CompactFormat,
     num_matrices: usize,
 ) -> Result<()> {
-    let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let k_i: c_int = k.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let ldap_i: c_int = ldap.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let ldbp_i: c_int = ldbp.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let ldcp_i: c_int = ldcp.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let nm_i: c_int = num_matrices
+    let m_i: MKL_INT = m.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let k_i: MKL_INT = k.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let ldap_i: MKL_INT = ldap.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let ldbp_i: MKL_INT = ldbp.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let ldcp_i: MKL_INT = ldcp.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let nm_i: MKL_INT = num_matrices
         .try_into()
         .map_err(|_| Error::DimensionOverflow)?;
     unsafe {
@@ -506,22 +507,22 @@ pub trait CompactFactorScalar: CompactScalar {
         uplo: sys::MKL_UPLO::Type,
         transa: sys::MKL_TRANSPOSE::Type,
         diag: sys::MKL_DIAG::Type,
-        m: c_int,
-        n: c_int,
+        m: MKL_INT,
+        n: MKL_INT,
         alpha: Self,
         a: *const Self,
-        ldap: c_int,
+        ldap: MKL_INT,
         b: *mut Self,
-        ldbp: c_int,
+        ldbp: MKL_INT,
         format: sys::MKL_COMPACT_PACK::Type,
-        nm: c_int,
+        nm: MKL_INT,
     );
     /// Raw `potrf_compact` call.
     ///
     /// # Safety
     ///
     /// `ap` must be a compact buffer for `nm` `n x n` matrices (updated in place with the Cholesky factor of the triangle given by `uplo`): A compact buffer `ap` holds `nm` matrices interleaved in SIMD-width groups per `format`. It must be valid for the byte size returned by `get_size_compact(ldap, stored_cols, format, nm)` (column-major; `stored_rows` for row-major), where `ldap` is at least the stored row (column-major) or column (row-major) count times the group width and `stored_rows x stored_cols` is the per-matrix shape the routine defines for it, and `format` and `nm` must be the same values used when the buffer was packed.
-    /// `info` must be valid for writes of the per-matrix status array MKL defines for compact routines (one `c_int` per matrix in the compact group set, `nm` in total); entries are written even on partial failure.
+    /// `info` must be valid for writes of the per-matrix status array MKL defines for compact routines (one `MKL_INT` per matrix in the compact group set, `nm` in total); entries are written even on partial failure.
     /// The MKL library must be linked and usable; invalid arguments are reported through MKL's error handler, not by this wrapper.
     #[allow(
         clippy::too_many_arguments,
@@ -530,19 +531,19 @@ pub trait CompactFactorScalar: CompactScalar {
     unsafe fn potrf_compact(
         layout: sys::MKL_LAYOUT::Type,
         uplo: sys::MKL_UPLO::Type,
-        n: c_int,
+        n: MKL_INT,
         ap: *mut Self,
-        ldap: c_int,
-        info: *mut c_int,
+        ldap: MKL_INT,
+        info: *mut MKL_INT,
         format: sys::MKL_COMPACT_PACK::Type,
-        nm: c_int,
+        nm: MKL_INT,
     );
     /// Raw `getrfnp_compact` call.
     ///
     /// # Safety
     ///
     /// `ap` must be a compact buffer for `nm` `m x n` matrices (updated in place with the LU factors; no pivoting is performed, so a zero pivot yields a non-zero `info` entry): A compact buffer `ap` holds `nm` matrices interleaved in SIMD-width groups per `format`. It must be valid for the byte size returned by `get_size_compact(ldap, stored_cols, format, nm)` (column-major; `stored_rows` for row-major), where `ldap` is at least the stored row (column-major) or column (row-major) count times the group width and `stored_rows x stored_cols` is the per-matrix shape the routine defines for it, and `format` and `nm` must be the same values used when the buffer was packed.
-    /// `info` must be valid for writes of the per-matrix status array MKL defines for compact routines (one `c_int` per matrix in the compact group set, `nm` in total); entries are written even on partial failure.
+    /// `info` must be valid for writes of the per-matrix status array MKL defines for compact routines (one `MKL_INT` per matrix in the compact group set, `nm` in total); entries are written even on partial failure.
     /// The MKL library must be linked and usable; invalid arguments are reported through MKL's error handler, not by this wrapper.
     #[allow(
         clippy::too_many_arguments,
@@ -550,13 +551,13 @@ pub trait CompactFactorScalar: CompactScalar {
     )]
     unsafe fn getrfnp_compact(
         layout: sys::MKL_LAYOUT::Type,
-        m: c_int,
-        n: c_int,
+        m: MKL_INT,
+        n: MKL_INT,
         ap: *mut Self,
-        ldap: c_int,
-        info: *mut c_int,
+        ldap: MKL_INT,
+        info: *mut MKL_INT,
         format: sys::MKL_COMPACT_PACK::Type,
-        nm: c_int,
+        nm: MKL_INT,
     );
     /// Raw `geqrf_compact` call.
     ///
@@ -565,7 +566,7 @@ pub trait CompactFactorScalar: CompactScalar {
     /// `ap` must be a compact buffer for `nm` `m x n` matrices (updated in place with the QR factors): A compact buffer `ap` holds `nm` matrices interleaved in SIMD-width groups per `format`. It must be valid for the byte size returned by `get_size_compact(ldap, stored_cols, format, nm)` (column-major; `stored_rows` for row-major), where `ldap` is at least the stored row (column-major) or column (row-major) count times the group width and `stored_rows x stored_cols` is the per-matrix shape the routine defines for it, and `format` and `nm` must be the same values used when the buffer was packed.
     /// `taup` must be a compact buffer holding `min(m, n)` scalars per matrix, in the same `format` and `nm`, writable for its full compact size.
     /// `work` must be valid for writes of `lwork` elements, and `lwork` must be at least the workspace MKL requires (`lwork = -1` is a size query writing only `work[0]`).
-    /// `info` must be valid for writes of the per-matrix status array MKL defines for compact routines (one `c_int` per matrix in the compact group set, `nm` in total); entries are written even on partial failure.
+    /// `info` must be valid for writes of the per-matrix status array MKL defines for compact routines (one `MKL_INT` per matrix in the compact group set, `nm` in total); entries are written even on partial failure.
     /// The MKL library must be linked and usable; invalid arguments are reported through MKL's error handler, not by this wrapper.
     #[allow(
         clippy::too_many_arguments,
@@ -573,16 +574,16 @@ pub trait CompactFactorScalar: CompactScalar {
     )]
     unsafe fn geqrf_compact(
         layout: sys::MKL_LAYOUT::Type,
-        m: c_int,
-        n: c_int,
+        m: MKL_INT,
+        n: MKL_INT,
         ap: *mut Self,
-        ldap: c_int,
+        ldap: MKL_INT,
         taup: *mut Self,
         work: *mut Self,
-        lwork: c_int,
-        info: *mut c_int,
+        lwork: MKL_INT,
+        info: *mut MKL_INT,
         format: sys::MKL_COMPACT_PACK::Type,
-        nm: c_int,
+        nm: MKL_INT,
     );
     /// Raw `getrinp_compact` call.
     ///
@@ -590,7 +591,7 @@ pub trait CompactFactorScalar: CompactScalar {
     ///
     /// `ap` must be a compact buffer for `nm` `n x n` matrices previously LU-factorised without pivoting by `getrfnp_compact`; it is overwritten with the inverses: A compact buffer `ap` holds `nm` matrices interleaved in SIMD-width groups per `format`. It must be valid for the byte size returned by `get_size_compact(ldap, stored_cols, format, nm)` (column-major; `stored_rows` for row-major), where `ldap` is at least the stored row (column-major) or column (row-major) count times the group width and `stored_rows x stored_cols` is the per-matrix shape the routine defines for it, and `format` and `nm` must be the same values used when the buffer was packed.
     /// `work` must be valid for writes of `lwork` elements, and `lwork` at least the workspace MKL requires.
-    /// `info` must be valid for writes of the per-matrix status array MKL defines for compact routines (one `c_int` per matrix in the compact group set, `nm` in total); entries are written even on partial failure.
+    /// `info` must be valid for writes of the per-matrix status array MKL defines for compact routines (one `MKL_INT` per matrix in the compact group set, `nm` in total); entries are written even on partial failure.
     /// The MKL library must be linked and usable; invalid arguments are reported through MKL's error handler, not by this wrapper.
     #[allow(
         clippy::too_many_arguments,
@@ -598,14 +599,14 @@ pub trait CompactFactorScalar: CompactScalar {
     )]
     unsafe fn getrinp_compact(
         layout: sys::MKL_LAYOUT::Type,
-        n: c_int,
+        n: MKL_INT,
         ap: *mut Self,
-        ldap: c_int,
+        ldap: MKL_INT,
         work: *mut Self,
-        lwork: c_int,
-        info: *mut c_int,
+        lwork: MKL_INT,
+        info: *mut MKL_INT,
         format: sys::MKL_COMPACT_PACK::Type,
-        nm: c_int,
+        nm: MKL_INT,
     );
 }
 
@@ -624,15 +625,15 @@ macro_rules! impl_compact_factor {
                 uplo: sys::MKL_UPLO::Type,
                 transa: sys::MKL_TRANSPOSE::Type,
                 diag: sys::MKL_DIAG::Type,
-                m: c_int,
-                n: c_int,
+                m: MKL_INT,
+                n: MKL_INT,
                 alpha: Self,
                 a: *const Self,
-                ldap: c_int,
+                ldap: MKL_INT,
                 b: *mut Self,
-                ldbp: c_int,
+                ldbp: MKL_INT,
                 format: sys::MKL_COMPACT_PACK::Type,
-                nm: c_int,
+                nm: MKL_INT,
             ) {
                 unsafe {
                     sys::$trsm(
@@ -643,52 +644,52 @@ macro_rules! impl_compact_factor {
             unsafe fn potrf_compact(
                 layout: sys::MKL_LAYOUT::Type,
                 uplo: sys::MKL_UPLO::Type,
-                n: c_int,
+                n: MKL_INT,
                 ap: *mut Self,
-                ldap: c_int,
-                info: *mut c_int,
+                ldap: MKL_INT,
+                info: *mut MKL_INT,
                 format: sys::MKL_COMPACT_PACK::Type,
-                nm: c_int,
+                nm: MKL_INT,
             ) {
                 unsafe { sys::$potrf(layout, uplo, n, ap, ldap, info, format, nm) }
             }
             unsafe fn getrfnp_compact(
                 layout: sys::MKL_LAYOUT::Type,
-                m: c_int,
-                n: c_int,
+                m: MKL_INT,
+                n: MKL_INT,
                 ap: *mut Self,
-                ldap: c_int,
-                info: *mut c_int,
+                ldap: MKL_INT,
+                info: *mut MKL_INT,
                 format: sys::MKL_COMPACT_PACK::Type,
-                nm: c_int,
+                nm: MKL_INT,
             ) {
                 unsafe { sys::$getrfnp(layout, m, n, ap, ldap, info, format, nm) }
             }
             unsafe fn geqrf_compact(
                 layout: sys::MKL_LAYOUT::Type,
-                m: c_int,
-                n: c_int,
+                m: MKL_INT,
+                n: MKL_INT,
                 ap: *mut Self,
-                ldap: c_int,
+                ldap: MKL_INT,
                 taup: *mut Self,
                 work: *mut Self,
-                lwork: c_int,
-                info: *mut c_int,
+                lwork: MKL_INT,
+                info: *mut MKL_INT,
                 format: sys::MKL_COMPACT_PACK::Type,
-                nm: c_int,
+                nm: MKL_INT,
             ) {
                 unsafe { sys::$geqrf(layout, m, n, ap, ldap, taup, work, lwork, info, format, nm) }
             }
             unsafe fn getrinp_compact(
                 layout: sys::MKL_LAYOUT::Type,
-                n: c_int,
+                n: MKL_INT,
                 ap: *mut Self,
-                ldap: c_int,
+                ldap: MKL_INT,
                 work: *mut Self,
-                lwork: c_int,
-                info: *mut c_int,
+                lwork: MKL_INT,
+                info: *mut MKL_INT,
                 format: sys::MKL_COMPACT_PACK::Type,
-                nm: c_int,
+                nm: MKL_INT,
             ) {
                 unsafe { sys::$getrinp(layout, n, ap, ldap, work, lwork, info, format, nm) }
             }
@@ -735,7 +736,7 @@ fn packed_len<T: CompactScalar>(
     get_size::<T>(ldap, sd, format, nm)
 }
 
-fn to_c(v: usize) -> Result<c_int> {
+fn to_c(v: usize) -> Result<MKL_INT> {
     v.try_into().map_err(|_| Error::DimensionOverflow)
 }
 
@@ -818,14 +819,14 @@ pub fn potrf<T: CompactFactorScalar>(
     ldap: usize,
     format: CompactFormat,
     num_matrices: usize,
-) -> Result<i32> {
+) -> Result<MKL_INT> {
     if ap.len() < packed_len::<T>(layout, n, n, ldap, format, num_matrices)? {
         return Err(Error::InvalidArgument(
             "ap is smaller than the compact size of A",
         ));
     }
     let (n_i, ldap_i, nm_i) = (to_c(n)?, to_c(ldap)?, to_c(num_matrices)?);
-    let mut info: c_int = 0;
+    let mut info: MKL_INT = 0;
     unsafe {
         T::potrf_compact(
             map_layout(layout),
@@ -853,14 +854,14 @@ pub fn getrfnp<T: CompactFactorScalar>(
     ldap: usize,
     format: CompactFormat,
     num_matrices: usize,
-) -> Result<i32> {
+) -> Result<MKL_INT> {
     if ap.len() < packed_len::<T>(layout, m, n, ldap, format, num_matrices)? {
         return Err(Error::InvalidArgument(
             "ap is smaller than the compact size of A",
         ));
     }
     let (m_i, n_i, ldap_i, nm_i) = (to_c(m)?, to_c(n)?, to_c(ldap)?, to_c(num_matrices)?);
-    let mut info: c_int = 0;
+    let mut info: MKL_INT = 0;
     unsafe {
         T::getrfnp_compact(
             map_layout(layout),
@@ -897,7 +898,7 @@ pub fn geqrf<T: CompactFactorScalar>(
     taup: &mut [T],
     format: CompactFormat,
     num_matrices: usize,
-) -> Result<i32> {
+) -> Result<MKL_INT> {
     if ap.len() < packed_len::<T>(layout, m, n, ldap, format, num_matrices)? {
         return Err(Error::InvalidArgument(
             "ap is smaller than the compact size of A",
@@ -910,7 +911,7 @@ pub fn geqrf<T: CompactFactorScalar>(
         ));
     }
     let (m_i, n_i, ldap_i, nm_i) = (to_c(m)?, to_c(n)?, to_c(ldap)?, to_c(num_matrices)?);
-    let mut info: c_int = 0;
+    let mut info: MKL_INT = 0;
     // Workspace query (lwork = -1): MKL writes the required size to work[0].
     let mut query = [T::zero()];
     unsafe {
@@ -959,14 +960,14 @@ pub fn getrinp<T: CompactFactorScalar>(
     ldap: usize,
     format: CompactFormat,
     num_matrices: usize,
-) -> Result<i32> {
+) -> Result<MKL_INT> {
     if ap.len() < packed_len::<T>(layout, n, n, ldap, format, num_matrices)? {
         return Err(Error::InvalidArgument(
             "ap is smaller than the compact size of A",
         ));
     }
     let (n_i, ldap_i, nm_i) = (to_c(n)?, to_c(ldap)?, to_c(num_matrices)?);
-    let mut info: c_int = 0;
+    let mut info: MKL_INT = 0;
     // Workspace query (lwork = -1): MKL writes the required size to work[0].
     let mut query = [T::zero()];
     unsafe {

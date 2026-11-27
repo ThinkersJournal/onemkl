@@ -34,9 +34,9 @@
 //! gemm_bf16_f32(...args..., bits, ...);
 //! ```
 
-use core::ffi::{c_char, c_int, c_short, c_ushort, c_void};
+use core::ffi::{c_char, c_short, c_ushort, c_void};
 
-use onemkl_sys as sys;
+use onemkl_sys::{self as sys, MKL_INT};
 
 use crate::enums::{Layout, Transpose};
 use crate::error::{Error, Result};
@@ -108,7 +108,7 @@ fn validate_gemm_dims(
 }
 
 #[inline]
-fn dim(x: usize) -> Result<c_int> {
+fn dim(x: usize) -> Result<MKL_INT> {
     x.try_into().map_err(|_| Error::DimensionOverflow)
 }
 

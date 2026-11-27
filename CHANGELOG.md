@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased (version to be allocated by pm-assist)
+
+### Changed
+
+- `docs/W1-TOO-MANY-ARGUMENTS.md`: first-pass classification of the 196 functions flagged by `clippy::too_many_arguments` (124 raw FFI methods, 68 published safe wrappers, 4 private), and the ROADMAP row W1 corrected (the "impl allows do nothing" hypothesis is not supported). Docs only.
+
 ## 0.4.12 - 2026-11-27 (allocated by pm-assist; additive: QuadraticSpline1d; Subbotin writes order*n coefficients, the wrapper sizes by the measured extent)
 
 ### Added

@@ -249,9 +249,13 @@ Every non-MPI domain at Comprehensive:
   - **Hidden warnings:** with the allows overridden, clippy flags 198
     functions (192 pre-existing plus the 6 added by `lane/allows`), so the
     "303 findings" row above never included them: they were already silenced.
-    The allows are more than the flagged functions because trait impl methods
-    are not linted and carry allows that do nothing (INFERRED, not yet
-    measured: remove them on one impl and rerun clippy).
+    The 238 allows outnumber the 196 flagged functions (now, with the 7
+    counted waivers included) by 42. The hypothesis that trait impl methods
+    carry allows that do nothing was tested and NOT supported: deleting the 14
+    allows after line 1000 of `blas/scalar.rs` produced 14 warnings. The
+    difference is unexplained; the table in `docs/W1-TOO-MANY-ARGUMENTS.md`
+    lists the flagged functions, and finding the superfluous allows is part
+    of the work (an allow whose function is not in the table).
   - **First-pass classification of the 198 flagged functions** (by the text
     of the flagged line, so unreviewed; a function is only "C-mirror" once its
     doc names the C function and the argument lists match one for one):
@@ -263,6 +267,17 @@ Every non-MPI domain at Comprehensive:
     `feast.rs` 8, `blas/packed.rs` 5, and 14 elsewhere), each to be sorted
     into C-mirror, public-surface (published API, check the tag) or
     restructurable (parameter struct; a breaking change).
+  - **Classification table (first pass, 2026-11-27):**
+    `docs/W1-TOO-MANY-ARGUMENTS.md` lists every flagged function (file, line,
+    name, argument count, kind, class), 196 in all: 124 `unsafe fn` raw FFI
+    methods (likely C mirrors; 13 of them have a doc comment that does not
+    name the C function and need one before a `reason` is honest), 68 safe
+    `pub fn` wrappers already published (65 since v0.1.0, 3 since v0.3.8:
+    public-surface candidates, or C mirrors where they take one C call's
+    arguments), and 4 private functions (`blas/packed.rs` `pack`,
+    `feast.rs` `finish_real_result` and `finish_complex_result`,
+    `pardiso.rs` `run_phase`: restructure or reason). 7 already carry a
+    counted `reason`. Mechanical, unreviewed.
   - **Wanted:** per item, either a `reason = "mirrors the oneMKL C signature
     <name> argument for argument"` (C mirrors: most of the trait declarations
     and wrappers above), or a restructure (a parameter struct) for the rest;

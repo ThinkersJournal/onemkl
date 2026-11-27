@@ -203,3 +203,53 @@ fn stream_quantiles_zw_accuracy_and_refusals() {
     assert!(ss.stream_quantiles(&[0.5], &[0.01, 0.01]).is_err());
     assert!(ss.stream_quantiles(&[0.5], &[0.0]).is_err());
 }
+
+// ---- with_weights: values measured on oneMKL 2026.2 (tools/size-probes/ss7.c) ----
+
+const WX: [f64; 12] = [1.0, 2.0, 3.0, 4.0, 5.0, 10.0, 2.0, 2.0, 4.0, 4.0, 8.0, 0.0];
+const WW: [f64; 6] = [1.0, 2.0, 3.0, 1.0, 1.0, 2.0];
+
+#[test]
+fn weighted_mean_and_variance_match_the_measured_formulas() {
+    let mut ss = SummaryStats::<f64>::with_weights(&WX, 2, 6, &WW).unwrap();
+    let mean = ss.mean().unwrap();
+    assert_abs_diff_eq!(mean[0], 4.3, epsilon = 1e-12);
+    assert_abs_diff_eq!(mean[1], 3.0, epsilon = 1e-12);
+    // sum(w (x - mean)^2) / (W - sum(w^2) / W), W = 10, sum(w^2) = 20.
+    let var = ss.variance().unwrap();
+    assert_abs_diff_eq!(var[0], 11.5125, epsilon = 1e-10);
+    assert_abs_diff_eq!(var[1], 6.25, epsilon = 1e-10);
+}
+
+#[test]
+fn weights_change_the_result_vacuity_mutant() {
+    // Without the weights the same data has mean 25/6, so the weighted
+    // result above is not what an ignored weights argument would give.
+    let mut ss = SummaryStats::<f64>::new(&WX, 2, 6).unwrap();
+    let mean = ss.mean().unwrap();
+    assert_abs_diff_eq!(mean[0], 25.0 / 6.0, epsilon = 1e-12);
+    assert!((mean[0] - 4.3).abs() > 0.1);
+}
+
+#[test]
+fn weighted_f32() {
+    let x: Vec<f32> = WX.iter().map(|v| *v as f32).collect();
+    let w: Vec<f32> = WW.iter().map(|v| *v as f32).collect();
+    let mut ss = SummaryStats::<f32>::with_weights(&x, 2, 6, &w).unwrap();
+    assert_abs_diff_eq!(ss.mean().unwrap()[0], 4.3_f32, epsilon = 1e-5);
+}
+
+#[test]
+fn bad_weights_are_refused_before_onemkl_computes_with_them() {
+    // Unguarded, oneMKL computed a mean of 5.8333 from a negative weight and
+    // 0 from all-zero weights, both with status 0 (ss7.c).
+    use onemkl::Error;
+    let neg = [1.0, -2.0, 3.0, 1.0, 1.0, 2.0];
+    let zero = [0.0; 6];
+    let nan = [1.0, f64::NAN, 1.0, 1.0, 1.0, 1.0];
+    let short = [1.0; 5];
+    for w in [&neg[..], &zero[..], &nan[..], &short[..]] {
+        let r = SummaryStats::<f64>::with_weights(&WX, 2, 6, w);
+        assert!(matches!(r, Err(Error::InvalidArgument(_))), "{w:?}");
+    }
+}

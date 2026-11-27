@@ -35,6 +35,8 @@ pub trait SsScalar: Copy + Default + 'static {
     fn is_missing(self) -> bool;
     /// Lossy conversion from `f64` (parameter counts).
     fn from_f64(v: f64) -> Self;
+    /// `self` as an `f64` when it is a usable observation weight (finite and not negative), else `None`.
+    fn weight_value(self) -> Option<f64>;
 
     /// Raw `ss_new_task` call.
     ///
@@ -219,6 +221,9 @@ macro_rules! impl_ss_scalar {
             fn from_f64(v: f64) -> Self {
                 v as $ty
             }
+            fn weight_value(self) -> Option<f64> {
+                (self.is_finite() && self >= 0.0).then_some(f64::from(self))
+            }
             unsafe fn ss_new_task(
                 task: *mut VSLSSTaskPtr,
                 p: *const c_int,
@@ -381,6 +386,7 @@ pub struct SummaryStats<'data, T: SsScalar> {
     _n_holder: Box<c_int>,
     _xstorage_holder: Box<c_int>,
     _data: &'data [T],
+    _weights: Option<&'data [T]>,
     _marker: PhantomData<T>,
 }
 
@@ -390,6 +396,47 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     /// Build a task over `num_variables × num_observations` data laid
     /// out so variable `i` occupies `data[i * num_observations ..]`.
     pub fn new(data: &'data [T], num_variables: usize, num_observations: usize) -> Result<Self> {
+        Self::build(data, num_variables, num_observations, None)
+    }
+
+    /// Like [`new`](Self::new), with one weight per observation
+    /// (`weights[j]` is the weight of observation `j` of every variable).
+    /// `mean` and `variance` then use them. Measured on oneMKL 2026.2
+    /// (`tools/size-probes/ss7.c`): the mean is `sum(w x) / W`, the variance
+    /// (2nd central moment) is `sum(w (x - mean)^2) / (W - sum(w^2) / W)`
+    /// with `W = sum(w)` (reliability weights). oneMKL itself accepts a
+    /// negative weight (computing with it) and all-zero weights (mean 0)
+    /// without an error, so this checks the weights first: each must be
+    /// finite and not negative, and they must not all be zero.
+    pub fn with_weights(
+        data: &'data [T],
+        num_variables: usize,
+        num_observations: usize,
+        weights: &'data [T],
+    ) -> Result<Self> {
+        if weights.len() < num_observations {
+            return Err(Error::InvalidArgument(
+                "weights must have one entry per observation",
+            ));
+        }
+        let mut total = 0.0_f64;
+        for w in &weights[..num_observations] {
+            total += w.weight_value().ok_or(Error::InvalidArgument(
+                "weights must be finite and not negative",
+            ))?;
+        }
+        if total <= 0.0 {
+            return Err(Error::InvalidArgument("weights must not all be zero"));
+        }
+        Self::build(data, num_variables, num_observations, Some(weights))
+    }
+
+    fn build(
+        data: &'data [T],
+        num_variables: usize,
+        num_observations: usize,
+        weights: Option<&'data [T]>,
+    ) -> Result<Self> {
         if data.len() < num_variables * num_observations {
             return Err(Error::InvalidArgument(
                 "data buffer is smaller than num_variables * num_observations",
@@ -414,7 +461,7 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
                 &*n_box,
                 &*xstorage_box,
                 data.as_ptr(),
-                ptr::null(),
+                weights.map_or(ptr::null(), <[T]>::as_ptr),
                 ptr::null(),
             )
         };
@@ -427,6 +474,7 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
             _n_holder: n_box,
             _xstorage_holder: xstorage_box,
             _data: data,
+            _weights: weights,
             _marker: PhantomData,
         })
     }

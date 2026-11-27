@@ -70,18 +70,26 @@ Cost: a second copy of the whole crate, or a macro-generated fork; two crates to
 document, and drift between them. Worst maintenance cost; only worth it if two widths had to
 coexist in one build, which MKL does not allow.
 
-## Recommendation
+## Recommendation and schedule
 
-B1 behind the existing `ilp64` feature, done in this order so each step is a reviewable PR:
-1. Introduce `onemkl::Int = sys::MKL_INT` and make `blas/` and `lapack/` use it everywhere they
-   mean `MKL_INT`; audit the 199 `i32` there. (The two largest areas, mostly already typed.)
-2. `sparse/`, `pardiso.rs`, `dss.rs`, `iss.rs`, `preconditioners.rs`.
-3. `feast.rs`, `pde.rs`, `data_fitting.rs`, `optim.rs`, `rng/`, `service.rs`.
-4. Remove the `build.rs` refusal; add an ILP64 CI row (rig, since it needs the `mkl_intel_ilp64`
-   libraries and real bindgen) and run the existing test suite under it.
+Option B1 behind the existing `ilp64` feature (CireSnave's standing rule, relayed by pm-kernels
+2026-11-27: demand orders work, it never decides whether). An earlier draft of this note said
+"keep refusing until a consumer asks"; that is withdrawn. ILP64 in the safe wrappers is an
+unblocked row, ranked below consumer-needed work and above idle.
 
-Do this only when a consumer needs it: the cost is real and the benefit is zero for LP64 users.
-Until then keep refusing, which is what the repo does.
+Work packages, in order, one PR per group (PR sizing: each package under ~150k diff characters):
+
+| # | Package | Error class it removes (of the ~590 `E0308`) | Breaking? |
+|---|---|---|---|
+| 1 | `onemkl::Int = sys::MKL_INT`; `blas/` and `lapack/` use it wherever they mean `MKL_INT`; audit `lapack/`'s 199 `i32` | mismatched types (342 total) in the two largest areas | No under `lp64` (`Int` is `i32`); public items that name `i32` for an extent change type under `ilp64` only |
+| 2 | `sparse/`, `pardiso.rs`, `dss.rs`, `iss.rs`, `preconditioners.rs` (index arrays, handles) | wrong argument types (197 total) | Public index-array types become `Int`-typed: flag for pm-assist |
+| 3 | `feast.rs`, `pde.rs`, `data_fitting.rs`, `optim.rs`, `rng/`, `service.rs` | `?` conversions (52 total) and the rest | As package 2 |
+| 4 | Drop the `build.rs` refusal; CI row | n/a | No |
+
+Each package is measured the same way: build with real bindgen and the ILP64 libraries on the rig
+(`--features ilp64`), count `E0308` before and after, and run the tests under both interface
+layers (lp64 and ilp64 library paths). The CI row (package 4, started earlier if the rig allows)
+runs the existing tests with `--features ilp64`.
 
 ## Which consumers would use ILP64
 
@@ -96,9 +104,6 @@ Read at `origin/main` of each repo on 2026-11-27 (`git grep -i -E "ilp64|MKL_INT
 
 (Only the three named consumers were checked, not every repo under `C:\Projects`.)
 
-Result: no consumer needs ILP64 today. That supports leaving the decision at "keep refusing, B1
-when asked", and the wrappers a consumer would hit first (`blas`, `lapack`) are also the cheapest
-to convert, so a first ILP64 demand could be met with step 1 alone for GEMM-class use.
-
-## Open question for pm-kernels
-Whether to schedule B1 now or wait for a named consumer. This note recommends waiting.
+Result: no consumer needs ILP64 today, which only ranks this work below consumer-needed rows. The
+wrappers a consumer would hit first (`blas`, `lapack`) are also the cheapest to convert, so
+package 1 alone would serve GEMM-class use.

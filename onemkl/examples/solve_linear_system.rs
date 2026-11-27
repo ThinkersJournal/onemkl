@@ -16,7 +16,7 @@ fn main() {
     // Solution by hand: x = [6, 15, -23].
     let mut a = vec![2.0_f64, 1.0, 1.0, 1.0, 3.0, 2.0, 1.0, 0.0, 0.0];
     let mut b = vec![4.0_f64, 5.0, 6.0];
-    let mut ipiv = vec![0_i32; 3];
+    let mut ipiv = vec![0; 3];
 
     let mut a_view = MatrixMut::new(&mut a, 3, 3, Layout::RowMajor).unwrap();
     let mut b_view = MatrixMut::new(&mut b, 3, 1, Layout::RowMajor).unwrap();

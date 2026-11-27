@@ -13,6 +13,7 @@
 
 use core::ffi::{c_int, c_longlong, c_void};
 use core::ptr;
+use onemkl_sys::MKL_INT;
 use std::any::Any;
 use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 
@@ -37,12 +38,12 @@ pub trait DataFittingScalar: Copy + 'static {
     /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `x`: nx, `y`: nx * ny elements, with a non-uniform partition and no hints; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
     unsafe fn df_new_task_1d(
         task: *mut DFTaskPtr,
-        nx: c_int,
+        nx: MKL_INT,
         x: *const Self,
-        xhint: c_int,
-        ny: c_int,
+        xhint: MKL_INT,
+        ny: MKL_INT,
         y: *const Self,
-        yhint: c_int,
+        yhint: MKL_INT,
     ) -> c_int;
     /// Raw `df_edit_pp_spline_1d` call.
     ///
@@ -59,14 +60,14 @@ pub trait DataFittingScalar: Copy + 'static {
     )]
     unsafe fn df_edit_pp_spline_1d(
         task: DFTaskPtr,
-        s_order: c_int,
-        s_type: c_int,
-        bc_type: c_int,
+        s_order: MKL_INT,
+        s_type: MKL_INT,
+        bc_type: MKL_INT,
         bc: *const Self,
-        ic_type: c_int,
+        ic_type: MKL_INT,
         ic: *const Self,
         scoeff: *const Self,
-        scoeffhint: c_int,
+        scoeffhint: MKL_INT,
     ) -> c_int;
     /// Raw `df_construct_1d` call.
     ///
@@ -76,7 +77,7 @@ pub trait DataFittingScalar: Copy + 'static {
     /// `s_format` and `method` must be `DF_PP_SPLINE` / `DF_METHOD_PP` as MKL requires; spline parameters must already have been set with `df_edit_pp_spline_1d`, whose registered buffers must still be valid.
     /// The MKL library must be linked and usable.
     /// Extents not listed as verified in this block are unverified (from MKL documentation). (no pointer arguments of its own; it reads the buffers registered earlier.)
-    unsafe fn df_construct_1d(task: DFTaskPtr, s_format: c_int, method: c_int) -> c_int;
+    unsafe fn df_construct_1d(task: DFTaskPtr, s_format: MKL_INT, method: MKL_INT) -> c_int;
     /// Raw `df_interpolate_1d` call.
     ///
     /// # Safety
@@ -91,17 +92,17 @@ pub trait DataFittingScalar: Copy + 'static {
     )]
     unsafe fn df_interpolate_1d(
         task: DFTaskPtr,
-        estimation_type: c_int,
-        method: c_int,
-        nsite: c_int,
+        estimation_type: MKL_INT,
+        method: MKL_INT,
+        nsite: MKL_INT,
         site: *const Self,
-        sitehint: c_int,
-        ndorder: c_int,
-        dorder: *const c_int,
+        sitehint: MKL_INT,
+        ndorder: MKL_INT,
+        dorder: *const MKL_INT,
         datahint: *const Self,
         r: *mut Self,
-        rhint: c_int,
-        cell: *mut c_int,
+        rhint: MKL_INT,
+        cell: *mut MKL_INT,
     ) -> c_int;
     /// Raw `df_integrate_1d` call.
     ///
@@ -117,16 +118,16 @@ pub trait DataFittingScalar: Copy + 'static {
     )]
     unsafe fn df_integrate_1d(
         task: DFTaskPtr,
-        method: c_int,
-        nlim: c_int,
+        method: MKL_INT,
+        nlim: MKL_INT,
         llim: *const Self,
-        llimhint: c_int,
+        llimhint: MKL_INT,
         rlim: *const Self,
-        rlimhint: c_int,
+        rlimhint: MKL_INT,
         ldatahint: *const Self,
         rdatahint: *const Self,
         r: *mut Self,
-        rhint: c_int,
+        rhint: MKL_INT,
     ) -> c_int;
     /// Raw `df_integrate_ex_1d` call with the integration call-backs of
     /// `args` (see [`IntegrateExArgs`]); a panic inside a call-back is caught
@@ -154,7 +155,7 @@ pub trait DataFittingScalar: Copy + 'static {
     unsafe fn df_search_cells_ex_1d(
         task: DFTaskPtr,
         sites: &[Self],
-        cells: &mut [c_int],
+        cells: &mut [MKL_INT],
         args: &mut SearchExArgs<'_, Self>,
     ) -> c_int;
 }
@@ -264,7 +265,7 @@ impl<T> Default for IntegrateCallbacks<'_, T> {
 /// struct so the raw call stays within clippy's argument limit.
 #[doc(hidden)]
 pub struct IntegrateExArgs<'a, T: DataFittingScalar> {
-    pub nlim: c_int,
+    pub nlim: MKL_INT,
     pub llim: *const T,
     pub rlim: *const T,
     pub r: *mut T,
@@ -326,25 +327,25 @@ macro_rules! impl_data_fitting_real {
         impl DataFittingScalar for $ty {
             unsafe fn df_new_task_1d(
                 task: *mut DFTaskPtr,
-                nx: c_int,
+                nx: MKL_INT,
                 x: *const Self,
-                xhint: c_int,
-                ny: c_int,
+                xhint: MKL_INT,
+                ny: MKL_INT,
                 y: *const Self,
-                yhint: c_int,
+                yhint: MKL_INT,
             ) -> c_int {
                 unsafe { sys::$new(task, nx, x, xhint, ny, y, yhint) }
             }
             unsafe fn df_edit_pp_spline_1d(
                 task: DFTaskPtr,
-                s_order: c_int,
-                s_type: c_int,
-                bc_type: c_int,
+                s_order: MKL_INT,
+                s_type: MKL_INT,
+                bc_type: MKL_INT,
                 bc: *const Self,
-                ic_type: c_int,
+                ic_type: MKL_INT,
                 ic: *const Self,
                 scoeff: *const Self,
-                scoeffhint: c_int,
+                scoeffhint: MKL_INT,
             ) -> c_int {
                 unsafe {
                     sys::$edit(
@@ -352,22 +353,26 @@ macro_rules! impl_data_fitting_real {
                     )
                 }
             }
-            unsafe fn df_construct_1d(task: DFTaskPtr, s_format: c_int, method: c_int) -> c_int {
+            unsafe fn df_construct_1d(
+                task: DFTaskPtr,
+                s_format: MKL_INT,
+                method: MKL_INT,
+            ) -> c_int {
                 unsafe { sys::$ctor(task, s_format, method) }
             }
             unsafe fn df_interpolate_1d(
                 task: DFTaskPtr,
-                estimation_type: c_int,
-                method: c_int,
-                nsite: c_int,
+                estimation_type: MKL_INT,
+                method: MKL_INT,
+                nsite: MKL_INT,
                 site: *const Self,
-                sitehint: c_int,
-                ndorder: c_int,
-                dorder: *const c_int,
+                sitehint: MKL_INT,
+                ndorder: MKL_INT,
+                dorder: *const MKL_INT,
                 datahint: *const Self,
                 r: *mut Self,
-                rhint: c_int,
-                cell: *mut c_int,
+                rhint: MKL_INT,
+                cell: *mut MKL_INT,
             ) -> c_int {
                 unsafe {
                     sys::$interp(
@@ -388,16 +393,16 @@ macro_rules! impl_data_fitting_real {
             }
             unsafe fn df_integrate_1d(
                 task: DFTaskPtr,
-                method: c_int,
-                nlim: c_int,
+                method: MKL_INT,
+                nlim: MKL_INT,
                 llim: *const Self,
-                llimhint: c_int,
+                llimhint: MKL_INT,
                 rlim: *const Self,
-                rlimhint: c_int,
+                rlimhint: MKL_INT,
                 ldatahint: *const Self,
                 rdatahint: *const Self,
                 r: *mut Self,
-                rhint: c_int,
+                rhint: MKL_INT,
             ) -> c_int {
                 unsafe {
                     sys::$integ(
@@ -456,16 +461,16 @@ macro_rules! impl_data_fitting_real {
                 let status = unsafe {
                     sys::$integ_ex(
                         task,
-                        sys::DF_METHOD_PP as c_int,
+                        sys::DF_METHOD_PP as MKL_INT,
                         args.nlim,
                         args.llim,
-                        sys::DF_NO_HINT as c_int,
+                        sys::DF_NO_HINT as MKL_INT,
                         args.rlim,
-                        sys::DF_NO_HINT as c_int,
+                        sys::DF_NO_HINT as MKL_INT,
                         ptr::null(),
                         ptr::null(),
                         args.r,
-                        sys::DF_NO_HINT as c_int,
+                        sys::DF_NO_HINT as MKL_INT,
                         lcb,
                         lp,
                         rcb,
@@ -485,7 +490,7 @@ macro_rules! impl_data_fitting_real {
             unsafe fn df_search_cells_ex_1d(
                 task: DFTaskPtr,
                 sites: &[Self],
-                cells: &mut [c_int],
+                cells: &mut [MKL_INT],
                 args: &mut SearchExArgs<'_, Self>,
             ) -> c_int {
                 unsafe extern "C" fn tramp(
@@ -503,10 +508,10 @@ macro_rules! impl_data_fitting_real {
                 unsafe {
                     sys::$search_ex(
                         task,
-                        sys::DF_METHOD_STD as c_int,
-                        sites.len() as c_int,
+                        sys::DF_METHOD_STD as MKL_INT,
+                        sites.len() as MKL_INT,
                         sites.as_ptr(),
-                        sys::DF_NON_UNIFORM_PARTITION as c_int,
+                        sys::DF_NON_UNIFORM_PARTITION as MKL_INT,
                         ptr::null(),
                         cells.as_mut_ptr(),
                         Some(tramp),
@@ -579,8 +584,8 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         Self::build(
             x,
             y,
-            sys::DF_PP_NATURAL as c_int,
-            sys::DF_BC_FREE_END as c_int,
+            sys::DF_PP_NATURAL as MKL_INT,
+            sys::DF_BC_FREE_END as MKL_INT,
             None,
             None,
         )
@@ -601,8 +606,8 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         Self::build(
             x,
             y,
-            sys::DF_PP_HYMAN as c_int,
-            sys::DF_BC_FREE_END as c_int,
+            sys::DF_PP_HYMAN as MKL_INT,
+            sys::DF_BC_FREE_END as MKL_INT,
             None,
             None,
         )
@@ -615,8 +620,8 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         Self::build(
             x,
             y,
-            sys::DF_PP_BESSEL as c_int,
-            sys::DF_BC_NOT_A_KNOT as c_int,
+            sys::DF_PP_BESSEL as MKL_INT,
+            sys::DF_BC_NOT_A_KNOT as MKL_INT,
             None,
             None,
         )
@@ -630,8 +635,8 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         Self::build(
             x,
             y,
-            sys::DF_PP_AKIMA as c_int,
-            sys::DF_BC_NOT_A_KNOT as c_int,
+            sys::DF_PP_AKIMA as MKL_INT,
+            sys::DF_BC_NOT_A_KNOT as MKL_INT,
             None,
             None,
         )
@@ -668,8 +673,8 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         Self::build(
             x,
             y,
-            sys::DF_PP_HERMITE as c_int,
-            (sys::DF_BC_1ST_LEFT_DER | sys::DF_BC_1ST_RIGHT_DER) as c_int,
+            sys::DF_PP_HERMITE as MKL_INT,
+            (sys::DF_BC_1ST_LEFT_DER | sys::DF_BC_1ST_RIGHT_DER) as MKL_INT,
             Some(bc),
             interior,
         )
@@ -678,8 +683,8 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
     fn build(
         x: Vec<T>,
         y: Vec<T>,
-        s_type: c_int,
-        bc_type: c_int,
+        s_type: MKL_INT,
+        bc_type: MKL_INT,
         bc: Option<Vec<T>>,
         ic: Option<Vec<T>>,
     ) -> Result<Self> {
@@ -702,8 +707,8 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
             .collect::<Vec<_>>()
             .into_boxed_slice();
 
-        let nx: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let ny: c_int = 1;
+        let nx: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let ny: MKL_INT = 1;
 
         let mut task: DFTaskPtr = ptr::null_mut();
         let status = unsafe {
@@ -711,10 +716,10 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
                 &mut task,
                 nx,
                 x_box.as_ptr(),
-                sys::DF_NON_UNIFORM_PARTITION as c_int,
+                sys::DF_NON_UNIFORM_PARTITION as MKL_INT,
                 ny,
                 y_box.as_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
             )
         };
         check_df(status)?;
@@ -729,8 +734,8 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         };
 
         let (ic_type, ic_ptr) = match this._ic.as_ref() {
-            Some(buf) => (sys::DF_IC_1ST_DER as c_int, buf.as_ptr()),
-            None => (sys::DF_NO_IC as c_int, ptr::null()),
+            Some(buf) => (sys::DF_IC_1ST_DER as MKL_INT, buf.as_ptr()),
+            None => (sys::DF_NO_IC as MKL_INT, ptr::null()),
         };
         let bc_ptr = match this._bc.as_ref() {
             Some(buf) => buf.as_ptr(),
@@ -739,14 +744,14 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         let status = unsafe {
             T::df_edit_pp_spline_1d(
                 this.task,
-                sys::DF_PP_CUBIC as c_int,
+                sys::DF_PP_CUBIC as MKL_INT,
                 s_type,
                 bc_type,
                 bc_ptr,
                 ic_type,
                 ic_ptr,
                 this._coeffs.as_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
             )
         };
         check_df(status)?;
@@ -754,8 +759,8 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         let status = unsafe {
             T::df_construct_1d(
                 this.task,
-                sys::DF_PP_SPLINE as c_int,
-                sys::DF_METHOD_STD as c_int,
+                sys::DF_PP_SPLINE as MKL_INT,
+                sys::DF_METHOD_STD as MKL_INT,
             )
         };
         check_df(status)?;
@@ -768,25 +773,25 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
     where
         T: Default,
     {
-        let nsite: c_int = sites
+        let nsite: MKL_INT = sites
             .len()
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
         let mut out: Vec<T> = (0..sites.len()).map(|_| T::default()).collect();
-        let dorder: [c_int; 1] = [1]; // request the function value (not derivatives)
+        let dorder: [MKL_INT; 1] = [1]; // request the function value (not derivatives)
         let status = unsafe {
             T::df_interpolate_1d(
                 self.task,
-                sys::DF_INTERP as c_int,
-                sys::DF_METHOD_PP as c_int,
+                sys::DF_INTERP as MKL_INT,
+                sys::DF_METHOD_PP as MKL_INT,
                 nsite,
                 sites.as_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
                 1,
                 dorder.as_ptr(),
                 ptr::null(),
                 out.as_mut_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
                 ptr::null_mut(),
             )
         };
@@ -804,7 +809,7 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         T: Default + Copy,
     {
         let max_order = sys::DF_PP_CUBIC as usize - 1;
-        let mut flags = [0 as c_int; sys::DF_PP_CUBIC as usize];
+        let mut flags = [0 as MKL_INT; sys::DF_PP_CUBIC as usize];
         for &o in orders {
             if o > max_order {
                 return Err(Error::InvalidArgument(
@@ -819,7 +824,7 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         if orders.is_empty() {
             return Ok(Vec::new());
         }
-        let nsite: c_int = sites
+        let nsite: MKL_INT = sites
             .len()
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
@@ -828,16 +833,16 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         let status = unsafe {
             T::df_interpolate_1d(
                 self.task,
-                sys::DF_INTERP as c_int,
-                sys::DF_METHOD_PP as c_int,
+                sys::DF_INTERP as MKL_INT,
+                sys::DF_METHOD_PP as MKL_INT,
                 nsite,
                 sites.as_ptr(),
-                sys::DF_NO_HINT as c_int,
-                flags.len() as c_int,
+                sys::DF_NO_HINT as MKL_INT,
+                flags.len() as MKL_INT,
                 flags.as_ptr(),
                 ptr::null(),
                 out.as_mut_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
                 ptr::null_mut(),
             )
         };
@@ -863,26 +868,26 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
     where
         T: Default,
     {
-        let nsite: c_int = sites
+        let nsite: MKL_INT = sites
             .len()
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
         let mut vals: Vec<T> = (0..sites.len()).map(|_| T::default()).collect();
-        let mut cells: Vec<c_int> = vec![0; sites.len()];
-        let dorder: [c_int; 1] = [1];
+        let mut cells: Vec<MKL_INT> = vec![0; sites.len()];
+        let dorder: [MKL_INT; 1] = [1];
         let status = unsafe {
             T::df_interpolate_1d(
                 self.task,
-                sys::DF_CELL as c_int,
-                sys::DF_METHOD_PP as c_int,
+                sys::DF_CELL as MKL_INT,
+                sys::DF_METHOD_PP as MKL_INT,
                 nsite,
                 sites.as_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
                 1,
                 dorder.as_ptr(),
                 ptr::null(),
                 vals.as_mut_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
                 cells.as_mut_ptr(),
             )
         };
@@ -904,7 +909,7 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
                 "left and right limit slices must have the same length",
             ));
         }
-        let nlim: c_int = left
+        let nlim: MKL_INT = left
             .len()
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
@@ -912,16 +917,16 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         let status = unsafe {
             T::df_integrate_1d(
                 self.task,
-                sys::DF_METHOD_PP as c_int,
+                sys::DF_METHOD_PP as MKL_INT,
                 nlim,
                 left.as_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
                 right.as_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
                 ptr::null(),
                 ptr::null(),
                 out.as_mut_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
             )
         };
         check_df(status)?;
@@ -1011,17 +1016,17 @@ impl<T: DataFittingScalar + Default> LinearSpline1d<T> {
             .map(|_| T::default())
             .collect::<Vec<_>>()
             .into_boxed_slice();
-        let nx: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let nx: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
         let mut task: DFTaskPtr = ptr::null_mut();
         check_df(unsafe {
             T::df_new_task_1d(
                 &mut task,
                 nx,
                 x_box.as_ptr(),
-                sys::DF_NON_UNIFORM_PARTITION as c_int,
+                sys::DF_NON_UNIFORM_PARTITION as MKL_INT,
                 1,
                 y_box.as_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
             )
         })?;
         let this = Self {
@@ -1033,21 +1038,21 @@ impl<T: DataFittingScalar + Default> LinearSpline1d<T> {
         check_df(unsafe {
             T::df_edit_pp_spline_1d(
                 this.task,
-                sys::DF_PP_LINEAR as c_int,
-                sys::DF_PP_DEFAULT as c_int,
-                sys::DF_NO_BC as c_int,
+                sys::DF_PP_LINEAR as MKL_INT,
+                sys::DF_PP_DEFAULT as MKL_INT,
+                sys::DF_NO_BC as MKL_INT,
                 ptr::null(),
-                sys::DF_NO_IC as c_int,
+                sys::DF_NO_IC as MKL_INT,
                 ptr::null(),
                 this._coeffs.as_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
             )
         })?;
         check_df(unsafe {
             T::df_construct_1d(
                 this.task,
-                sys::DF_PP_SPLINE as c_int,
-                sys::DF_METHOD_STD as c_int,
+                sys::DF_PP_SPLINE as MKL_INT,
+                sys::DF_METHOD_STD as MKL_INT,
             )
         })?;
         Ok(this)
@@ -1055,25 +1060,25 @@ impl<T: DataFittingScalar + Default> LinearSpline1d<T> {
 
     /// Evaluate the interpolant at `sites`.
     pub fn interpolate(&self, sites: &[T]) -> Result<Vec<T>> {
-        let nsite: c_int = sites
+        let nsite: MKL_INT = sites
             .len()
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
         let mut out: Vec<T> = (0..sites.len()).map(|_| T::default()).collect();
-        let dorder: [c_int; 1] = [1];
+        let dorder: [MKL_INT; 1] = [1];
         check_df(unsafe {
             T::df_interpolate_1d(
                 self.task,
-                sys::DF_INTERP as c_int,
-                sys::DF_METHOD_PP as c_int,
+                sys::DF_INTERP as MKL_INT,
+                sys::DF_METHOD_PP as MKL_INT,
                 nsite,
                 sites.as_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
                 1,
                 dorder.as_ptr(),
                 ptr::null(),
                 out.as_mut_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
                 ptr::null_mut(),
             )
         })?;
@@ -1087,7 +1092,7 @@ impl<T: DataFittingScalar + Default> LinearSpline1d<T> {
                 "left and right limit slices must have the same length",
             ));
         }
-        let nlim: c_int = left
+        let nlim: MKL_INT = left
             .len()
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
@@ -1095,16 +1100,16 @@ impl<T: DataFittingScalar + Default> LinearSpline1d<T> {
         check_df(unsafe {
             T::df_integrate_1d(
                 self.task,
-                sys::DF_METHOD_PP as c_int,
+                sys::DF_METHOD_PP as MKL_INT,
                 nlim,
                 left.as_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
                 right.as_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
                 ptr::null(),
                 ptr::null(),
                 out.as_mut_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
             )
         })?;
         Ok(out)
@@ -1186,10 +1191,10 @@ impl<T: DataFittingScalar + Default + PartialOrd> QuadraticSpline1d<T> {
         Self::build(
             x,
             y,
-            sys::DF_PP_DEFAULT as c_int,
-            sys::DF_BC_Q_VAL as c_int,
+            sys::DF_PP_DEFAULT as MKL_INT,
+            sys::DF_BC_Q_VAL as MKL_INT,
             Some(vec![q_value]),
-            sys::DF_NO_IC as c_int,
+            sys::DF_NO_IC as MKL_INT,
             None,
         )
     }
@@ -1244,10 +1249,10 @@ impl<T: DataFittingScalar + Default + PartialOrd> QuadraticSpline1d<T> {
         Self::build(
             x,
             y,
-            sys::DF_PP_SUBBOTIN as c_int,
-            sys::DF_BC_FREE_END as c_int,
+            sys::DF_PP_SUBBOTIN as MKL_INT,
+            sys::DF_BC_FREE_END as MKL_INT,
             None,
-            sys::DF_IC_Q_KNOT as c_int,
+            sys::DF_IC_Q_KNOT as MKL_INT,
             Some(knots),
         )
     }
@@ -1255,10 +1260,10 @@ impl<T: DataFittingScalar + Default + PartialOrd> QuadraticSpline1d<T> {
     fn build(
         x: Vec<T>,
         y: Vec<T>,
-        s_type: c_int,
-        bc_type: c_int,
+        s_type: MKL_INT,
+        bc_type: MKL_INT,
         bc: Option<Vec<T>>,
-        ic_type: c_int,
+        ic_type: MKL_INT,
         ic: Option<Vec<T>>,
     ) -> Result<Self> {
         if x.len() != y.len() {
@@ -1276,7 +1281,7 @@ impl<T: DataFittingScalar + Default + PartialOrd> QuadraticSpline1d<T> {
         // except the Subbotin quadratic, which writes order * n (measured on
         // 2026.2 with `tools/size-probes/df_coeff_extent.c`; the Intel
         // reference says n - 1 for all).
-        let cells = if s_type == sys::DF_PP_SUBBOTIN as c_int {
+        let cells = if s_type == sys::DF_PP_SUBBOTIN as MKL_INT {
             n
         } else {
             n - 1
@@ -1287,17 +1292,17 @@ impl<T: DataFittingScalar + Default + PartialOrd> QuadraticSpline1d<T> {
             .into_boxed_slice();
         let bc_box = bc.map(Vec::into_boxed_slice);
         let ic_box = ic.map(Vec::into_boxed_slice);
-        let nx: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let nx: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
         let mut task: DFTaskPtr = ptr::null_mut();
         check_df(unsafe {
             T::df_new_task_1d(
                 &mut task,
                 nx,
                 x_box.as_ptr(),
-                sys::DF_NON_UNIFORM_PARTITION as c_int,
+                sys::DF_NON_UNIFORM_PARTITION as MKL_INT,
                 1,
                 y_box.as_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
             )
         })?;
         let this = Self {
@@ -1313,21 +1318,21 @@ impl<T: DataFittingScalar + Default + PartialOrd> QuadraticSpline1d<T> {
         check_df(unsafe {
             T::df_edit_pp_spline_1d(
                 this.task,
-                sys::DF_PP_QUADRATIC as c_int,
+                sys::DF_PP_QUADRATIC as MKL_INT,
                 s_type,
                 bc_type,
                 bc_ptr,
                 ic_type,
                 ic_ptr,
                 this._coeffs.as_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
             )
         })?;
         check_df(unsafe {
             T::df_construct_1d(
                 this.task,
-                sys::DF_PP_SPLINE as c_int,
-                sys::DF_METHOD_STD as c_int,
+                sys::DF_PP_SPLINE as MKL_INT,
+                sys::DF_METHOD_STD as MKL_INT,
             )
         })?;
         Ok(this)
@@ -1335,25 +1340,25 @@ impl<T: DataFittingScalar + Default + PartialOrd> QuadraticSpline1d<T> {
 
     /// Evaluate the interpolant at `sites`.
     pub fn interpolate(&self, sites: &[T]) -> Result<Vec<T>> {
-        let nsite: c_int = sites
+        let nsite: MKL_INT = sites
             .len()
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
         let mut out: Vec<T> = (0..sites.len()).map(|_| T::default()).collect();
-        let dorder: [c_int; 1] = [1];
+        let dorder: [MKL_INT; 1] = [1];
         check_df(unsafe {
             T::df_interpolate_1d(
                 self.task,
-                sys::DF_INTERP as c_int,
-                sys::DF_METHOD_PP as c_int,
+                sys::DF_INTERP as MKL_INT,
+                sys::DF_METHOD_PP as MKL_INT,
                 nsite,
                 sites.as_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
                 1,
                 dorder.as_ptr(),
                 ptr::null(),
                 out.as_mut_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
                 ptr::null_mut(),
             )
         })?;
@@ -1367,7 +1372,7 @@ impl<T: DataFittingScalar + Default + PartialOrd> QuadraticSpline1d<T> {
                 "left and right limit slices must have the same length",
             ));
         }
-        let nlim: c_int = left
+        let nlim: MKL_INT = left
             .len()
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
@@ -1375,16 +1380,16 @@ impl<T: DataFittingScalar + Default + PartialOrd> QuadraticSpline1d<T> {
         check_df(unsafe {
             T::df_integrate_1d(
                 self.task,
-                sys::DF_METHOD_PP as c_int,
+                sys::DF_METHOD_PP as MKL_INT,
                 nlim,
                 left.as_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
                 right.as_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
                 ptr::null(),
                 ptr::null(),
                 out.as_mut_ptr(),
-                sys::DF_NO_HINT as c_int,
+                sys::DF_NO_HINT as MKL_INT,
             )
         })?;
         Ok(out)
@@ -1413,7 +1418,7 @@ fn integrate_ex_impl<T: DataFittingScalar + Default>(
             "left and right limit slices must have the same length",
         ));
     }
-    let nlim: c_int = left
+    let nlim: MKL_INT = left
         .len()
         .try_into()
         .map_err(|_| Error::DimensionOverflow)?;
@@ -1442,11 +1447,11 @@ fn search_cells_impl<T: DataFittingScalar>(
     sites: &[T],
     callback: SearchCallback<'_, T>,
 ) -> Result<Vec<usize>> {
-    let _: c_int = sites
+    let _: MKL_INT = sites
         .len()
         .try_into()
         .map_err(|_| Error::DimensionOverflow)?;
-    let mut cells: Vec<c_int> = vec![0; sites.len()];
+    let mut cells: Vec<MKL_INT> = vec![0; sites.len()];
     let mut args = SearchExArgs {
         callback,
         panic: None,

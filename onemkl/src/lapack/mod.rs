@@ -2481,11 +2481,7 @@ macro_rules! impl_complex_aux {
     ($c:ty, $r:ty, $ct:ty, $lacgv:ident, $lacrm:ident) => {
         impl ComplexAuxScalar for $c {
             type Real = $r;
-            unsafe fn lapacke_lacgv(
-                n: MKL_INT,
-                x: *mut Self,
-                incx: MKL_INT,
-            ) -> MKL_INT {
+            unsafe fn lapacke_lacgv(n: MKL_INT, x: *mut Self, incx: MKL_INT) -> MKL_INT {
                 unsafe { onemkl_sys::$lacgv(n, x.cast::<$ct>(), incx) }
             }
             unsafe fn lapacke_lacrm(

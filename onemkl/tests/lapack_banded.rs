@@ -37,7 +37,7 @@ fn gbsv_solves_tridiagonal() {
         0.0, -1.0, 4.0, 0.0, // col 3
     ];
     let mut b = vec![3.0_f64, 2.0, 2.0, 3.0];
-    let mut ipiv = vec![0_i32; 4];
+    let mut ipiv = vec![0; 4];
     gbsv::<f64>(
         Layout::ColMajor,
         4,
@@ -62,7 +62,7 @@ fn gbtrf_then_gbtrs() {
     let mut ab = vec![
         0.0_f64, 0.0, 4.0, -1.0, 0.0, -1.0, 4.0, -1.0, 0.0, -1.0, 4.0, -1.0, 0.0, -1.0, 4.0, 0.0,
     ];
-    let mut ipiv = vec![0_i32; 4];
+    let mut ipiv = vec![0; 4];
     gbtrf::<f64>(Layout::ColMajor, 4, 4, 1, 1, &mut ab, 4, &mut ipiv).unwrap();
 
     let mut b = vec![3.0_f64, 2.0, 2.0, 3.0];
@@ -108,7 +108,7 @@ fn gttrf_then_gttrs() {
     let mut d = vec![4.0_f64, 4.0, 4.0];
     let mut du = vec![-1.0_f64, -1.0];
     let mut du2 = vec![0.0_f64; 1]; // n-2 = 1
-    let mut ipiv = vec![0_i32; 3];
+    let mut ipiv = vec![0; 3];
     gttrf::<f64>(3, &mut dl, &mut d, &mut du, &mut du2, &mut ipiv).unwrap();
 
     let mut b = vec![3.0_f64, 2.0, 3.0];

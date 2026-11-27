@@ -29,11 +29,10 @@
 //! let _iters = solve_cg(&b, &mut x, opts, a_mul).unwrap();
 //! ```
 
-use core::ffi::c_int;
-
-use onemkl_sys as sys;
+use onemkl_sys::{self as sys, MKL_INT};
 
 use crate::error::{Error, Result};
+use crate::util::status_i32;
 
 /// Options shared by the CG and FGMRES wrappers.
 #[derive(Debug, Clone, Copy)]
@@ -80,12 +79,12 @@ pub enum IssStopReason {
     /// The loop hit `max_iterations` without converging.
     MaxIterations,
     /// The solver returned a non-standard `rci_request` code.
-    Other(i32),
+    Other(MKL_INT),
 }
 
-const RCI_OK: c_int = 0;
-const RCI_NEED_MV: c_int = 1;
-const RCI_NEED_PRECOND: c_int = 3;
+const RCI_OK: MKL_INT = 0;
+const RCI_NEED_MV: MKL_INT = 1;
+const RCI_NEED_PRECOND: MKL_INT = 3;
 
 // =====================================================================
 // CG
@@ -121,12 +120,12 @@ where
         return Err(Error::InvalidArgument("b and x must have the same length"));
     }
     let n = b.len();
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
 
-    let mut ipar: [c_int; 128] = [0; 128];
+    let mut ipar: [MKL_INT; 128] = [0; 128];
     let mut dpar: [f64; 128] = [0.0; 128];
     let mut tmp: Vec<f64> = vec![0.0; 4 * n];
-    let mut rci: c_int = 0;
+    let mut rci: MKL_INT = 0;
 
     unsafe {
         sys::dcg_init(
@@ -140,11 +139,13 @@ where
         );
     }
     if rci != 0 {
-        return Err(Error::LapackComputationFailure { info: rci });
+        return Err(Error::LapackComputationFailure {
+            info: status_i32(rci),
+        });
     }
 
     // Configure tolerance and iteration limit.
-    ipar[4] = opts.max_iterations.try_into().unwrap_or(c_int::MAX);
+    ipar[4] = opts.max_iterations.try_into().unwrap_or(MKL_INT::MAX);
     ipar[7] = 1; // automatic stopping by max iterations
     ipar[8] = 1; // automatic stopping by residual norm
     ipar[9] = 0; // no user-defined stopping
@@ -164,7 +165,9 @@ where
         );
     }
     if rci < 0 {
-        return Err(Error::LapackComputationFailure { info: rci });
+        return Err(Error::LapackComputationFailure {
+            info: status_i32(rci),
+        });
     }
 
     // RCI loop.
@@ -204,7 +207,9 @@ where
                 }
             }
             other if other < 0 => {
-                return Err(Error::LapackComputationFailure { info: other });
+                return Err(Error::LapackComputationFailure {
+                    info: status_i32(other),
+                });
             }
             _ => {
                 // Unknown but non-negative: ignore and continue.
@@ -212,7 +217,7 @@ where
         }
     }
 
-    let mut itercount: c_int = 0;
+    let mut itercount: MKL_INT = 0;
     unsafe {
         sys::dcg_get(
             &n_i,
@@ -255,17 +260,17 @@ where
         return Err(Error::InvalidArgument("b and x must have the same length"));
     }
     let n = b.len();
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let restart = opts.restart_length.min(n);
-    let restart_i: c_int = restart.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let restart_i: MKL_INT = restart.try_into().map_err(|_| Error::DimensionOverflow)?;
 
-    let mut ipar: [c_int; 128] = [0; 128];
+    let mut ipar: [MKL_INT; 128] = [0; 128];
     let mut dpar: [f64; 128] = [0.0; 128];
     // Required tmp size for FGMRES — see oneMKL FGMRES Interface
     // Description.
     let tmp_len = ((2 * restart + 1) * n) + restart * (restart + 9) / 2 + 1;
     let mut tmp: Vec<f64> = vec![0.0; tmp_len];
-    let mut rci: c_int = 0;
+    let mut rci: MKL_INT = 0;
 
     unsafe {
         sys::dfgmres_init(
@@ -279,10 +284,12 @@ where
         );
     }
     if rci != 0 {
-        return Err(Error::LapackComputationFailure { info: rci });
+        return Err(Error::LapackComputationFailure {
+            info: status_i32(rci),
+        });
     }
 
-    ipar[4] = opts.max_iterations.try_into().unwrap_or(c_int::MAX);
+    ipar[4] = opts.max_iterations.try_into().unwrap_or(MKL_INT::MAX);
     ipar[7] = 1;
     ipar[8] = 1;
     ipar[9] = 0;
@@ -304,7 +311,9 @@ where
         );
     }
     if rci < 0 {
-        return Err(Error::LapackComputationFailure { info: rci });
+        return Err(Error::LapackComputationFailure {
+            info: status_i32(rci),
+        });
     }
 
     let mut last_rci;
@@ -354,13 +363,15 @@ where
                 }
             }
             other if other < 0 => {
-                return Err(Error::LapackComputationFailure { info: other });
+                return Err(Error::LapackComputationFailure {
+                    info: status_i32(other),
+                });
             }
             _ => {}
         }
     }
 
-    let mut itercount: c_int = 0;
+    let mut itercount: MKL_INT = 0;
     unsafe {
         sys::dfgmres_get(
             &n_i,
@@ -383,7 +394,7 @@ where
 }
 
 fn classify_stop(
-    last_rci: c_int,
+    last_rci: MKL_INT,
     iterations: usize,
     max_iterations: usize,
     final_residual: f64,
@@ -433,7 +444,7 @@ pub enum RciAction<'a> {
     /// `ipar[8] = 0`).
     StoppingTest,
     /// Any other `rci_request` value (usually a fatal error code).
-    Other(i32),
+    Other(MKL_INT),
 }
 
 /// Reusable CG session for callers who want to drive the RCI loop
@@ -455,12 +466,12 @@ pub enum RciAction<'a> {
 /// let result = session.finish(&b, &x)?;
 /// ```
 pub struct CgSession {
-    n: c_int,
+    n: MKL_INT,
     n_us: usize,
-    ipar: [c_int; 128],
+    ipar: [MKL_INT; 128],
     dpar: [f64; 128],
     tmp: Vec<f64>,
-    last_rci: c_int,
+    last_rci: MKL_INT,
     max_iterations: usize,
     preconditioned: bool,
 }
@@ -479,11 +490,11 @@ impl CgSession {
         if b.len() != n || x.len() != n {
             return Err(Error::InvalidArgument("b and x must each have length n"));
         }
-        let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let mut ipar: [c_int; 128] = [0; 128];
+        let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let mut ipar: [MKL_INT; 128] = [0; 128];
         let mut dpar: [f64; 128] = [0.0; 128];
         let mut tmp: Vec<f64> = vec![0.0; 4 * n];
-        let mut rci: c_int = 0;
+        let mut rci: MKL_INT = 0;
         unsafe {
             sys::dcg_init(
                 &n_i,
@@ -496,9 +507,11 @@ impl CgSession {
             );
         }
         if rci != 0 {
-            return Err(Error::LapackComputationFailure { info: rci });
+            return Err(Error::LapackComputationFailure {
+                info: status_i32(rci),
+            });
         }
-        ipar[4] = opts.max_iterations.try_into().unwrap_or(c_int::MAX);
+        ipar[4] = opts.max_iterations.try_into().unwrap_or(MKL_INT::MAX);
         ipar[7] = 1;
         ipar[8] = 1;
         ipar[9] = 0;
@@ -517,7 +530,9 @@ impl CgSession {
             );
         }
         if rci < 0 {
-            return Err(Error::LapackComputationFailure { info: rci });
+            return Err(Error::LapackComputationFailure {
+                info: status_i32(rci),
+            });
         }
         Ok(Self {
             n: n_i,
@@ -534,7 +549,7 @@ impl CgSession {
     /// Advance the iteration by one MKL step. Returns the action MKL
     /// wants the caller to perform before the next `step`.
     pub fn step<'a>(&'a mut self, b: &[f64], x: &mut [f64]) -> Result<RciAction<'a>> {
-        let mut rci: c_int = 0;
+        let mut rci: MKL_INT = 0;
         unsafe {
             sys::dcg(
                 &self.n,
@@ -576,8 +591,8 @@ impl CgSession {
 
     /// Read iteration / residual diagnostics and finalize the session.
     pub fn finish(&mut self, b: &[f64], x: &[f64]) -> Result<IssResult> {
-        let mut itercount: c_int = 0;
-        let rci: c_int = 0;
+        let mut itercount: MKL_INT = 0;
+        let rci: MKL_INT = 0;
         unsafe {
             sys::dcg_get(
                 &self.n,
@@ -607,7 +622,7 @@ impl CgSession {
 
     /// Borrow the iteration parameter array (`ipar`).
     #[inline]
-    pub fn ipar(&mut self) -> &mut [c_int; 128] {
+    pub fn ipar(&mut self) -> &mut [MKL_INT; 128] {
         &mut self.ipar
     }
 
@@ -621,12 +636,12 @@ impl CgSession {
 /// Reusable FGMRES session — analogous to [`CgSession`] but for the
 /// non-symmetric solver.
 pub struct FgmresSession {
-    n: c_int,
+    n: MKL_INT,
     n_us: usize,
-    ipar: [c_int; 128],
+    ipar: [MKL_INT; 128],
     dpar: [f64; 128],
     tmp: Vec<f64>,
-    last_rci: c_int,
+    last_rci: MKL_INT,
     max_iterations: usize,
 }
 
@@ -636,14 +651,14 @@ impl FgmresSession {
         if b.len() != n || x.len() != n {
             return Err(Error::InvalidArgument("b and x must each have length n"));
         }
-        let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
         let restart = opts.restart_length.min(n);
-        let restart_i: c_int = restart.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let mut ipar: [c_int; 128] = [0; 128];
+        let restart_i: MKL_INT = restart.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let mut ipar: [MKL_INT; 128] = [0; 128];
         let mut dpar: [f64; 128] = [0.0; 128];
         let tmp_len = ((2 * restart + 1) * n) + restart * (restart + 9) / 2 + 1;
         let mut tmp: Vec<f64> = vec![0.0; tmp_len];
-        let mut rci: c_int = 0;
+        let mut rci: MKL_INT = 0;
         unsafe {
             sys::dfgmres_init(
                 &n_i,
@@ -656,9 +671,11 @@ impl FgmresSession {
             );
         }
         if rci != 0 {
-            return Err(Error::LapackComputationFailure { info: rci });
+            return Err(Error::LapackComputationFailure {
+                info: status_i32(rci),
+            });
         }
-        ipar[4] = opts.max_iterations.try_into().unwrap_or(c_int::MAX);
+        ipar[4] = opts.max_iterations.try_into().unwrap_or(MKL_INT::MAX);
         ipar[7] = 1;
         ipar[8] = 1;
         ipar[9] = 0;
@@ -679,7 +696,9 @@ impl FgmresSession {
             );
         }
         if rci < 0 {
-            return Err(Error::LapackComputationFailure { info: rci });
+            return Err(Error::LapackComputationFailure {
+                info: status_i32(rci),
+            });
         }
         Ok(Self {
             n: n_i,
@@ -694,7 +713,7 @@ impl FgmresSession {
 
     /// Advance the FGMRES iteration by one MKL step.
     pub fn step<'a>(&'a mut self, b: &mut [f64], x: &mut [f64]) -> Result<RciAction<'a>> {
-        let mut rci: c_int = 0;
+        let mut rci: MKL_INT = 0;
         unsafe {
             sys::dfgmres(
                 &self.n,
@@ -742,8 +761,8 @@ impl FgmresSession {
 
     /// Finalize the iteration and return diagnostics.
     pub fn finish(&mut self, b: &mut [f64], x: &mut [f64]) -> Result<IssResult> {
-        let mut itercount: c_int = 0;
-        let mut rci: c_int = 0;
+        let mut itercount: MKL_INT = 0;
+        let mut rci: MKL_INT = 0;
         unsafe {
             sys::dfgmres_get(
                 &self.n,
@@ -773,7 +792,7 @@ impl FgmresSession {
 
     /// Borrow the iteration parameter array.
     #[inline]
-    pub fn ipar(&mut self) -> &mut [c_int; 128] {
+    pub fn ipar(&mut self) -> &mut [MKL_INT; 128] {
         &mut self.ipar
     }
 

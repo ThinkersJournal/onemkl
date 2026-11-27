@@ -1709,7 +1709,12 @@ macro_rules! impl_lapack_real {
             ) -> MKL_INT {
                 unsafe { sys::$ppsv(layout, uplo, n, nrhs, ap, b, ldb) }
             }
-            unsafe fn lapacke_pptrf(layout: c_int, uplo: c_char, n: MKL_INT, ap: *mut Self) -> MKL_INT {
+            unsafe fn lapacke_pptrf(
+                layout: c_int,
+                uplo: c_char,
+                n: MKL_INT,
+                ap: *mut Self,
+            ) -> MKL_INT {
                 unsafe { sys::$pptrf(layout, uplo, n, ap) }
             }
             unsafe fn lapacke_pptrs(
@@ -2446,7 +2451,12 @@ macro_rules! impl_lapack_complex {
             ) -> MKL_INT {
                 unsafe { sys::$ppsv(layout, uplo, n, nrhs, ap.cast(), b.cast(), ldb) }
             }
-            unsafe fn lapacke_pptrf(layout: c_int, uplo: c_char, n: MKL_INT, ap: *mut Self) -> MKL_INT {
+            unsafe fn lapacke_pptrf(
+                layout: c_int,
+                uplo: c_char,
+                n: MKL_INT,
+                ap: *mut Self,
+            ) -> MKL_INT {
                 unsafe { sys::$pptrf(layout, uplo, n, ap.cast()) }
             }
             unsafe fn lapacke_pptrs(

@@ -21,22 +21,6 @@ use std::path::PathBuf;
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
-    // The safe wrappers are written for the LP64 interface (`MKL_INT` is
-    // `int`). Built against ILP64 bindings they produce roughly 590 type
-    // errors (measured on oneMKL 2026.2 with bindgen on the ILP64 headers,
-    // 2026-11-27), so stop here with one message instead.
-    if env::var_os("CARGO_FEATURE_ILP64").is_some() {
-        panic!(
-            "{}",
-            concat!(
-                "the `ilp64` feature of `onemkl` is not supported yet: the safe wrappers are ",
-                "written for the LP64 interface (`MKL_INT` = `int`) and do not type-check ",
-                "against ILP64 bindings. Use the default `lp64` feature, or use `onemkl-sys` ",
-                "directly with `ilp64`."
-            )
-        );
-    }
-
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     if target_os != "linux" {
         return;

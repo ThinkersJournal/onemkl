@@ -15,8 +15,8 @@ use onemkl::feast::{
 #[test]
 fn real_csr_diagonal() {
     // diag(1, 2, 5) in 1-based CSR upper triangle.
-    let isa = vec![1_i32, 2, 3, 4];
-    let jsa = vec![1_i32, 2, 3];
+    let isa = vec![1, 2, 3, 4];
+    let jsa = vec![1, 2, 3];
     let sa = vec![1.0_f64, 2.0, 5.0];
     let res = eigh_real_csr::<f64>(UpLo::Upper, 3, &sa, &isa, &jsa, 1.5, 4.5, 3).unwrap();
     assert_eq!(res.m, 1);
@@ -27,8 +27,8 @@ fn real_csr_diagonal() {
 fn complex_csr_hermitian() {
     // Hermitian [[2, 1+i], [1-i, 3]] — eigenvalues 1 and 4.
     // 1-based upper-triangular CSR.
-    let isa = vec![1_i32, 3, 4];
-    let jsa = vec![1_i32, 2, 2];
+    let isa = vec![1, 3, 4];
+    let jsa = vec![1, 2, 2];
     let sa = vec![
         Complex64::new(2.0, 0.0),
         Complex64::new(1.0, 1.0),

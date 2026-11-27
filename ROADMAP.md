@@ -213,7 +213,7 @@ Every non-MPI domain at Comprehensive:
 
 ### Known gaps found by probing (2026-11-27; rows, not builds)
 
-- **ILP64 for `onemkl`.** Measured on oneMKL 2026.2 with bindgen on the ILP64 headers (`--features ilp64` with the ILP64 libraries on the rig): about 590 `E0308` type errors in `onemkl` (342 mismatched types, 197 wrong arguments, 52 `?` conversions), so the safe wrappers do not support ILP64 at all; `onemkl-sys` alone is fine. `onemkl/build.rs` now refuses the feature with one message and CI checks it. Real support means making every wrapper generic over `MKL_INT`; not scheduled.
+- **ILP64 for `onemkl`: done in the working tree (this PR).** `--features ilp64` builds the safe wrappers against bindings generated from the ILP64 headers and the full suite passes against the `mkl_intel_ilp64` libraries on the rig; CI has a row for it. Package plan and the counts: `docs/ILP64-DESIGN.md`.
 - **Summary Statistics wrappers that never worked: fixed (2026-11-27).** `impute_missing` (0.5.0) and `stream_quantiles` (`VSL_SS_METHOD_FAST` refused with -4029; now ZW with one accuracy parameter) were broken as shipped; the Application Notes were not needed, the public 2026.0 C reference PDF plus probes `ss4.c`, `ss5.c`, `ss6.c` gave the layouts. Still unmeasured: `impute_missing` initial estimates and priors, draw quality, storage orders other than variable-major; BACON flagged set against a known answer; the partial-task, pooled-covariance, covariance/correlation and weights variants of Summary Statistics are not wrapped.
 
 ### CI lint gates (unscheduled; rows, not builds)

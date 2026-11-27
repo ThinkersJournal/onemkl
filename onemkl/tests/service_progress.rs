@@ -18,17 +18,17 @@ fn stop(_t: i32, _s: i32, _st: &str) -> ProgressControl {
     ProgressControl::Stop
 }
 
-fn factor(n: usize) -> i32 {
+fn factor(n: usize) -> onemkl_sys::MKL_INT {
     let mut a = vec![0.0f64; n * n];
     for i in 0..n {
         a[i * n + i] = n as f64 + 1.0;
     }
     let (uplo, nn, lda) = (
         b'U' as core::ffi::c_char,
-        n as core::ffi::c_int,
-        n as core::ffi::c_int,
+        n as onemkl_sys::MKL_INT,
+        n as onemkl_sys::MKL_INT,
     );
-    let mut info: core::ffi::c_int = 0;
+    let mut info: onemkl_sys::MKL_INT = 0;
     unsafe { onemkl_sys::dpotrf(&uplo, &nn, a.as_mut_ptr(), &lda, &mut info) };
     info
 }

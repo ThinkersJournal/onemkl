@@ -31,7 +31,6 @@
 //! Complex GEMM exists but lacks a matching pack / unpack pair, so
 //! the Rust wrapper restricts this module to real types.
 
-
 use onemkl_sys::{self as sys, MKL_INT};
 
 use crate::enums::{Diag, Layout, Side, Transpose, UpLo};

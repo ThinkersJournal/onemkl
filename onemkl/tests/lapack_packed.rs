@@ -43,7 +43,7 @@ fn spsv_symmetric_packed() {
     // x_true = [1, 1] → b = [3, 3]
     let mut ap = vec![1.0_f64, 2.0, 1.0];
     let mut b = vec![3.0_f64, 3.0];
-    let mut ipiv = vec![0_i32; 2];
+    let mut ipiv = vec![0; 2];
     spsv::<f64>(
         Layout::ColMajor,
         UpLo::Upper,
@@ -62,7 +62,7 @@ fn spsv_symmetric_packed() {
 #[test]
 fn sptrf_then_sptrs() {
     let mut ap = vec![1.0_f64, 2.0, 1.0];
-    let mut ipiv = vec![0_i32; 2];
+    let mut ipiv = vec![0; 2];
     sptrf::<f64>(Layout::ColMajor, UpLo::Upper, 2, &mut ap, &mut ipiv).unwrap();
     let mut b = vec![3.0_f64, 3.0];
     sptrs::<f64>(Layout::ColMajor, UpLo::Upper, 2, 1, &ap, &ipiv, &mut b, 2).unwrap();
@@ -81,7 +81,7 @@ fn hpsv_hermitian_packed() {
         Complex64::new(3.0, 0.0),
     ];
     let mut b = vec![Complex64::new(3.0, 1.0), Complex64::new(4.0, -1.0)];
-    let mut ipiv = vec![0_i32; 2];
+    let mut ipiv = vec![0; 2];
     hpsv::<Complex64>(
         Layout::ColMajor,
         UpLo::Upper,
@@ -106,7 +106,7 @@ fn hptrf_then_hptrs() {
         Complex64::new(1.0, 1.0),
         Complex64::new(3.0, 0.0),
     ];
-    let mut ipiv = vec![0_i32; 2];
+    let mut ipiv = vec![0; 2];
     hptrf::<Complex64>(Layout::ColMajor, UpLo::Upper, 2, &mut ap, &mut ipiv).unwrap();
     let mut b = vec![Complex64::new(3.0, 1.0), Complex64::new(4.0, -1.0)];
     hptrs::<Complex64>(Layout::ColMajor, UpLo::Upper, 2, 1, &ap, &ipiv, &mut b, 2).unwrap();

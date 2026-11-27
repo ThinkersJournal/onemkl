@@ -19,7 +19,7 @@ fn gesv_solves_2x2_system() {
     // Solution: x ≈ [1, 1] (since A * [1,1]ᵀ = [3, 4])
     let mut a = [2.0_f64, 1.0, 1.0, 3.0];
     let mut b = [3.0_f64, 4.0];
-    let mut ipiv = vec![0_i32; 2];
+    let mut ipiv = vec![0; 2];
 
     let mut a_view = MatrixMut::new(&mut a, 2, 2, Layout::RowMajor).unwrap();
     let mut b_view = MatrixMut::new(&mut b, 2, 1, Layout::RowMajor).unwrap();
@@ -33,7 +33,7 @@ fn getrf_then_getrs() {
     // Same system. Two-step.
     let mut a = [2.0_f64, 1.0, 1.0, 3.0];
     let mut b = [3.0_f64, 4.0];
-    let mut ipiv = vec![0_i32; 2];
+    let mut ipiv = vec![0; 2];
 
     {
         let mut a_view = MatrixMut::new(&mut a, 2, 2, Layout::RowMajor).unwrap();
@@ -52,7 +52,7 @@ fn getrf_then_getrs() {
 fn getri_inverts() {
     // A = [[2, 1], [1, 3]], A⁻¹ * [3, 4]ᵀ = [1, 1].
     let mut a = [2.0_f64, 1.0, 1.0, 3.0];
-    let mut ipiv = vec![0_i32; 2];
+    let mut ipiv = vec![0; 2];
 
     {
         let mut a_view = MatrixMut::new(&mut a, 2, 2, Layout::RowMajor).unwrap();
@@ -107,7 +107,7 @@ fn sysv_symmetric() {
     // b = [3, 3]; solve A*x = b: x = [1, 1] (since [1,2]·[1,1]=3, [2,1]·[1,1]=3)
     let mut a = [1.0_f64, 2.0, 2.0, 1.0];
     let mut b = [3.0_f64, 3.0];
-    let mut ipiv = vec![0_i32; 2];
+    let mut ipiv = vec![0; 2];
     let mut a_view = MatrixMut::new(&mut a, 2, 2, Layout::RowMajor).unwrap();
     let mut b_view = MatrixMut::new(&mut b, 2, 1, Layout::RowMajor).unwrap();
     sysv(UpLo::Upper, &mut a_view, &mut ipiv, &mut b_view).unwrap();

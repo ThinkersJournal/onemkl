@@ -4,6 +4,7 @@
 //! Verify PARDISO direct sparse solver wrappers.
 
 use approx::assert_abs_diff_eq;
+use onemkl::sys::MKL_INT;
 
 use onemkl::pardiso::{
     IndexBase, Pardiso, PardisoMatrixType, pardiso_64_raw, set_pardiso_pivot_callback,
@@ -20,9 +21,9 @@ fn solve_real_spd_3x3() {
     //
     // ia (row pointers, 1-based, length n+1=4):
     //   row 0 starts at index 1, row 1 at 3, row 2 at 5, end at 6
-    let ia = vec![1_i32, 3, 5, 6];
+    let ia = vec![1, 3, 5, 6];
     // ja (column indices, 1-based, length nnz=5)
-    let ja = vec![1_i32, 2, 2, 3, 3];
+    let ja = vec![1, 2, 2, 3, 3];
     // values (matching ja order)
     let a = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
     // RHS: A * x_true with x_true = [1, 1, 1] = [3, 2, 3]
@@ -46,8 +47,8 @@ fn solve_real_unsymmetric_3x3() {
     // row 0: cols [1, 2], values [2, 1]
     // row 1: cols [2, 3], values [3, 1]
     // row 2: cols [1, 3], values [1, 4]
-    let ia = vec![1_i32, 3, 5, 7];
-    let ja = vec![1_i32, 2, 2, 3, 1, 3];
+    let ia = vec![1, 3, 5, 7];
+    let ja = vec![1, 2, 2, 3, 1, 3];
     let a = vec![2.0_f64, 1.0, 3.0, 1.0, 1.0, 4.0];
     // x_true = [1, 1, 1]; b = A * x_true = [3, 4, 5]
     let b = vec![3.0_f64, 4.0, 5.0];
@@ -64,8 +65,8 @@ fn solve_real_unsymmetric_3x3() {
 #[test]
 fn solve_zero_indexed_csr() {
     // Same SPD as the first test but using 0-based CSR.
-    let ia = vec![0_i32, 2, 4, 5];
-    let ja = vec![0_i32, 1, 1, 2, 2];
+    let ia = vec![0, 2, 4, 5];
+    let ja = vec![0, 1, 1, 2, 2];
     let a = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
     let b = vec![3.0_f64, 2.0, 3.0];
     let mut x = vec![0.0_f64; 3];
@@ -82,8 +83,8 @@ fn solve_two_rhs() {
     // Same SPD; two right-hand sides at once.
     //   B = [[3, 6], [2, 4], [3, 6]] (column-major: [3,2,3,6,4,6])
     //   X_true = [[1, 2], [1, 2], [1, 2]]
-    let ia = vec![1_i32, 3, 5, 6];
-    let ja = vec![1_i32, 2, 2, 3, 3];
+    let ia = vec![1, 3, 5, 6];
+    let ja = vec![1, 2, 2, 3, 3];
     let a = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
     let b = vec![3.0_f64, 2.0, 3.0, 6.0, 4.0, 6.0];
     let mut x = vec![0.0_f64; 6];
@@ -100,8 +101,8 @@ fn solve_two_rhs() {
 
 #[test]
 fn second_solve_uses_cached_factorization() {
-    let ia = vec![1_i32, 3, 5, 6];
-    let ja = vec![1_i32, 2, 2, 3, 3];
+    let ia = vec![1, 3, 5, 6];
+    let ja = vec![1, 2, 2, 3, 3];
     let a = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
 
     let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd).with_indexing(IndexBase::One);
@@ -123,8 +124,8 @@ fn second_solve_uses_cached_factorization() {
 
 #[test]
 fn analyze_then_solve() {
-    let ia = vec![1_i32, 3, 5, 6];
-    let ja = vec![1_i32, 2, 2, 3, 3];
+    let ia = vec![1, 3, 5, 6];
+    let ja = vec![1, 2, 2, 3, 3];
     let a = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
 
     let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd).with_indexing(IndexBase::One);
@@ -139,8 +140,8 @@ fn analyze_then_solve() {
 #[test]
 fn get_diagonal_returns_da_match() {
     // SPD diag(1, 2, 3) — the diagonal of A is [1, 2, 3].
-    let ia = vec![1_i32, 2, 3, 4];
-    let ja = vec![1_i32, 2, 3];
+    let ia = vec![1, 2, 3, 4];
+    let ja = vec![1, 2, 3];
     let a = vec![1.0_f64, 2.0, 3.0];
 
     let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd)
@@ -189,8 +190,8 @@ fn pardiso_pivot_callback_install_and_solve() {
     // ordering and global state.
     let _ = prev;
 
-    let ia = vec![1_i32, 3, 5, 6];
-    let ja = vec![1_i32, 2, 2, 3, 3];
+    let ia = vec![1, 3, 5, 6];
+    let ja = vec![1, 2, 2, 3, 3];
     let a = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
     let b = vec![3.0_f64, 2.0, 3.0];
     let mut x = vec![0.0_f64; 3];
@@ -264,18 +265,18 @@ fn perm_records_fill_reducing_permutation() {
     // pre-allocated perm and verify after factorization that MKL
     // populated it (i.e. it's not all zeros and contains values
     // within [1, n]).
-    let ia = vec![1_i32, 3, 5, 6];
-    let ja = vec![1_i32, 2, 2, 3, 3];
+    let ia = vec![1, 3, 5, 6];
+    let ja = vec![1, 2, 2, 3, 3];
     let a = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
 
     let mut solver = Pardiso::<f64>::new(PardisoMatrixType::RealSpd).with_indexing(IndexBase::One);
-    solver.set_perm(Some(vec![0_i32; 3]));
+    solver.set_perm(Some(vec![0; 3]));
     solver.iparm()[4] = 2; // ask MKL to write its perm choice
     solver.analyze_and_factorize(3, &a, &ia, &ja).unwrap();
 
     let perm = solver.perm().expect("perm should still be present");
     // Permutation is 1-based and a permutation of [1..=n].
-    let mut sorted: Vec<i32> = perm.to_vec();
+    let mut sorted: Vec<MKL_INT> = perm.to_vec();
     sorted.sort();
     assert_eq!(sorted, vec![1, 2, 3]);
 }
@@ -286,8 +287,8 @@ fn save_then_restore_handle_roundtrips() {
     let dir_path = dir.path();
 
     // Factorize once and save.
-    let ia = vec![1_i32, 3, 5, 6];
-    let ja = vec![1_i32, 2, 2, 3, 3];
+    let ia = vec![1, 3, 5, 6];
+    let ja = vec![1, 2, 2, 3, 3];
     let a = vec![4.0_f64, -1.0, 4.0, -1.0, 4.0];
     {
         let mut solver =

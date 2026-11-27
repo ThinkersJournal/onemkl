@@ -15,16 +15,17 @@
 //!
 //! Currently double-precision only.
 
-use core::ffi::{c_int, c_void};
+use core::ffi::c_void;
 use core::ptr;
 use core::slice;
 use std::any::Any;
 use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 use std::sync::Mutex;
 
-use onemkl_sys as sys;
+use onemkl_sys::{self as sys, MKL_INT};
 
 use crate::error::{Error, Result};
+use crate::util::status_i32;
 
 /// `m * n` with overflow reported as an error (a wrapped product would let an
 /// undersized buffer pass the length check on 32-bit targets).
@@ -36,9 +37,9 @@ fn checked_len(m: usize, n: usize) -> Result<usize> {
 #[derive(Debug, Clone, Copy)]
 pub struct TrnlsOptions {
     /// Maximum number of outer iterations.
-    pub max_iterations: i32,
+    pub max_iterations: MKL_INT,
     /// Maximum number of trial step refinements per iteration.
-    pub max_trial_steps: i32,
+    pub max_trial_steps: MKL_INT,
     /// Initial trust region size.
     pub initial_trust_region: f64,
     /// Stopping tolerances `eps[0..=5]`. Each defaults to a reasonable
@@ -64,10 +65,10 @@ impl Default for TrnlsOptions {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct TrnlsResult {
     /// Number of outer iterations performed.
-    pub iterations: i32,
+    pub iterations: MKL_INT,
     /// Stopping criterion code (`st_cr` from `dtrnlsp_get`).
     /// Mirrors oneMKL's six-valued enumeration.
-    pub stopping_criterion: i32,
+    pub stopping_criterion: MKL_INT,
     /// `‖F(x₀)‖₂` — Euclidean norm of the residual at the initial
     /// guess.
     pub initial_residual_norm: f64,
@@ -98,8 +99,8 @@ where
     if x.len() != n {
         return Err(Error::InvalidArgument("x must have length n"));
     }
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let m_i: MKL_INT = m.try_into().map_err(|_| Error::DimensionOverflow)?;
 
     let mut handle: sys::_TRNSP_HANDLE_t = ptr::null_mut();
     let status = unsafe {
@@ -114,21 +115,25 @@ where
             &opts.initial_trust_region,
         )
     };
-    if status != sys::TR_SUCCESS as c_int {
-        return Err(Error::LapackComputationFailure { info: status });
+    if status != sys::TR_SUCCESS as MKL_INT {
+        return Err(Error::LapackComputationFailure {
+            info: status_i32(status),
+        });
     }
 
     let mut fvec = vec![0.0_f64; m];
     let mut fjac = vec![0.0_f64; checked_len(m, n)?];
-    let mut rci: c_int = 0;
+    let mut rci: MKL_INT = 0;
 
     let result = (|| -> Result<TrnlsResult> {
         loop {
             let status = unsafe {
                 sys::dtrnlsp_solve(&mut handle, fvec.as_mut_ptr(), fjac.as_mut_ptr(), &mut rci)
             };
-            if status != sys::TR_SUCCESS as c_int {
-                return Err(Error::LapackComputationFailure { info: status });
+            if status != sys::TR_SUCCESS as MKL_INT {
+                return Err(Error::LapackComputationFailure {
+                    info: status_i32(status),
+                });
             }
             match rci {
                 -6..=-1 => break,
@@ -136,19 +141,23 @@ where
                 1 => residual(x, &mut fvec),
                 2 => jacobian(x, &mut fjac),
                 other => {
-                    return Err(Error::LapackComputationFailure { info: other });
+                    return Err(Error::LapackComputationFailure {
+                        info: status_i32(other),
+                    });
                 }
             }
         }
 
-        let mut iters: c_int = 0;
-        let mut st_cr: c_int = 0;
+        let mut iters: MKL_INT = 0;
+        let mut st_cr: MKL_INT = 0;
         let mut r1: f64 = 0.0;
         let mut r2: f64 = 0.0;
         let status =
             unsafe { sys::dtrnlsp_get(&mut handle, &mut iters, &mut st_cr, &mut r1, &mut r2) };
-        if status != sys::TR_SUCCESS as c_int {
-            return Err(Error::LapackComputationFailure { info: status });
+        if status != sys::TR_SUCCESS as MKL_INT {
+            return Err(Error::LapackComputationFailure {
+                info: status_i32(status),
+            });
         }
         Ok(TrnlsResult {
             iterations: iters,
@@ -195,8 +204,8 @@ where
             "x, lower, and upper must each have length n",
         ));
     }
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let m_i: MKL_INT = m.try_into().map_err(|_| Error::DimensionOverflow)?;
 
     let mut handle: sys::_TRNSPBC_HANDLE_t = ptr::null_mut();
     let status = unsafe {
@@ -213,21 +222,25 @@ where
             &opts.initial_trust_region,
         )
     };
-    if status != sys::TR_SUCCESS as c_int {
-        return Err(Error::LapackComputationFailure { info: status });
+    if status != sys::TR_SUCCESS as MKL_INT {
+        return Err(Error::LapackComputationFailure {
+            info: status_i32(status),
+        });
     }
 
     let mut fvec = vec![0.0_f64; m];
     let mut fjac = vec![0.0_f64; checked_len(m, n)?];
-    let mut rci: c_int = 0;
+    let mut rci: MKL_INT = 0;
 
     let result = (|| -> Result<TrnlsResult> {
         loop {
             let status = unsafe {
                 sys::dtrnlspbc_solve(&mut handle, fvec.as_mut_ptr(), fjac.as_mut_ptr(), &mut rci)
             };
-            if status != sys::TR_SUCCESS as c_int {
-                return Err(Error::LapackComputationFailure { info: status });
+            if status != sys::TR_SUCCESS as MKL_INT {
+                return Err(Error::LapackComputationFailure {
+                    info: status_i32(status),
+                });
             }
             match rci {
                 -6..=-1 => break,
@@ -235,19 +248,23 @@ where
                 1 => residual(x, &mut fvec),
                 2 => jacobian(x, &mut fjac),
                 other => {
-                    return Err(Error::LapackComputationFailure { info: other });
+                    return Err(Error::LapackComputationFailure {
+                        info: status_i32(other),
+                    });
                 }
             }
         }
 
-        let mut iters: c_int = 0;
-        let mut st_cr: c_int = 0;
+        let mut iters: MKL_INT = 0;
+        let mut st_cr: MKL_INT = 0;
         let mut r1: f64 = 0.0;
         let mut r2: f64 = 0.0;
         let status =
             unsafe { sys::dtrnlspbc_get(&mut handle, &mut iters, &mut st_cr, &mut r1, &mut r2) };
-        if status != sys::TR_SUCCESS as c_int {
-            return Err(Error::LapackComputationFailure { info: status });
+        if status != sys::TR_SUCCESS as MKL_INT {
+            return Err(Error::LapackComputationFailure {
+                info: status_i32(status),
+            });
         }
         Ok(TrnlsResult {
             iterations: iters,
@@ -286,8 +303,8 @@ where
     if jac.len() < checked_len(m, n)? {
         return Err(Error::InvalidArgument("jac buffer is smaller than m * n"));
     }
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let m_i: MKL_INT = m.try_into().map_err(|_| Error::DimensionOverflow)?;
 
     // MKL's RCI loop perturbs `x` in place and the closure reads it between
     // calls, so MKL must get an owned, mutable buffer (writing through a
@@ -304,15 +321,17 @@ where
             &step,
         )
     };
-    if status != sys::TR_SUCCESS as c_int {
-        return Err(Error::LapackComputationFailure { info: status });
+    if status != sys::TR_SUCCESS as MKL_INT {
+        return Err(Error::LapackComputationFailure {
+            info: status_i32(status),
+        });
     }
 
     // Working buffers MKL will manage internally; we provide the
     // residual closure via the RCI loop.
     let mut f1 = vec![0.0_f64; m];
     let mut f2 = vec![0.0_f64; m];
-    let mut rci: c_int = 0;
+    let mut rci: MKL_INT = 0;
 
     // `handle` is an RAII guard: a panic in `residual` unwinds through here and
     // still frees the MKL handle.
@@ -321,8 +340,10 @@ where
             let status = unsafe {
                 sys::djacobi_solve(&mut handle.0, f1.as_mut_ptr(), f2.as_mut_ptr(), &mut rci)
             };
-            if status != sys::TR_SUCCESS as c_int {
-                return Err(Error::LapackComputationFailure { info: status });
+            if status != sys::TR_SUCCESS as MKL_INT {
+                return Err(Error::LapackComputationFailure {
+                    info: status_i32(status),
+                });
             }
             match rci {
                 0 => break,
@@ -336,7 +357,9 @@ where
                     residual(&xv, &mut f2);
                 }
                 other if other < 0 => {
-                    return Err(Error::LapackComputationFailure { info: other });
+                    return Err(Error::LapackComputationFailure {
+                        info: status_i32(other),
+                    });
                 }
                 _ => {}
             }
@@ -365,12 +388,8 @@ impl Drop for JacobiHandle {
 /// Function-pointer type for the direct-callback form of `djacobi`.
 /// MKL invokes this once per Jacobian column, passing pointers to
 /// dimensions, the perturbed `x`, and the output residual.
-pub type DjacobiCallback = unsafe extern "C" fn(
-    n: *mut core::ffi::c_int,
-    m: *mut core::ffi::c_int,
-    x: *mut f64,
-    f: *mut f64,
-);
+pub type DjacobiCallback =
+    unsafe extern "C" fn(n: *mut MKL_INT, m: *mut MKL_INT, x: *mut f64, f: *mut f64);
 
 /// Compute a numerical Jacobian using oneMKL's direct-callback form
 /// (`djacobi`). Unlike [`numerical_jacobian`], which drives MKL's
@@ -400,8 +419,8 @@ pub unsafe fn djacobi_with_callback(
     if jac.len() < checked_len(m, n)? {
         return Err(Error::InvalidArgument("jac buffer is smaller than m * n"));
     }
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let m_i: MKL_INT = m.try_into().map_err(|_| Error::DimensionOverflow)?;
     // MKL temporarily perturbs each element of `x` in place, so it gets an
     // owned buffer (writing through a pointer derived from the shared `&[f64]`
     // would be undefined behaviour).
@@ -417,8 +436,10 @@ pub unsafe fn djacobi_with_callback(
             &mut step_mut,
         )
     };
-    if status != sys::TR_SUCCESS as c_int {
-        return Err(Error::LapackComputationFailure { info: status });
+    if status != sys::TR_SUCCESS as MKL_INT {
+        return Err(Error::LapackComputationFailure {
+            info: status_i32(status),
+        });
     }
     Ok(())
 }
@@ -431,8 +452,8 @@ struct JacobixState<'a> {
 }
 
 unsafe extern "C" fn jacobix_trampoline(
-    _m: *mut c_int,
-    _n: *mut c_int,
+    _m: *mut MKL_INT,
+    _n: *mut MKL_INT,
     x: *mut f64,
     f: *mut f64,
     user: *mut c_void,
@@ -490,8 +511,8 @@ where
     if !(eps.is_finite() && eps > 0.0) {
         return Err(Error::InvalidArgument("eps must be finite and positive"));
     }
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let m_i: MKL_INT = m.try_into().map_err(|_| Error::DimensionOverflow)?;
 
     // MKL perturbs and restores `x` in place, so give it an owned copy.
     let mut xv = x.to_vec();
@@ -521,8 +542,10 @@ where
     if let Some(p) = panic {
         resume_unwind(p);
     }
-    if status != sys::TR_SUCCESS as c_int {
-        return Err(Error::LapackComputationFailure { info: status });
+    if status != sys::TR_SUCCESS as MKL_INT {
+        return Err(Error::LapackComputationFailure {
+            info: status_i32(status),
+        });
     }
     Ok(())
 }
@@ -546,7 +569,7 @@ pub enum TrnlsStep {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TrnlsCheck {
     /// Raw `info` array returned by `dtrnlsp_check`.
-    pub info: [i32; 6],
+    pub info: [MKL_INT; 6],
 }
 
 impl TrnlsCheck {
@@ -571,7 +594,7 @@ pub struct TrnlsSession {
     fjac: Vec<f64>,
     opts: Box<TrnlsOptions>,
     /// Reverse-communication state: MKL reads it back on the next call, so it must persist.
-    rci: c_int,
+    rci: MKL_INT,
     done: Option<TrnlsResult>,
 }
 
@@ -581,8 +604,8 @@ impl TrnlsSession {
         if x0.len() != n {
             return Err(Error::InvalidArgument("x0 must have length n"));
         }
-        let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let m_i: MKL_INT = m.try_into().map_err(|_| Error::DimensionOverflow)?;
         let mut s = Self {
             handle: Box::new(ptr::null_mut()),
             n,
@@ -606,10 +629,12 @@ impl TrnlsSession {
                 &s.opts.initial_trust_region,
             )
         };
-        if status != sys::TR_SUCCESS as c_int {
+        if status != sys::TR_SUCCESS as MKL_INT {
             // No handle was created: Drop must not delete it.
             *s.handle = ptr::null_mut();
-            return Err(Error::LapackComputationFailure { info: status });
+            return Err(Error::LapackComputationFailure {
+                info: status_i32(status),
+            });
         }
         Ok(s)
     }
@@ -633,9 +658,9 @@ impl TrnlsSession {
     /// Validate the Jacobian, residual and tolerances currently in the
     /// session's buffers (`dtrnlsp_check`). Call after filling both buffers.
     pub fn check(&mut self) -> Result<TrnlsCheck> {
-        let n_i = self.n as c_int;
-        let m_i = self.m as c_int;
-        let mut info = [0 as c_int; 6];
+        let n_i = self.n as MKL_INT;
+        let m_i = self.m as MKL_INT;
+        let mut info = [0 as MKL_INT; 6];
         let status = unsafe {
             sys::dtrnlsp_check(
                 &mut *self.handle,
@@ -647,8 +672,10 @@ impl TrnlsSession {
                 info.as_mut_ptr(),
             )
         };
-        if status != sys::TR_SUCCESS as c_int {
-            return Err(Error::LapackComputationFailure { info: status });
+        if status != sys::TR_SUCCESS as MKL_INT {
+            return Err(Error::LapackComputationFailure {
+                info: status_i32(status),
+            });
         }
         Ok(TrnlsCheck { info })
     }
@@ -667,20 +694,24 @@ impl TrnlsSession {
                 &mut self.rci,
             )
         };
-        if status != sys::TR_SUCCESS as c_int {
-            return Err(Error::LapackComputationFailure { info: status });
+        if status != sys::TR_SUCCESS as MKL_INT {
+            return Err(Error::LapackComputationFailure {
+                info: status_i32(status),
+            });
         }
         match self.rci {
             1 => Ok(TrnlsStep::NeedResidual),
             2 => Ok(TrnlsStep::NeedJacobian),
             -6..=0 => {
                 let (mut iters, mut st_cr, mut r1, mut r2) =
-                    (0 as c_int, 0 as c_int, 0.0_f64, 0.0_f64);
+                    (0 as MKL_INT, 0 as MKL_INT, 0.0_f64, 0.0_f64);
                 let status = unsafe {
                     sys::dtrnlsp_get(&mut *self.handle, &mut iters, &mut st_cr, &mut r1, &mut r2)
                 };
-                if status != sys::TR_SUCCESS as c_int {
-                    return Err(Error::LapackComputationFailure { info: status });
+                if status != sys::TR_SUCCESS as MKL_INT {
+                    return Err(Error::LapackComputationFailure {
+                        info: status_i32(status),
+                    });
                 }
                 let r = TrnlsResult {
                     iterations: iters,
@@ -691,7 +722,9 @@ impl TrnlsSession {
                 self.done = Some(r);
                 Ok(TrnlsStep::Done(r))
             }
-            other => Err(Error::LapackComputationFailure { info: other }),
+            other => Err(Error::LapackComputationFailure {
+                info: status_i32(other),
+            }),
         }
     }
 }
@@ -721,7 +754,7 @@ pub struct TrnlsBoundedSession {
     fjac: Vec<f64>,
     opts: Box<TrnlsOptions>,
     /// Reverse-communication state: MKL reads it back on the next call.
-    rci: c_int,
+    rci: MKL_INT,
     done: Option<TrnlsResult>,
 }
 
@@ -741,8 +774,8 @@ impl TrnlsBoundedSession {
                 "x0, lower, and upper must each have length n",
             ));
         }
-        let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let m_i: c_int = m.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let m_i: MKL_INT = m.try_into().map_err(|_| Error::DimensionOverflow)?;
         let mut s = Self {
             handle: Box::new(ptr::null_mut()),
             n,
@@ -770,9 +803,11 @@ impl TrnlsBoundedSession {
                 &s.opts.initial_trust_region,
             )
         };
-        if status != sys::TR_SUCCESS as c_int {
+        if status != sys::TR_SUCCESS as MKL_INT {
             *s.handle = ptr::null_mut();
-            return Err(Error::LapackComputationFailure { info: status });
+            return Err(Error::LapackComputationFailure {
+                info: status_i32(status),
+            });
         }
         Ok(s)
     }
@@ -795,9 +830,9 @@ impl TrnlsBoundedSession {
 
     /// Validate the buffers and bounds (`dtrnlspbc_check`); see [`TrnlsCheck`].
     pub fn check(&mut self) -> Result<TrnlsCheck> {
-        let n_i = self.n as c_int;
-        let m_i = self.m as c_int;
-        let mut info = [0 as c_int; 6];
+        let n_i = self.n as MKL_INT;
+        let m_i = self.m as MKL_INT;
+        let mut info = [0 as MKL_INT; 6];
         let status = unsafe {
             sys::dtrnlspbc_check(
                 &mut *self.handle,
@@ -811,8 +846,10 @@ impl TrnlsBoundedSession {
                 info.as_mut_ptr(),
             )
         };
-        if status != sys::TR_SUCCESS as c_int {
-            return Err(Error::LapackComputationFailure { info: status });
+        if status != sys::TR_SUCCESS as MKL_INT {
+            return Err(Error::LapackComputationFailure {
+                info: status_i32(status),
+            });
         }
         Ok(TrnlsCheck { info })
     }
@@ -831,20 +868,24 @@ impl TrnlsBoundedSession {
                 &mut self.rci,
             )
         };
-        if status != sys::TR_SUCCESS as c_int {
-            return Err(Error::LapackComputationFailure { info: status });
+        if status != sys::TR_SUCCESS as MKL_INT {
+            return Err(Error::LapackComputationFailure {
+                info: status_i32(status),
+            });
         }
         match self.rci {
             1 => Ok(TrnlsStep::NeedResidual),
             2 => Ok(TrnlsStep::NeedJacobian),
             -6..=0 => {
                 let (mut iters, mut st_cr, mut r1, mut r2) =
-                    (0 as c_int, 0 as c_int, 0.0_f64, 0.0_f64);
+                    (0 as MKL_INT, 0 as MKL_INT, 0.0_f64, 0.0_f64);
                 let status = unsafe {
                     sys::dtrnlspbc_get(&mut *self.handle, &mut iters, &mut st_cr, &mut r1, &mut r2)
                 };
-                if status != sys::TR_SUCCESS as c_int {
-                    return Err(Error::LapackComputationFailure { info: status });
+                if status != sys::TR_SUCCESS as MKL_INT {
+                    return Err(Error::LapackComputationFailure {
+                        info: status_i32(status),
+                    });
                 }
                 let r = TrnlsResult {
                     iterations: iters,
@@ -855,7 +896,9 @@ impl TrnlsBoundedSession {
                 self.done = Some(r);
                 Ok(TrnlsStep::Done(r))
             }
-            other => Err(Error::LapackComputationFailure { info: other }),
+            other => Err(Error::LapackComputationFailure {
+                info: status_i32(other),
+            }),
         }
     }
 }

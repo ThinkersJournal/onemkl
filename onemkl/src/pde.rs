@@ -27,13 +27,14 @@
 //! plan.forward(&mut f).unwrap();
 //! ```
 
-use core::ffi::c_int;
 use core::marker::PhantomData;
 use core::ptr;
+use onemkl_sys::MKL_INT;
 
 use onemkl_sys::{self as sys, DFTI_DESCRIPTOR_HANDLE};
 
 use crate::error::{Error, Result};
+use crate::util::status_i32;
 
 /// Variant of the trigonometric transform. Each maps to one of
 /// MKL's `MKL_*_TRANSFORM` constants.
@@ -55,7 +56,7 @@ pub enum TrigTransformType {
 
 impl TrigTransformType {
     #[inline]
-    fn as_int(self) -> c_int {
+    fn as_int(self) -> MKL_INT {
         let v = match self {
             Self::Sine => sys::MKL_SINE_TRANSFORM,
             Self::Cosine => sys::MKL_COSINE_TRANSFORM,
@@ -64,7 +65,7 @@ impl TrigTransformType {
             Self::Staggered2Cosine => sys::MKL_STAGGERED2_COSINE_TRANSFORM,
             Self::Staggered2Sine => sys::MKL_STAGGERED2_SINE_TRANSFORM,
         };
-        v as c_int
+        v as MKL_INT
     }
 
     /// Number of input samples expected for an `n`-point transform of
@@ -87,15 +88,15 @@ pub trait TrigTransformScalar: Copy + Default + 'static {
     ///
     /// # Safety
     ///
-    /// `n` must point to one readable `c_int` (the number of intervals, `n >= 2`) and `tt_type` to one readable `c_int` (a `MKL_*_TRANSFORM` constant). `ipar` must be valid for writes of the 128-entry integer parameter array and `dpar` for writes of the double/float parameter array MKL specifies for the transform (at least `5 * n / 2 + 2` elements; **verified** by guard-page probe, n = 64, oneMKL 2026.2, Linux x86_64: the smallest `dpar` for which init+commit+forward+backward did not fault was `n/2 + 2` (sine), `n + 2` (cosine), `3n/2 + 2` (both staggered types) and `5n/2 + 2` (both staggered2 types), so `5n/2 + 2` is the tight bound over all types; the smallest `ipar` was 15 entries, and the documented 128-entry length is kept as the safe size). `stat` must point to one writable `c_int`.
+    /// `n` must point to one readable `MKL_INT` (the number of intervals, `n >= 2`) and `tt_type` to one readable `MKL_INT` (a `MKL_*_TRANSFORM` constant). `ipar` must be valid for writes of the 128-entry integer parameter array and `dpar` for writes of the double/float parameter array MKL specifies for the transform (at least `5 * n / 2 + 2` elements; **verified** by guard-page probe, n = 64, oneMKL 2026.2, Linux x86_64: the smallest `dpar` for which init+commit+forward+backward did not fault was `n/2 + 2` (sine), `n + 2` (cosine), `3n/2 + 2` (both staggered types) and `5n/2 + 2` (both staggered2 types), so `5n/2 + 2` is the tight bound over all types; the smallest `ipar` was 15 entries, and the documented 128-entry length is kept as the safe size). `stat` must point to one writable `c_int`.
     /// Despite the `*mut` types `n` and `tt_type` are only read. The arrays must not overlap. A non-zero `*stat` reports an MKL error and the arrays must not be used further. The MKL library must be linked and usable.
     /// Transform-type constants `MKL_SINE_TRANSFORM`..`MKL_STAGGERED2_SINE_TRANSFORM` (0..=5) are declared in `mkl_trig_transforms.h`. The requirement `n >= 2` is unverified.
     unsafe fn init_trig_transform(
-        n: *mut c_int,
-        tt_type: *mut c_int,
-        ipar: *mut c_int,
+        n: *mut MKL_INT,
+        tt_type: *mut MKL_INT,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     );
     /// Raw `commit_trig_transform` call.
     ///
@@ -106,9 +107,9 @@ pub trait TrigTransformScalar: Copy + Default + 'static {
     unsafe fn commit_trig_transform(
         f: *mut Self,
         handle: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     );
     /// Raw `forward_trig_transform` call.
     ///
@@ -119,9 +120,9 @@ pub trait TrigTransformScalar: Copy + Default + 'static {
     unsafe fn forward_trig_transform(
         f: *mut Self,
         handle: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     );
     /// Raw `backward_trig_transform` call.
     ///
@@ -132,46 +133,46 @@ pub trait TrigTransformScalar: Copy + Default + 'static {
     unsafe fn backward_trig_transform(
         f: *mut Self,
         handle: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     );
 }
 
 impl TrigTransformScalar for f32 {
     unsafe fn init_trig_transform(
-        n: *mut c_int,
-        tt_type: *mut c_int,
-        ipar: *mut c_int,
+        n: *mut MKL_INT,
+        tt_type: *mut MKL_INT,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     ) {
         unsafe { sys::s_init_trig_transform(n, tt_type, ipar, dpar, stat) }
     }
     unsafe fn commit_trig_transform(
         f: *mut Self,
         handle: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     ) {
         unsafe { sys::s_commit_trig_transform(f, handle, ipar, dpar, stat) }
     }
     unsafe fn forward_trig_transform(
         f: *mut Self,
         handle: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     ) {
         unsafe { sys::s_forward_trig_transform(f, handle, ipar, dpar, stat) }
     }
     unsafe fn backward_trig_transform(
         f: *mut Self,
         handle: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     ) {
         unsafe { sys::s_backward_trig_transform(f, handle, ipar, dpar, stat) }
     }
@@ -179,61 +180,63 @@ impl TrigTransformScalar for f32 {
 
 impl TrigTransformScalar for f64 {
     unsafe fn init_trig_transform(
-        n: *mut c_int,
-        tt_type: *mut c_int,
-        ipar: *mut c_int,
+        n: *mut MKL_INT,
+        tt_type: *mut MKL_INT,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     ) {
         unsafe { sys::d_init_trig_transform(n, tt_type, ipar, dpar, stat) }
     }
     unsafe fn commit_trig_transform(
         f: *mut Self,
         handle: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     ) {
         unsafe { sys::d_commit_trig_transform(f, handle, ipar, dpar, stat) }
     }
     unsafe fn forward_trig_transform(
         f: *mut Self,
         handle: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     ) {
         unsafe { sys::d_forward_trig_transform(f, handle, ipar, dpar, stat) }
     }
     unsafe fn backward_trig_transform(
         f: *mut Self,
         handle: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     ) {
         unsafe { sys::d_backward_trig_transform(f, handle, ipar, dpar, stat) }
     }
 }
 
 #[inline]
-fn check_tr(stat: c_int) -> Result<()> {
+fn check_tr(stat: MKL_INT) -> Result<()> {
     // The trig transform routines return 0 on success (standard
     // convention), not TR_SUCCESS = 1501 (which is the optimization
     // routines' convention).
     if stat == 0 {
         Ok(())
     } else {
-        Err(Error::LapackComputationFailure { info: stat })
+        Err(Error::LapackComputationFailure {
+            info: status_i32(stat),
+        })
     }
 }
 
 /// An owned trigonometric transform plan.
 pub struct TrigTransform<T: TrigTransformScalar> {
     handle: DFTI_DESCRIPTOR_HANDLE,
-    ipar: Vec<c_int>,
+    ipar: Vec<MKL_INT>,
     dpar: Vec<T>,
-    n: c_int,
+    n: MKL_INT,
     transform_type: TrigTransformType,
     _marker: PhantomData<T>,
 }
@@ -250,13 +253,13 @@ impl<T: TrigTransformScalar> TrigTransform<T> {
         if n == 0 {
             return Err(Error::InvalidArgument("n must be ≥ 1"));
         }
-        let mut n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let mut tt_int: c_int = transform_type.as_int();
+        let mut n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let mut tt_int: MKL_INT = transform_type.as_int();
         // Allocate ipar of size 128 and dpar generously sized to fit
         // the largest variant's workspace.
-        let mut ipar: Vec<c_int> = vec![0; 128];
+        let mut ipar: Vec<MKL_INT> = vec![0; 128];
         let mut dpar: Vec<T> = vec![T::default(); 5 * n + 2];
-        let mut stat: c_int = 0;
+        let mut stat: MKL_INT = 0;
 
         unsafe {
             T::init_trig_transform(
@@ -311,7 +314,7 @@ impl<T: TrigTransformScalar> TrigTransform<T> {
                 "buffer too small for the trig transform",
             ));
         }
-        let mut stat: c_int = 0;
+        let mut stat: MKL_INT = 0;
         unsafe {
             T::forward_trig_transform(
                 f.as_mut_ptr(),
@@ -332,7 +335,7 @@ impl<T: TrigTransformScalar> TrigTransform<T> {
                 "buffer too small for the trig transform",
             ));
         }
-        let mut stat: c_int = 0;
+        let mut stat: MKL_INT = 0;
         unsafe {
             T::backward_trig_transform(
                 f.as_mut_ptr(),
@@ -349,7 +352,7 @@ impl<T: TrigTransformScalar> TrigTransform<T> {
 impl<T: TrigTransformScalar> Drop for TrigTransform<T> {
     fn drop(&mut self) {
         if !self.handle.is_null() {
-            let mut stat: c_int = 0;
+            let mut stat: MKL_INT = 0;
             unsafe {
                 sys::free_trig_transform(&mut self.handle, self.ipar.as_mut_ptr(), &mut stat);
             }
@@ -399,13 +402,13 @@ pub trait HelmholtzScalar: Copy + Default + 'static {
         bx: *const Self,
         ay: *const Self,
         by: *const Self,
-        nx: *const c_int,
-        ny: *const c_int,
+        nx: *const MKL_INT,
+        ny: *const MKL_INT,
         bc: *const core::ffi::c_char,
         q: *const Self,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     );
     #[allow(
         clippy::too_many_arguments,
@@ -418,9 +421,9 @@ pub trait HelmholtzScalar: Copy + Default + 'static {
         bd_ay: *const Self,
         bd_by: *const Self,
         handle: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     );
     #[allow(
         clippy::too_many_arguments,
@@ -433,86 +436,86 @@ pub trait HelmholtzScalar: Copy + Default + 'static {
         bd_ay: *const Self,
         bd_by: *const Self,
         handle: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *const Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     );
     unsafe fn init_3d(
         lim: [*const Self; 6],
-        n: [*const c_int; 3],
+        n: [*const MKL_INT; 3],
         bc: *const core::ffi::c_char,
         q: *const Self,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     );
     unsafe fn commit_3d(
         f: *mut Self,
         bd: [*const Self; 6],
         xh: *mut DFTI_DESCRIPTOR_HANDLE,
         yh: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     );
     unsafe fn solve_3d(
         f: *mut Self,
         bd: [*const Self; 6],
         xh: *mut DFTI_DESCRIPTOR_HANDLE,
         yh: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *const Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     );
     unsafe fn init_sph(
         lim: [*const Self; 4],
-        np: *const c_int,
-        nt: *const c_int,
+        np: *const MKL_INT,
+        nt: *const MKL_INT,
         q: *const Self,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     );
     unsafe fn commit_sph(
         f: *mut Self,
         h1: *mut DFTI_DESCRIPTOR_HANDLE,
         h2: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     );
     unsafe fn solve_sph(
         f: *mut Self,
         h1: *mut DFTI_DESCRIPTOR_HANDLE,
         h2: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     );
     unsafe fn init_sph_np(
         lim: [*const Self; 4],
-        np: *const c_int,
-        nt: *const c_int,
+        np: *const MKL_INT,
+        nt: *const MKL_INT,
         q: *const Self,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     );
     unsafe fn commit_sph_np(
         f: *mut Self,
         h: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     );
     unsafe fn solve_sph_np(
         f: *mut Self,
         h: *mut DFTI_DESCRIPTOR_HANDLE,
-        ipar: *mut c_int,
+        ipar: *mut MKL_INT,
         dpar: *mut Self,
-        stat: *mut c_int,
+        stat: *mut MKL_INT,
     );
-    unsafe fn free_sph_np(h: *mut DFTI_DESCRIPTOR_HANDLE, ipar: *mut c_int, stat: *mut c_int);
+    unsafe fn free_sph_np(h: *mut DFTI_DESCRIPTOR_HANDLE, ipar: *mut MKL_INT, stat: *mut MKL_INT);
 }
 
 macro_rules! impl_helmholtz_scalar {
@@ -529,13 +532,13 @@ macro_rules! impl_helmholtz_scalar {
                 bx: *const Self,
                 ay: *const Self,
                 by: *const Self,
-                nx: *const c_int,
-                ny: *const c_int,
+                nx: *const MKL_INT,
+                ny: *const MKL_INT,
                 bc: *const core::ffi::c_char,
                 q: *const Self,
-                ipar: *mut c_int,
+                ipar: *mut MKL_INT,
                 dpar: *mut Self,
-                stat: *mut c_int,
+                stat: *mut MKL_INT,
             ) {
                 unsafe { sys::$init(ax, bx, ay, by, nx, ny, bc, q, ipar, dpar, stat) }
             }
@@ -546,9 +549,9 @@ macro_rules! impl_helmholtz_scalar {
                 bd_ay: *const Self,
                 bd_by: *const Self,
                 handle: *mut DFTI_DESCRIPTOR_HANDLE,
-                ipar: *mut c_int,
+                ipar: *mut MKL_INT,
                 dpar: *mut Self,
-                stat: *mut c_int,
+                stat: *mut MKL_INT,
             ) {
                 unsafe { sys::$commit(f, bd_ax, bd_bx, bd_ay, bd_by, handle, ipar, dpar, stat) }
             }
@@ -559,20 +562,20 @@ macro_rules! impl_helmholtz_scalar {
                 bd_ay: *const Self,
                 bd_by: *const Self,
                 handle: *mut DFTI_DESCRIPTOR_HANDLE,
-                ipar: *mut c_int,
+                ipar: *mut MKL_INT,
                 dpar: *const Self,
-                stat: *mut c_int,
+                stat: *mut MKL_INT,
             ) {
                 unsafe { sys::$solve(f, bd_ax, bd_bx, bd_ay, bd_by, handle, ipar, dpar, stat) }
             }
             unsafe fn init_3d(
                 l: [*const Self; 6],
-                n: [*const c_int; 3],
+                n: [*const MKL_INT; 3],
                 bc: *const core::ffi::c_char,
                 q: *const Self,
-                ipar: *mut c_int,
+                ipar: *mut MKL_INT,
                 dpar: *mut Self,
-                stat: *mut c_int,
+                stat: *mut MKL_INT,
             ) {
                 unsafe {
                     sys::$init3(
@@ -586,9 +589,9 @@ macro_rules! impl_helmholtz_scalar {
                 b: [*const Self; 6],
                 xh: *mut DFTI_DESCRIPTOR_HANDLE,
                 yh: *mut DFTI_DESCRIPTOR_HANDLE,
-                ipar: *mut c_int,
+                ipar: *mut MKL_INT,
                 dpar: *mut Self,
-                stat: *mut c_int,
+                stat: *mut MKL_INT,
             ) {
                 unsafe {
                     sys::$commit3(
@@ -601,9 +604,9 @@ macro_rules! impl_helmholtz_scalar {
                 b: [*const Self; 6],
                 xh: *mut DFTI_DESCRIPTOR_HANDLE,
                 yh: *mut DFTI_DESCRIPTOR_HANDLE,
-                ipar: *mut c_int,
+                ipar: *mut MKL_INT,
                 dpar: *const Self,
-                stat: *mut c_int,
+                stat: *mut MKL_INT,
             ) {
                 unsafe {
                     sys::$solve3(
@@ -613,12 +616,12 @@ macro_rules! impl_helmholtz_scalar {
             }
             unsafe fn init_sph(
                 l: [*const Self; 4],
-                np: *const c_int,
-                nt: *const c_int,
+                np: *const MKL_INT,
+                nt: *const MKL_INT,
                 q: *const Self,
-                ipar: *mut c_int,
+                ipar: *mut MKL_INT,
                 dpar: *mut Self,
-                stat: *mut c_int,
+                stat: *mut MKL_INT,
             ) {
                 unsafe { sys::$inits(l[0], l[1], l[2], l[3], np, nt, q, ipar, dpar, stat) }
             }
@@ -626,9 +629,9 @@ macro_rules! impl_helmholtz_scalar {
                 f: *mut Self,
                 h1: *mut DFTI_DESCRIPTOR_HANDLE,
                 h2: *mut DFTI_DESCRIPTOR_HANDLE,
-                ipar: *mut c_int,
+                ipar: *mut MKL_INT,
                 dpar: *mut Self,
-                stat: *mut c_int,
+                stat: *mut MKL_INT,
             ) {
                 unsafe { sys::$commits(f, h1, h2, ipar, dpar, stat) }
             }
@@ -636,45 +639,45 @@ macro_rules! impl_helmholtz_scalar {
                 f: *mut Self,
                 h1: *mut DFTI_DESCRIPTOR_HANDLE,
                 h2: *mut DFTI_DESCRIPTOR_HANDLE,
-                ipar: *mut c_int,
+                ipar: *mut MKL_INT,
                 dpar: *mut Self,
-                stat: *mut c_int,
+                stat: *mut MKL_INT,
             ) {
                 unsafe { sys::$solves(f, h1, h2, ipar, dpar, stat) }
             }
             unsafe fn init_sph_np(
                 l: [*const Self; 4],
-                np: *const c_int,
-                nt: *const c_int,
+                np: *const MKL_INT,
+                nt: *const MKL_INT,
                 q: *const Self,
-                ipar: *mut c_int,
+                ipar: *mut MKL_INT,
                 dpar: *mut Self,
-                stat: *mut c_int,
+                stat: *mut MKL_INT,
             ) {
                 unsafe { sys::$initn(l[0], l[1], l[2], l[3], np, nt, q, ipar, dpar, stat) }
             }
             unsafe fn commit_sph_np(
                 f: *mut Self,
                 h: *mut DFTI_DESCRIPTOR_HANDLE,
-                ipar: *mut c_int,
+                ipar: *mut MKL_INT,
                 dpar: *mut Self,
-                stat: *mut c_int,
+                stat: *mut MKL_INT,
             ) {
                 unsafe { sys::$commitn(f, h, ipar, dpar, stat) }
             }
             unsafe fn solve_sph_np(
                 f: *mut Self,
                 h: *mut DFTI_DESCRIPTOR_HANDLE,
-                ipar: *mut c_int,
+                ipar: *mut MKL_INT,
                 dpar: *mut Self,
-                stat: *mut c_int,
+                stat: *mut MKL_INT,
             ) {
                 unsafe { sys::$solven(f, h, ipar, dpar, stat) }
             }
             unsafe fn free_sph_np(
                 h: *mut DFTI_DESCRIPTOR_HANDLE,
-                ipar: *mut c_int,
-                stat: *mut c_int,
+                ipar: *mut MKL_INT,
+                stat: *mut MKL_INT,
             ) {
                 unsafe { sys::free_sph_np(h, ipar, stat) }
             }
@@ -794,7 +797,7 @@ fn check_pairs(bc: &[Boundary]) -> Result<()> {
 /// rescales the result.
 pub struct Helmholtz2D<T: HelmholtzScalar> {
     handle: DFTI_DESCRIPTOR_HANDLE,
-    ipar: Vec<c_int>,
+    ipar: Vec<MKL_INT>,
     dpar: Vec<T>,
     nx: usize,
     ny: usize,
@@ -825,8 +828,8 @@ impl<T: HelmholtzScalar> Helmholtz2D<T> {
             ));
         }
         check_pairs(&bc)?;
-        let nx_i: c_int = nx.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let ny_i: c_int = ny.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let nx_i: MKL_INT = nx.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let ny_i: MKL_INT = ny.try_into().map_err(|_| Error::DimensionOverflow)?;
         let bc_c: [core::ffi::c_char; 5] = [
             bc[0].as_char() as _,
             bc[1].as_char() as _,
@@ -834,10 +837,10 @@ impl<T: HelmholtzScalar> Helmholtz2D<T> {
             bc[3].as_char() as _,
             0,
         ];
-        let mut ipar: Vec<c_int> = vec![0; 128];
+        let mut ipar: Vec<MKL_INT> = vec![0; 128];
         // MKL documents 5*nx/2 + 7*ny/2 + 9 for dpar; pad generously.
         let mut dpar: Vec<T> = vec![T::default(); 5 * nx / 2 + 7 * ny / 2 + 64];
-        let mut stat: c_int = 0;
+        let mut stat: MKL_INT = 0;
         unsafe {
             T::init_2d(
                 &ax,
@@ -934,7 +937,7 @@ impl<T: HelmholtzScalar> Helmholtz2D<T> {
         }
         let zeros: Vec<T> = vec![T::default(); nx.max(ny) + 1];
         let zp = zeros.as_ptr();
-        let mut stat: c_int = 0;
+        let mut stat: MKL_INT = 0;
         if !self.committed {
             let mut probe: Vec<T> = f[..self.grid_len()].to_vec();
             unsafe {
@@ -998,7 +1001,7 @@ impl<T: HelmholtzScalar> Drop for Helmholtz2D<T> {
         if self.handle.is_null() {
             return;
         }
-        let mut stat: c_int = 0;
+        let mut stat: MKL_INT = 0;
         unsafe {
             sys::free_helmholtz_2d(&mut self.handle, self.ipar.as_mut_ptr(), &mut stat);
         }
@@ -1018,7 +1021,7 @@ impl<T: HelmholtzScalar> Drop for Helmholtz2D<T> {
 pub struct Helmholtz3D<T: HelmholtzScalar> {
     xh: DFTI_DESCRIPTOR_HANDLE,
     yh: DFTI_DESCRIPTOR_HANDLE,
-    ipar: Vec<c_int>,
+    ipar: Vec<MKL_INT>,
     dpar: Vec<T>,
     n: [usize; 3],
     h: [f64; 3],
@@ -1050,9 +1053,9 @@ impl<T: HelmholtzScalar> Helmholtz3D<T> {
             ));
         }
         check_pairs(&bc)?;
-        let nx_i: c_int = nx.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let ny_i: c_int = ny.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let nz_i: c_int = nz.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let nx_i: MKL_INT = nx.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let ny_i: MKL_INT = ny.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let nz_i: MKL_INT = nz.try_into().map_err(|_| Error::DimensionOverflow)?;
         let bc_c: [core::ffi::c_char; 7] = [
             bc[0].as_char() as _,
             bc[1].as_char() as _,
@@ -1062,14 +1065,14 @@ impl<T: HelmholtzScalar> Helmholtz3D<T> {
             bc[5].as_char() as _,
             0,
         ];
-        let mut ipar: Vec<c_int> = vec![0; 128];
+        let mut ipar: Vec<MKL_INT> = vec![0; 128];
         // MKL's 3-D dpar size is quadratic in the grid; cover the largest
         // face product generously (not MKL's documented formula).
         let face = ((nx + 1) * (ny + 1))
             .max((ny + 1) * (nz + 1))
             .max((nx + 1) * (nz + 1));
         let mut dpar: Vec<T> = vec![T::default(); 7 * face + 40 * (nx + ny + nz) + 200];
-        let mut stat: c_int = 0;
+        let mut stat: MKL_INT = 0;
         unsafe {
             T::init_3d(
                 [&ax, &bx, &ay, &by, &az, &bz],
@@ -1192,7 +1195,7 @@ impl<T: HelmholtzScalar> Helmholtz3D<T> {
         }
         let zeros: Vec<T> = vec![T::default(); wx.max(wy) * (nz + 1).max(wx.max(wy))];
         let zp = [zeros.as_ptr(); 6];
-        let mut stat: c_int = 0;
+        let mut stat: MKL_INT = 0;
         if !self.committed {
             let mut probe: Vec<T> = f[..self.grid_len()].to_vec();
             unsafe {
@@ -1258,7 +1261,7 @@ impl<T: HelmholtzScalar> Drop for Helmholtz3D<T> {
         if self.xh.is_null() && self.yh.is_null() {
             return;
         }
-        let mut stat: c_int = 0;
+        let mut stat: MKL_INT = 0;
         unsafe {
             sys::free_helmholtz_3d(
                 &mut self.xh,
@@ -1288,7 +1291,7 @@ impl<T: HelmholtzScalar> Drop for Helmholtz3D<T> {
 pub struct SphericalHelmholtz<T: HelmholtzScalar> {
     h1: DFTI_DESCRIPTOR_HANDLE,
     h2: DFTI_DESCRIPTOR_HANDLE,
-    ipar: Vec<c_int>,
+    ipar: Vec<MKL_INT>,
     dpar: Vec<T>,
     np: usize,
     nt: usize,
@@ -1304,18 +1307,18 @@ impl<T: HelmholtzScalar> SphericalHelmholtz<T> {
         if np < 4 || !np.is_multiple_of(2) || nt < 2 {
             return Err(Error::InvalidArgument("np must be even and ≥ 4, nt ≥ 2"));
         }
-        let np_i: c_int = np.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let nt_i: c_int = nt.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let np_i: MKL_INT = np.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let nt_i: MKL_INT = nt.try_into().map_err(|_| Error::DimensionOverflow)?;
         let lim = [
             T::from_f64(0.0),
             T::from_f64(2.0 * core::f64::consts::PI),
             T::from_f64(0.0),
             T::from_f64(core::f64::consts::PI),
         ];
-        let mut ipar: Vec<c_int> = vec![0; 128];
+        let mut ipar: Vec<MKL_INT> = vec![0; 128];
         // Documented size is 5*np/2 + nt + 10; pad generously.
         let mut dpar: Vec<T> = vec![T::default(); 4 * (5 * np / 2 + nt + 10) + 200];
-        let mut stat: c_int = 0;
+        let mut stat: MKL_INT = 0;
         unsafe {
             T::init_sph(
                 [&lim[0], &lim[1], &lim[2], &lim[3]],
@@ -1364,7 +1367,7 @@ impl<T: HelmholtzScalar> SphericalHelmholtz<T> {
                 *v = T::from_f64(-ht * ht * weight * v.to_f64());
             }
         }
-        let mut stat: c_int = 0;
+        let mut stat: MKL_INT = 0;
         if !self.committed {
             let mut probe: Vec<T> = f[..self.grid_len()].to_vec();
             unsafe {
@@ -1399,7 +1402,7 @@ impl<T: HelmholtzScalar> Drop for SphericalHelmholtz<T> {
         if self.h1.is_null() && self.h2.is_null() {
             return;
         }
-        let mut stat: c_int = 0;
+        let mut stat: MKL_INT = 0;
         unsafe {
             sys::free_sph_p(
                 &mut self.h1,
@@ -1435,7 +1438,7 @@ impl<T: HelmholtzScalar> Drop for SphericalHelmholtz<T> {
 /// boundary output. The mapping is `f = −hθ²·sinθⱼ·F` plus that lift.
 pub struct SphericalPatchHelmholtz<T: HelmholtzScalar> {
     h: DFTI_DESCRIPTOR_HANDLE,
-    ipar: Vec<c_int>,
+    ipar: Vec<MKL_INT>,
     dpar: Vec<T>,
     np: usize,
     nt: usize,
@@ -1459,17 +1462,17 @@ impl<T: HelmholtzScalar> SphericalPatchHelmholtz<T> {
         {
             return Err(Error::InvalidArgument("need ap < bp and 0 < at < bt < pi"));
         }
-        let np_i: c_int = np.try_into().map_err(|_| Error::DimensionOverflow)?;
-        let nt_i: c_int = nt.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let np_i: MKL_INT = np.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let nt_i: MKL_INT = nt.try_into().map_err(|_| Error::DimensionOverflow)?;
         let lim = [
             T::from_f64(ap),
             T::from_f64(bp),
             T::from_f64(at),
             T::from_f64(bt),
         ];
-        let mut ipar: Vec<c_int> = vec![0; 128];
+        let mut ipar: Vec<MKL_INT> = vec![0; 128];
         let mut dpar: Vec<T> = vec![T::default(); 4 * (5 * np / 2 + nt + 10) + 200];
-        let mut stat: c_int = 0;
+        let mut stat: MKL_INT = 0;
         unsafe {
             T::init_sph_np(
                 [&lim[0], &lim[1], &lim[2], &lim[3]],
@@ -1534,7 +1537,7 @@ impl<T: HelmholtzScalar> SphericalPatchHelmholtz<T> {
                 rhs[i + j * w] = T::from_f64(v);
             }
         }
-        let mut stat: c_int = 0;
+        let mut stat: MKL_INT = 0;
         if !self.committed {
             let mut probe = rhs.clone();
             unsafe {
@@ -1573,7 +1576,7 @@ impl<T: HelmholtzScalar> Drop for SphericalPatchHelmholtz<T> {
         if self.h.is_null() {
             return;
         }
-        let mut stat: c_int = 0;
+        let mut stat: MKL_INT = 0;
         unsafe { T::free_sph_np(&mut self.h, self.ipar.as_mut_ptr(), &mut stat) };
     }
 }

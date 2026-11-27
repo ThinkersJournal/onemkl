@@ -11,8 +11,10 @@
 //! and [`hermite`](CubicSpline1d::hermite) (which takes user-supplied
 //! first derivatives at each knot).
 
-use core::ffi::c_int;
+use core::ffi::{c_int, c_longlong, c_void};
 use core::ptr;
+use std::any::Any;
+use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 
 use onemkl_sys::{self as sys, DFTaskPtr};
 
@@ -118,6 +120,119 @@ pub trait DataFittingScalar: Copy + 'static {
         r: *mut Self,
         rhint: c_int,
     ) -> c_int;
+    /// Raw `df_integrate_ex_1d` call with the integration call-backs of
+    /// `args` (see [`IntegrateExArgs`]); a panic inside a call-back is caught
+    /// at the C boundary and left in `args.panic` for the caller to resume.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be a live `DFTaskPtr` from `df_new_task_1d`, not used by
+    /// another thread during the call. `args.llim` and `args.rlim` must each
+    /// hold `args.nlim` values and `args.r` must be valid for writes of
+    /// `args.nlim` elements (`ny` is 1), none overlapping a task-registered
+    /// buffer. The call-backs run on the calling thread.
+    /// **Measured** on oneMKL 2026.2 (`tools/size-probes/df_probe3.c`): one
+    /// call-back call per limit piece with `n = 1`, 1-based cell arguments, a
+    /// positive status returned as the routine status with the result kept, a
+    /// negative one returned with `r` untouched.
+    unsafe fn df_integrate_ex_1d(task: DFTaskPtr, args: &mut IntegrateExArgs<'_, Self>) -> c_int;
+}
+
+/// The data a user-defined integration call-back receives for one piece of
+/// an integration interval (`df?IntegrCallBack`). Cell indices are the 1-based
+/// ones oneMKL passes (0 left of the interpolation interval, `nx` at or
+/// right of its end).
+pub struct IntegrationPieces<'a, T> {
+    /// Cells containing the left limits.
+    pub left_cells: &'a [i64],
+    /// Left integration limits.
+    pub left_limits: &'a [T],
+    /// Cells containing the right limits.
+    pub right_cells: &'a [i64],
+    /// Right integration limits.
+    pub right_limits: &'a [T],
+    /// Where to write one integral per limit pair.
+    pub out: &'a mut [T],
+}
+
+/// A user-defined integration call-back: fill `out` and return 0, a negative
+/// error code, or a positive warning code.
+pub type IntegrationCallback<'a, T> = &'a mut dyn FnMut(IntegrationPieces<'_, T>) -> i32;
+
+/// The three optional call-backs of `df?IntegrateEx1D`. A `None` entry uses
+/// the library's own spline integration for that region.
+pub struct IntegrateCallbacks<'a, T> {
+    /// For the part of an interval left of the interpolation interval.
+    pub left: Option<IntegrationCallback<'a, T>>,
+    /// For the part right of it.
+    pub right: Option<IntegrationCallback<'a, T>>,
+    /// For the part inside it.
+    pub interior: Option<IntegrationCallback<'a, T>>,
+}
+
+impl<T> Default for IntegrateCallbacks<'_, T> {
+    fn default() -> Self {
+        Self {
+            left: None,
+            right: None,
+            interior: None,
+        }
+    }
+}
+
+/// Arguments of [`DataFittingScalar::df_integrate_ex_1d`], gathered in one
+/// struct so the raw call stays within clippy's argument limit.
+#[doc(hidden)]
+pub struct IntegrateExArgs<'a, T: DataFittingScalar> {
+    pub nlim: c_int,
+    pub llim: *const T,
+    pub rlim: *const T,
+    pub r: *mut T,
+    pub callbacks: IntegrateCallbacks<'a, T>,
+    /// Set when a call-back panicked.
+    pub panic: Option<Box<dyn Any + Send>>,
+}
+
+struct CbSlot<'a, T> {
+    f: IntegrationCallback<'a, T>,
+    panic: Option<Box<dyn Any + Send>>,
+}
+
+/// Shared body of the C trampolines.
+///
+/// # Safety
+///
+/// The pointers are those oneMKL passes to an integration call-back: `n`
+/// points to the number of pairs and each array holds that many elements;
+/// `user` is the `CbSlot` passed with the call-back.
+unsafe fn run_integr_callback<T>(
+    n: *mut c_longlong,
+    lcell: *mut c_longlong,
+    llim: *mut T,
+    rcell: *mut c_longlong,
+    rlim: *mut T,
+    r: *mut T,
+    user: *mut c_void,
+) -> c_int {
+    // SAFETY: per the contract above.
+    unsafe {
+        let slot = &mut *user.cast::<CbSlot<'_, T>>();
+        let n = usize::try_from(*n).unwrap_or(0);
+        let pieces = IntegrationPieces {
+            left_cells: core::slice::from_raw_parts(lcell, n),
+            left_limits: core::slice::from_raw_parts(llim, n),
+            right_cells: core::slice::from_raw_parts(rcell, n),
+            right_limits: core::slice::from_raw_parts(rlim, n),
+            out: core::slice::from_raw_parts_mut(r, n),
+        };
+        match catch_unwind(AssertUnwindSafe(|| (slot.f)(pieces))) {
+            Ok(status) => status,
+            Err(payload) => {
+                slot.panic = Some(payload);
+                -1
+            }
+        }
+    }
 }
 
 macro_rules! impl_data_fitting_real {
@@ -125,6 +240,7 @@ macro_rules! impl_data_fitting_real {
         new_task=$new:ident, edit_spline=$edit:ident,
         construct=$ctor:ident, interpolate=$interp:ident,
         integrate=$integ:ident,
+        integrate_ex=$integ_ex:ident, integr_cb=$cbty:ident,
     ) => {
         impl DataFittingScalar for $ty {
             unsafe fn df_new_task_1d(
@@ -209,6 +325,74 @@ macro_rules! impl_data_fitting_real {
                     )
                 }
             }
+            unsafe fn df_integrate_ex_1d(
+                task: DFTaskPtr,
+                args: &mut IntegrateExArgs<'_, Self>,
+            ) -> c_int {
+                #[allow(
+                    clippy::too_many_arguments,
+                    reason = "mirrors the oneMKL C call-back typedef df?IntegrCallBack argument for argument"
+                )]
+                unsafe extern "C" fn tramp(
+                    n: *mut c_longlong,
+                    lcell: *mut c_longlong,
+                    llim: *mut $ty,
+                    rcell: *mut c_longlong,
+                    rlim: *mut $ty,
+                    r: *mut $ty,
+                    user: *mut c_void,
+                    _library_params: *mut sys::dfIntegrCallBackLibraryParams,
+                ) -> c_int {
+                    // SAFETY: oneMKL passes valid arguments and the slot pointer given below.
+                    unsafe { run_integr_callback::<$ty>(n, lcell, llim, rcell, rlim, r, user) }
+                }
+                let mut left = args.callbacks.left.take().map(|f| CbSlot { f, panic: None });
+                let mut right = args.callbacks.right.take().map(|f| CbSlot { f, panic: None });
+                let mut inside = args.callbacks.interior.take().map(|f| CbSlot { f, panic: None });
+                fn slot_ptr<T>(s: &mut Option<CbSlot<'_, T>>) -> *const c_void {
+                    s.as_mut()
+                        .map_or(ptr::null(), |s| ptr::from_mut(s).cast_const().cast())
+                }
+                let cb = |present: bool| -> sys::$cbty { if present { Some(tramp) } else { None } };
+                let (lcb, rcb, icb) = (
+                    cb(left.is_some()),
+                    cb(right.is_some()),
+                    cb(inside.is_some()),
+                );
+                let (lp, rp, ip) = (
+                    slot_ptr(&mut left),
+                    slot_ptr(&mut right),
+                    slot_ptr(&mut inside),
+                );
+                let status = unsafe {
+                    sys::$integ_ex(
+                        task,
+                        sys::DF_METHOD_PP as c_int,
+                        args.nlim,
+                        args.llim,
+                        sys::DF_NO_HINT as c_int,
+                        args.rlim,
+                        sys::DF_NO_HINT as c_int,
+                        ptr::null(),
+                        ptr::null(),
+                        args.r,
+                        sys::DF_NO_HINT as c_int,
+                        lcb,
+                        lp,
+                        rcb,
+                        rp,
+                        icb,
+                        ip,
+                        None,
+                        ptr::null(),
+                    )
+                };
+                args.panic = left
+                    .and_then(|s| s.panic)
+                    .or_else(|| right.and_then(|s| s.panic))
+                    .or_else(|| inside.and_then(|s| s.panic));
+                status
+            }
         }
     };
 }
@@ -220,6 +404,8 @@ impl_data_fitting_real!(
     construct = dfsConstruct1D,
     interpolate = dfsInterpolate1D,
     integrate = dfsIntegrate1D,
+    integrate_ex = dfsIntegrateEx1D,
+    integr_cb = dfsIntegrCallBack,
 );
 impl_data_fitting_real!(
     f64,
@@ -228,6 +414,8 @@ impl_data_fitting_real!(
     construct = dfdConstruct1D,
     interpolate = dfdInterpolate1D,
     integrate = dfdIntegrate1D,
+    integrate_ex = dfdIntegrateEx1D,
+    integr_cb = dfdIntegrCallBack,
 );
 
 // Note: oneMKL's data-fitting routines expose only real (`?s` / `?d`)
@@ -616,6 +804,25 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
         check_df(status)?;
         Ok(out)
     }
+
+    /// Integrate like [`integrate`](Self::integrate), but with user-defined
+    /// call-backs for the part of each interval left of, right of and inside
+    /// the interpolation interval (`df?IntegrateEx1D`); a `None` call-back
+    /// uses the library's own integration for that region. A negative
+    /// call-back status becomes an error, a positive one is a warning and the
+    /// result is kept; a panic in a call-back is resumed here once oneMKL has
+    /// returned. See `docs/DATA-FITTING-FACTS.md` for the measured details.
+    pub fn integrate_with_callbacks(
+        &self,
+        left: &[T],
+        right: &[T],
+        callbacks: IntegrateCallbacks<'_, T>,
+    ) -> Result<Vec<T>>
+    where
+        T: Default,
+    {
+        integrate_ex_impl(self.task, left, right, callbacks)
+    }
 }
 
 impl<T: DataFittingScalar> Drop for CubicSpline1d<T> {
@@ -763,6 +970,25 @@ impl<T: DataFittingScalar + Default> LinearSpline1d<T> {
         })?;
         Ok(out)
     }
+
+    /// Integrate like [`integrate`](Self::integrate), but with user-defined
+    /// call-backs for the part of each interval left of, right of and inside
+    /// the interpolation interval (`df?IntegrateEx1D`); a `None` call-back
+    /// uses the library's own integration for that region. A negative
+    /// call-back status becomes an error, a positive one is a warning and the
+    /// result is kept; a panic in a call-back is resumed here once oneMKL has
+    /// returned. See `docs/DATA-FITTING-FACTS.md` for the measured details.
+    pub fn integrate_with_callbacks(
+        &self,
+        left: &[T],
+        right: &[T],
+        callbacks: IntegrateCallbacks<'_, T>,
+    ) -> Result<Vec<T>>
+    where
+        T: Default,
+    {
+        integrate_ex_impl(self.task, left, right, callbacks)
+    }
 }
 
 impl<T: DataFittingScalar> Drop for LinearSpline1d<T> {
@@ -776,6 +1002,41 @@ impl<T: DataFittingScalar> Drop for LinearSpline1d<T> {
 }
 
 #[inline]
+fn integrate_ex_impl<T: DataFittingScalar + Default>(
+    task: DFTaskPtr,
+    left: &[T],
+    right: &[T],
+    callbacks: IntegrateCallbacks<'_, T>,
+) -> Result<Vec<T>> {
+    if left.len() != right.len() {
+        return Err(Error::InvalidArgument(
+            "left and right limit slices must have the same length",
+        ));
+    }
+    let nlim: c_int = left
+        .len()
+        .try_into()
+        .map_err(|_| Error::DimensionOverflow)?;
+    let mut out: Vec<T> = (0..left.len()).map(|_| T::default()).collect();
+    let mut args = IntegrateExArgs {
+        nlim,
+        llim: left.as_ptr(),
+        rlim: right.as_ptr(),
+        r: out.as_mut_ptr(),
+        callbacks,
+        panic: None,
+    };
+    let status = unsafe { T::df_integrate_ex_1d(task, &mut args) };
+    if let Some(payload) = args.panic.take() {
+        resume_unwind(payload);
+    }
+    // A positive status is a warning from a call-back; the result is kept.
+    if status < 0 {
+        return Err(Error::VslStatus(status));
+    }
+    Ok(out)
+}
+
 fn check_df(status: c_int) -> Result<()> {
     if status == 0 {
         Ok(())

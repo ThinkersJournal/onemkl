@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.4.11 - 2026-11-27 (allocated by pm-assist; additive: integrate_with_callbacks, df?IntegrateEx1D)
+
+### Added
+
+- `data_fitting::CubicSpline1d::integrate_with_callbacks` and `LinearSpline1d::integrate_with_callbacks` (`df?IntegrateEx1D`; `IntegrateCallbacks`, `IntegrationPieces`): user-defined integration for the left, right and interior parts of an interval; call-back cells are 1-based as oneMKL passes them, a negative call-back status is an error and a positive one a warning with the result kept, a panic in a call-back is resumed after the call; additive. One counted `#[allow(clippy::too_many_arguments)]` with a reason on the C call-back trampoline (C mirror).
+
 ## 0.4.10 - 2026-11-27 (allocated by pm-assist; additive: CubicSpline1d::hyman with free-end)
 
 ### Added

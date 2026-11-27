@@ -6,9 +6,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- **ILP64 support for the safe wrappers** (`--features ilp64`; additive, no change under the default `lp64`). Every extent, stride, index array, `ipiv`, `info`, count and handle that oneMKL declares as `MKL_INT` is now spelled `MKL_INT` (an alias of `i32` under `lp64`, `i64` under `ilp64`) in `blas/`, `lapack/`, `sparse/`, `pardiso`, `dss`, `iss`, `preconditioners`, `feast`, `pde`, `optim`, `data_fitting`, `rng/`, with the tests, examples and doctests. Public items that took `i32` for such values (for example `ipiv: &mut [i32]`, `Vec<i32>` index arrays, `RciAction::Other(i32)`, `TrnlsResult::iterations`) now take `MKL_INT`; under the default `lp64` that is the same type, so nothing changes for existing callers. Routine status codes stay `c_int` where oneMKL returns `int`, and `Error` variants keep `i32` payloads (an `MKL_INT` status that does not fit saturates). `onemkl/build.rs` no longer refuses `ilp64`.
+- Measured on the rig (WSL, oneMKL 2026.2, real bindgen on the ILP64 headers, `cargo check -p onemkl --all-targets`, all domain features): 412 type errors on main e3c72cc in the library, 0 after this change, tests and examples included; the whole suite (75 test binaries) and the doctests pass against the `mkl_intel_ilp64` libraries, and the `lp64` suite still passes. CI has a `cargo test (ilp64)` step.
+
+## 0.6.0 - 2026-11-27 (PM-allocated; BREAKING: non_exhaustive Error/IntegrateCallbacks/SearchRequest/IntegrationPieces, checked search call-backs)
+
+### Added
+
+- `QuadraticSpline1d::find_cells_with_callback` (`df?SearchCellsEx1D`; additive), same contract as the cubic and linear ones. Measured on oneMKL 2026.2 (4 tests, WSL rig): 1-based exact cells used as given and called once; 0-based exact cells come back shifted (vacuity control); approximate guesses refined; status -5 is `VslStatus(-5)`, 3 a warning with cells kept.
+- `IntegrateCallbacks::search` (the `search_cb` of `df?IntegrateEx1D`) with builder methods `IntegrateCallbacks::{new, left, right, interior, search}`. Measured on oneMKL 2026.2 (`df_search3.c`): it is called twice (left limits, then right); unguarded, an out-of-range exact cell gives integrals of 0 with status 0 and a positive status is swallowed, so both are now typed errors (below). `InterpolateEx1D` stays unwrapped (ROADMAP).
+
+- `SummaryStats::with_weights` (observation weights for `mean` and `variance`). Measured on oneMKL 2026.2 (`tools/size-probes/ss7.c`, 4 tests incl. a vacuity mutant): mean `sum(w x)/W`, variance `sum(w (x-mean)^2)/(W - sum(w^2)/W)`; oneMKL accepts a negative weight (mean 5.8333 on the probe data) and all-zero weights (mean 0) with status 0, so the wrapper refuses negative, non-finite, all-zero and too-few weights as `InvalidArgument`. `SsScalar` gains the required method `weight_value` (breaking for outside implementors; the trait has only the `f32` and `f64` impls).
+
+- `SummaryStats::partial_covariance(&[PartialRole])` and `PartialRole`, `PartialCovCor` (`vsl?SSEditPartialCovCor`). Measured on oneMKL 2026.2 (`tools/size-probes/ss9.c`, 3 tests incl. a vacuity mutant): the covariance equals `S_YY - S_YZ S_ZZ^-1 S_ZY` (n - 1) computed independently; results are `ny x ny` row-major; oneMKL leaves the partial variance (not 1) on the partial-correlation diagonal, documented on the field; -4073 for no-target role arrays is refused before the call. `SsScalar` gains the required method `ss_edit_partial_cov_cor`.
+
 ### Changed
 
-- ILP64 package 1 (`docs/ILP64-DESIGN.md` schedule): `blas/` and `lapack/` spell every extent, stride, `ipiv`, `info`, `isuppz`, `itype`, `m` (found eigenvalue count) and compact-format size as `MKL_INT` instead of `c_int` / `i32`. Under the default `lp64` interface `MKL_INT` is `i32`, so nothing changes for callers (all rig tests pass under `lp64`); under `ilp64` those public types are `i64`. `LapackIllegalArgument` / `LapackComputationFailure` keep `i32` fields and saturate a value that does not fit. Measured with real bindgen on the rig (`--features ilp64`, all modules, the build.rs guard bypassed): 412 errors on main e3c72cc, 200 after this change, 0 of them in `blas/` or `lapack/`. `onemkl` still refuses `ilp64` in `build.rs` until package 4.
+- **BREAKING (one time; pm-assist numbers it):** to stop paying a breaking release per field, `Error`, `IntegrateCallbacks`, `SearchRequest` and `IntegrationPieces` are now `#[non_exhaustive]` (construct `IntegrateCallbacks` with `IntegrateCallbacks::new()` and its builder methods, no struct literal or `..Default::default()`; match `Error` with a wildcard arm). New fields and variants are additive from here on.
+- **BREAKING:** search call-backs (`find_cells_with_callback` on all three splines and `IntegrateCallbacks::search`) are checked: a cell declared exact (`exact[i] == 1`, or any cell when the call-back returns `DF_STATUS_EXACT_RESULT`) must satisfy `0 <= cell <= nx` and contain its site, else `Error::SearchCell { index, cell, max_cell }` before oneMKL uses it (before: wrong cells were returned or integrated silently, e.g. integrals 0 with status 0 for cell 99); a positive call-back status is now `Error::SearchCallbackStatus` (before: kept as a warning in `find_cells_with_callback`, swallowed by oneMKL in `IntegrateEx1D`). `DataFittingScalar` now requires `PartialOrd`; `integrate_with_callbacks` takes `&'a self` with `IntegrateCallbacks<'a, T>`.
+
+### Not wrapped (measured)
+
+- Pooled / group covariance: `tools/size-probes/ss8.c` shows `vsl?SSEditPooledCovariance` accepted but compute fails with -4044 because the storage format cannot be set (`vsl?SSEditTask` ids 29, 34 and 20 return -3 while `VSL_SS_ED_MEAN` returns 0). ROADMAP row.
+
+### Documentation
+
+- `docs/ILP64-DESIGN.md`: error classes, options and recommendation for ILP64 in the safe wrappers (no code; the `ilp64` feature is still refused).
 
 ## 0.5.2 - 2026-11-27 (PM-allocated; additive)
 

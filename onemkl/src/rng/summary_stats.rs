@@ -36,6 +36,8 @@ pub trait SsScalar: Copy + Default + 'static {
     fn is_missing(self) -> bool;
     /// Lossy conversion from `f64` (parameter counts).
     fn from_f64(v: f64) -> Self;
+    /// `self` as an `f64` when it is a usable observation weight (finite and not negative), else `None`.
+    fn weight_value(self) -> Option<f64>;
 
     /// Raw `ss_new_task` call.
     ///
@@ -138,6 +140,29 @@ pub trait SsScalar: Copy + Default + 'static {
         params: *const Self,
     ) -> c_int;
 
+    /// Raw `ss_edit_partial_cov_cor` call (`vsl?SSEditPartialCovCor`).
+    ///
+    /// # Safety
+    ///
+    /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
+    /// `idx` points to `p` entries, each `-1` (component of Z, conditioned on) or `1` (component of Y); `cov` and `cor` are valid for writes of `p * p` elements, `pcov` and `pcor` for `p * p` (only `ny * ny` were written when measured); each `*_storage` points to one `c_int` (a `VSL_SS_MATRIX_STORAGE_*`).
+    /// **Pointer retention:** the task stores the pointers it is given; each buffer must stay allocated at a stable address, and not be accessed through Rust references, until the task has been deleted or the pointers replaced, including across every `ss_compute` call.
+    /// A non-zero return is the VSL status. The MKL library must be linked and usable.
+    /// Extents beyond the measured ones are unverified (from MKL documentation).
+    #[allow(clippy::too_many_arguments, reason = "mirrors the C routine")]
+    unsafe fn ss_edit_partial_cov_cor(
+        task: VSLSSTaskPtr,
+        idx: *const c_int,
+        cov: *mut Self,
+        cov_storage: *const c_int,
+        cor: *mut Self,
+        cor_storage: *const c_int,
+        pcov: *mut Self,
+        pcov_storage: *const c_int,
+        pcor: *mut Self,
+        pcor_storage: *const c_int,
+    ) -> c_int;
+
     /// Raw `ss_edit_robust_covariance` call.
     ///
     /// # Safety
@@ -209,7 +234,7 @@ macro_rules! impl_ss_scalar {
         moments=$moments:ident, compute=$compute:ident,
         quantiles=$quantiles:ident, stream_quantiles=$stream_quantiles:ident,
         robust_cov=$robust_cov:ident, outliers=$outliers:ident,
-        missing=$missing:ident,
+        missing=$missing:ident, partial=$partial:ident,
         marker=$marker:expr,
     ) => {
         impl SsScalar for $ty {
@@ -219,6 +244,9 @@ macro_rules! impl_ss_scalar {
             }
             fn from_f64(v: f64) -> Self {
                 v as $ty
+            }
+            fn weight_value(self) -> Option<f64> {
+                (self.is_finite() && self >= 0.0).then_some(f64::from(self))
             }
             unsafe fn ss_new_task(
                 task: *mut VSLSSTaskPtr,
@@ -291,6 +319,34 @@ macro_rules! impl_ss_scalar {
                     )
                 }
             }
+            #[allow(clippy::too_many_arguments, reason = "mirrors the C routine")]
+            unsafe fn ss_edit_partial_cov_cor(
+                task: VSLSSTaskPtr,
+                idx: *const c_int,
+                cov: *mut Self,
+                cov_storage: *const c_int,
+                cor: *mut Self,
+                cor_storage: *const c_int,
+                pcov: *mut Self,
+                pcov_storage: *const c_int,
+                pcor: *mut Self,
+                pcor_storage: *const c_int,
+            ) -> c_int {
+                unsafe {
+                    sys::$partial(
+                        task,
+                        idx,
+                        cov,
+                        cov_storage,
+                        cor,
+                        cor_storage,
+                        pcov,
+                        pcov_storage,
+                        pcor,
+                        pcor_storage,
+                    )
+                }
+            }
             unsafe fn ss_edit_robust_covariance(
                 task: VSLSSTaskPtr,
                 cov_storage: *const MKL_INT,
@@ -353,6 +409,7 @@ impl_ss_scalar!(
     robust_cov = vslsSSEditRobustCovariance,
     outliers = vslsSSEditOutliersDetection,
     missing = vslsSSEditMissingValues,
+    partial = vslsSSEditPartialCovCor,
     marker = 0xFFC0_0000,
 );
 impl_ss_scalar!(
@@ -366,8 +423,34 @@ impl_ss_scalar!(
     robust_cov = vsldSSEditRobustCovariance,
     outliers = vsldSSEditOutliersDetection,
     missing = vsldSSEditMissingValues,
+    partial = vsldSSEditPartialCovCor,
     marker = 0xFFF8_0000_0000_0000,
 );
+
+/// Which side of a partial covariance a variable is on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum PartialRole {
+    /// A component of Z: the variables conditioned on (removed).
+    Conditioning,
+    /// A component of Y: the variables whose partial covariance is returned.
+    Target,
+}
+
+/// Result of [`SummaryStats::partial_covariance`].
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct PartialCovCor<T> {
+    /// Number of target variables `ny`.
+    pub num_targets: usize,
+    /// Partial covariance of the targets given the conditioning
+    /// variables: `ny x ny`, row-major, `S_YY - S_YZ S_ZZ^-1 S_ZY`.
+    pub covariance: Vec<T>,
+    /// Partial correlation, `ny x ny`, row-major. **oneMKL 2026.2 leaves
+    /// the partial variances, not 1, on the diagonal** (measured,
+    /// `tools/size-probes/ss9.c`); the off-diagonal entries are correlations.
+    pub correlation: Vec<T>,
+}
 
 /// Owned summary-statistics task. Each compute method registers output
 /// buffers internally and runs `vsl?SSCompute`.
@@ -382,6 +465,7 @@ pub struct SummaryStats<'data, T: SsScalar> {
     _n_holder: Box<MKL_INT>,
     _xstorage_holder: Box<MKL_INT>,
     _data: &'data [T],
+    _weights: Option<&'data [T]>,
     _marker: PhantomData<T>,
 }
 
@@ -391,6 +475,47 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     /// Build a task over `num_variables × num_observations` data laid
     /// out so variable `i` occupies `data[i * num_observations ..]`.
     pub fn new(data: &'data [T], num_variables: usize, num_observations: usize) -> Result<Self> {
+        Self::build(data, num_variables, num_observations, None)
+    }
+
+    /// Like [`new`](Self::new), with one weight per observation
+    /// (`weights[j]` is the weight of observation `j` of every variable).
+    /// `mean` and `variance` then use them. Measured on oneMKL 2026.2
+    /// (`tools/size-probes/ss7.c`): the mean is `sum(w x) / W`, the variance
+    /// (2nd central moment) is `sum(w (x - mean)^2) / (W - sum(w^2) / W)`
+    /// with `W = sum(w)` (reliability weights). oneMKL itself accepts a
+    /// negative weight (computing with it) and all-zero weights (mean 0)
+    /// without an error, so this checks the weights first: each must be
+    /// finite and not negative, and they must not all be zero.
+    pub fn with_weights(
+        data: &'data [T],
+        num_variables: usize,
+        num_observations: usize,
+        weights: &'data [T],
+    ) -> Result<Self> {
+        if weights.len() < num_observations {
+            return Err(Error::InvalidArgument(
+                "weights must have one entry per observation",
+            ));
+        }
+        let mut total = 0.0_f64;
+        for w in &weights[..num_observations] {
+            total += w.weight_value().ok_or(Error::InvalidArgument(
+                "weights must be finite and not negative",
+            ))?;
+        }
+        if total <= 0.0 {
+            return Err(Error::InvalidArgument("weights must not all be zero"));
+        }
+        Self::build(data, num_variables, num_observations, Some(weights))
+    }
+
+    fn build(
+        data: &'data [T],
+        num_variables: usize,
+        num_observations: usize,
+        weights: Option<&'data [T]>,
+    ) -> Result<Self> {
         if data.len() < num_variables * num_observations {
             return Err(Error::InvalidArgument(
                 "data buffer is smaller than num_variables * num_observations",
@@ -415,7 +540,7 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
                 &*n_box,
                 &*xstorage_box,
                 data.as_ptr(),
-                ptr::null(),
+                weights.map_or(ptr::null(), <[T]>::as_ptr),
                 ptr::null(),
             )
         };
@@ -428,6 +553,7 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
             _n_holder: n_box,
             _xstorage_holder: xstorage_box,
             _data: data,
+            _weights: weights,
             _marker: PhantomData,
         })
     }
@@ -698,6 +824,72 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
         };
         check_vsl(status)?;
         Ok((mean, cov))
+    }
+
+    /// Partial covariance and correlation of the `Target` variables given
+    /// the `Conditioning` ones (`vsl?SSEditPartialCovCor`). `roles` has one
+    /// entry per variable and must contain at least one of each role.
+    /// Measured on oneMKL 2026.2 (`tools/size-probes/ss9.c`, p = 3, n = 10):
+    /// the covariance equals `S_YY - S_YZ S_ZZ^-1 S_ZY` with the `n - 1`
+    /// covariance, and the results are `ny x ny` full row-major matrices.
+    /// oneMKL reports -4073 for a role array with no target and for a code
+    /// other than -1 / 1; those are refused here before the call.
+    pub fn partial_covariance(&mut self, roles: &[PartialRole]) -> Result<PartialCovCor<T>> {
+        if roles.len() != self.p {
+            return Err(Error::InvalidArgument(
+                "roles must have one entry per variable",
+            ));
+        }
+        let ny = roles.iter().filter(|r| **r == PartialRole::Target).count();
+        if ny == 0 || ny == roles.len() {
+            return Err(Error::InvalidArgument(
+                "partial covariance needs at least one conditioning and one target variable",
+            ));
+        }
+        let idx: Vec<c_int> = roles
+            .iter()
+            .map(|r| if *r == PartialRole::Target { 1 } else { -1 })
+            .collect();
+        let full: c_int = sys::VSL_SS_MATRIX_STORAGE_FULL as c_int;
+        let pp = self.p * self.p;
+        let mut mean = vec![T::default(); self.p];
+        let mut cov = vec![T::default(); pp];
+        let mut cor = vec![T::default(); pp];
+        let mut pcov = vec![T::default(); pp];
+        let mut pcor = vec![T::default(); pp];
+        let status =
+            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_MEAN as c_int, mean.as_mut_ptr()) };
+        check_vsl(status)?;
+        let status = unsafe {
+            T::ss_edit_partial_cov_cor(
+                self.task,
+                idx.as_ptr(),
+                cov.as_mut_ptr(),
+                &full,
+                cor.as_mut_ptr(),
+                &full,
+                pcov.as_mut_ptr(),
+                &full,
+                pcor.as_mut_ptr(),
+                &full,
+            )
+        };
+        check_vsl(status)?;
+        let estimates = (sys::VSL_SS_MEAN
+            | sys::VSL_SS_COV
+            | sys::VSL_SS_COR
+            | sys::VSL_SS_PARTIAL_COV
+            | sys::VSL_SS_PARTIAL_COR) as u64;
+        let status =
+            unsafe { T::ss_compute(self.task, estimates, sys::VSL_SS_METHOD_FAST as c_int) };
+        check_vsl(status)?;
+        pcov.truncate(ny * ny);
+        pcor.truncate(ny * ny);
+        Ok(PartialCovCor {
+            num_targets: ny,
+            covariance: pcov,
+            correlation: pcor,
+        })
     }
 
     /// Per-observation outlier weights via BACON (Blocked Adaptive

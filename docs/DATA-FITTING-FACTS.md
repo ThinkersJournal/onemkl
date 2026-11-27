@@ -131,3 +131,5 @@ buffer): linear 14, every cubic type 28, default quadratic 21, all equal to
 than the reference's `order * (nx - 1)` = 21. A buffer sized by the reference
 is overrun (stack smashing seen in the probe). Also: the Subbotin spline did
 not pass through the breakpoints on `y = x^2` (value 0.29 at `x = 0`).
+
+- **Measured (oneMKL 2026.2, `tools/size-probes/df_search3.c`, same setup as `df_search2.c`): a search call-back returning wrong cells inside `IntegrateEx1D` / `InterpolateEx1D`.** All with `flag` 1: correct 1-based cells reproduce integrals 3, 9, 24 and values 0.5, 2.5, 4.5; 0-based cells and cell 0 gave the same correct results (the routines tolerate them); cell 99 gave 0, 0, 0 with status 0 in both routines (silent, no error). A call-back returning -5 made both routines return -5 and left the output untouched; returning 3 made both return 0 with correct results (a positive status is swallowed). `IntegrateEx1D` is wrapped (`IntegrateCallbacks::search`) with the exact cells checked and a positive status turned into an error; `InterpolateEx1D` is not wrapped.

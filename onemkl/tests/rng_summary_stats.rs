@@ -203,3 +203,119 @@ fn stream_quantiles_zw_accuracy_and_refusals() {
     assert!(ss.stream_quantiles(&[0.5], &[0.01, 0.01]).is_err());
     assert!(ss.stream_quantiles(&[0.5], &[0.0]).is_err());
 }
+
+// ---- with_weights: values measured on oneMKL 2026.2 (tools/size-probes/ss7.c) ----
+
+const WX: [f64; 12] = [1.0, 2.0, 3.0, 4.0, 5.0, 10.0, 2.0, 2.0, 4.0, 4.0, 8.0, 0.0];
+const WW: [f64; 6] = [1.0, 2.0, 3.0, 1.0, 1.0, 2.0];
+
+#[test]
+fn weighted_mean_and_variance_match_the_measured_formulas() {
+    let mut ss = SummaryStats::<f64>::with_weights(&WX, 2, 6, &WW).unwrap();
+    let mean = ss.mean().unwrap();
+    assert_abs_diff_eq!(mean[0], 4.3, epsilon = 1e-12);
+    assert_abs_diff_eq!(mean[1], 3.0, epsilon = 1e-12);
+    // sum(w (x - mean)^2) / (W - sum(w^2) / W), W = 10, sum(w^2) = 20.
+    let var = ss.variance().unwrap();
+    assert_abs_diff_eq!(var[0], 11.5125, epsilon = 1e-10);
+    assert_abs_diff_eq!(var[1], 6.25, epsilon = 1e-10);
+}
+
+#[test]
+fn weights_change_the_result_vacuity_mutant() {
+    // Without the weights the same data has mean 25/6, so the weighted
+    // result above is not what an ignored weights argument would give.
+    let mut ss = SummaryStats::<f64>::new(&WX, 2, 6).unwrap();
+    let mean = ss.mean().unwrap();
+    assert_abs_diff_eq!(mean[0], 25.0 / 6.0, epsilon = 1e-12);
+    assert!((mean[0] - 4.3).abs() > 0.1);
+}
+
+#[test]
+fn weighted_f32() {
+    let x: Vec<f32> = WX.iter().map(|v| *v as f32).collect();
+    let w: Vec<f32> = WW.iter().map(|v| *v as f32).collect();
+    let mut ss = SummaryStats::<f32>::with_weights(&x, 2, 6, &w).unwrap();
+    assert_abs_diff_eq!(ss.mean().unwrap()[0], 4.3_f32, epsilon = 1e-5);
+}
+
+#[test]
+fn bad_weights_are_refused_before_onemkl_computes_with_them() {
+    // Unguarded, oneMKL computed a mean of 5.8333 from a negative weight and
+    // 0 from all-zero weights, both with status 0 (ss7.c).
+    use onemkl::Error;
+    let neg = [1.0, -2.0, 3.0, 1.0, 1.0, 2.0];
+    let zero = [0.0; 6];
+    let nan = [1.0, f64::NAN, 1.0, 1.0, 1.0, 1.0];
+    let short = [1.0; 5];
+    for w in [&neg[..], &zero[..], &nan[..], &short[..]] {
+        let r = SummaryStats::<f64>::with_weights(&WX, 2, 6, w);
+        assert!(matches!(r, Err(Error::InvalidArgument(_))), "{w:?}");
+    }
+}
+
+// ---- partial_covariance: values from tools/size-probes/ss9.c on oneMKL 2026.2 ----
+
+mod partial {
+    use super::*;
+    use onemkl::Error;
+    use onemkl::rng::summary_stats::PartialRole::{Conditioning as Z, Target as Y};
+
+    const PX: [f64; 30] = [
+        1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, //
+        2.0, 1.0, 4.0, 3.0, 7.0, 5.0, 8.0, 9.0, 12.0, 11.0, //
+        5.0, 3.0, 6.0, 8.0, 2.0, 9.0, 4.0, 12.0, 7.0, 10.0,
+    ];
+
+    /// `S_YY - S_YZ S_ZZ^-1 S_ZY` for Z = variable 0, computed here.
+    fn analytic(z: usize, ys: [usize; 2]) -> [f64; 4] {
+        let m = |v: usize| PX[v * 10..v * 10 + 10].iter().sum::<f64>() / 10.0;
+        let s = |a: usize, b: usize| {
+            (0..10)
+                .map(|i| (PX[a * 10 + i] - m(a)) * (PX[b * 10 + i] - m(b)))
+                .sum::<f64>()
+                / 9.0
+        };
+        let pc = |a: usize, b: usize| s(a, b) - s(a, z) * s(z, b) / s(z, z);
+        let (a, b) = (ys[0], ys[1]);
+        [pc(a, a), pc(a, b), pc(b, a), pc(b, b)]
+    }
+
+    #[test]
+    fn partial_covariance_matches_the_schur_complement() {
+        let mut ss = SummaryStats::<f64>::new(&PX, 3, 10).unwrap();
+        let r = ss.partial_covariance(&[Z, Y, Y]).unwrap();
+        assert_eq!(r.num_targets, 2);
+        let want = analytic(0, [1, 2]);
+        for (g, w) in r.covariance.iter().zip(want) {
+            assert_abs_diff_eq!(*g, w, epsilon = 1e-10);
+        }
+        // Measured: 1.46532, -1.48956, 7.033; off-diagonal correlation -0.464005.
+        assert_abs_diff_eq!(r.covariance[0], 1.46532, epsilon = 1e-5);
+        assert_abs_diff_eq!(r.correlation[1], -0.464005, epsilon = 1e-5);
+        // Measured quirk: the correlation diagonal is the partial variance.
+        assert_abs_diff_eq!(r.correlation[0], r.covariance[0], epsilon = 1e-12);
+    }
+
+    #[test]
+    fn the_conditioning_variable_matters_vacuity_mutant() {
+        let mut ss = SummaryStats::<f64>::new(&PX, 3, 10).unwrap();
+        let a = ss.partial_covariance(&[Z, Y, Y]).unwrap();
+        let b = ss.partial_covariance(&[Y, Z, Y]).unwrap();
+        // Measured: conditioning on variable 1 gives 0.932785 for the first target.
+        assert_abs_diff_eq!(b.covariance[0], 0.932785, epsilon = 1e-5);
+        assert!((a.covariance[0] - b.covariance[0]).abs() > 0.1);
+    }
+
+    #[test]
+    fn bad_role_arrays_are_refused_before_onemkl_rejects_them() {
+        // oneMKL returned -4073 for "no targets" (ss9.c).
+        let mut ss = SummaryStats::<f64>::new(&PX, 3, 10).unwrap();
+        for roles in [&[Z, Z, Z][..], &[Y, Y, Y][..], &[Z, Y][..]] {
+            assert!(matches!(
+                ss.partial_covariance(roles),
+                Err(Error::InvalidArgument(_))
+            ));
+        }
+    }
+}

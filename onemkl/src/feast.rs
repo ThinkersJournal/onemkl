@@ -11,13 +11,14 @@
 //! `A x = λ B x` for dense `A` / `B`. The reverse-communication
 //! interface (`?feast_srci` / `?feast_hrci`) is not yet wrapped.
 
-use core::ffi::{c_char, c_int};
+use core::ffi::c_char;
 
 use num_complex::{Complex32, Complex64};
-use onemkl_sys as sys;
+use onemkl_sys::{self as sys, MKL_INT};
 
 use crate::enums::UpLo;
 use crate::error::{Error, Result};
+use crate::util::status_i32;
 
 /// Result of a FEAST solve.
 #[derive(Debug, Clone)]
@@ -34,7 +35,7 @@ pub struct FeastResult<T, R> {
     /// Relative trace error reported by FEAST.
     pub epsout: R,
     /// Number of refinement loops used.
-    pub loop_count: i32,
+    pub loop_count: MKL_INT,
     /// Per-eigenpair residuals. Length matches eigenvalues.
     pub residuals: Vec<R>,
 }
@@ -55,24 +56,24 @@ pub fn eigh_real_dense<T: FeastReal>(
     emax: T,
     m0_estimate: usize,
 ) -> Result<FeastResult<T, T>> {
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let lda_i: c_int = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let lda_i: MKL_INT = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
     if a.len() < lda * n {
         return Err(Error::InvalidArgument("A buffer is smaller than lda * n"));
     }
-    let m0_i: c_int = m0_estimate
+    let m0_i: MKL_INT = m0_estimate
         .try_into()
         .map_err(|_| Error::DimensionOverflow)?;
 
-    let mut fpm: [c_int; 128] = [0; 128];
+    let mut fpm: [MKL_INT; 128] = [0; 128];
     unsafe { sys::feastinit(fpm.as_mut_ptr()) };
 
     let uplo_c: c_char = uplo.as_char() as c_char;
     let mut epsout = T::zero();
-    let mut loop_count: c_int = 0;
-    let mut m_actual: c_int = 0;
-    let mut info: c_int = 0;
-    let mut m0_inout: c_int = m0_i;
+    let mut loop_count: MKL_INT = 0;
+    let mut m_actual: MKL_INT = 0;
+    let mut info: MKL_INT = 0;
+    let mut m0_inout: MKL_INT = m0_i;
     let mut eigenvalues: Vec<T> = vec![T::zero(); m0_estimate];
     let mut eigenvectors: Vec<T> = vec![T::zero(); n * m0_estimate];
     let mut residuals: Vec<T> = vec![T::zero(); m0_estimate];
@@ -101,7 +102,9 @@ pub fn eigh_real_dense<T: FeastReal>(
     // info == 1 → "no eigenvalue found" (warning); treat as success-with-empty.
     // info > 1 → genuine failure.
     if !(0..=1).contains(&info) {
-        return Err(Error::LapackComputationFailure { info });
+        return Err(Error::LapackComputationFailure {
+            info: status_i32(info),
+        });
     }
     let m = m_actual.max(0) as usize;
     eigenvalues.truncate(m);
@@ -127,24 +130,24 @@ pub fn eigh_complex_dense<T: FeastComplex>(
     emax: T::Real,
     m0_estimate: usize,
 ) -> Result<FeastResult<T, T::Real>> {
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let lda_i: c_int = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let lda_i: MKL_INT = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
     if a.len() < lda * n {
         return Err(Error::InvalidArgument("A buffer is smaller than lda * n"));
     }
-    let m0_i: c_int = m0_estimate
+    let m0_i: MKL_INT = m0_estimate
         .try_into()
         .map_err(|_| Error::DimensionOverflow)?;
 
-    let mut fpm: [c_int; 128] = [0; 128];
+    let mut fpm: [MKL_INT; 128] = [0; 128];
     unsafe { sys::feastinit(fpm.as_mut_ptr()) };
 
     let uplo_c: c_char = uplo.as_char() as c_char;
     let mut epsout = T::Real::zero();
-    let mut loop_count: c_int = 0;
-    let mut m_actual: c_int = 0;
-    let mut info: c_int = 0;
-    let mut m0_inout: c_int = m0_i;
+    let mut loop_count: MKL_INT = 0;
+    let mut m_actual: MKL_INT = 0;
+    let mut info: MKL_INT = 0;
+    let mut m0_inout: MKL_INT = m0_i;
     let mut eigenvalues: Vec<T::Real> = vec![T::Real::zero(); m0_estimate];
     let mut eigenvectors: Vec<T> = vec![T::zero_complex(); n * m0_estimate];
     let mut residuals: Vec<T::Real> = vec![T::Real::zero(); m0_estimate];
@@ -173,7 +176,9 @@ pub fn eigh_complex_dense<T: FeastComplex>(
     // info == 1 → "no eigenvalue found" (warning); treat as success-with-empty.
     // info > 1 → genuine failure.
     if !(0..=1).contains(&info) {
-        return Err(Error::LapackComputationFailure { info });
+        return Err(Error::LapackComputationFailure {
+            info: status_i32(info),
+        });
     }
     let m = m_actual.max(0) as usize;
     eigenvalues.truncate(m);
@@ -201,8 +206,8 @@ pub fn eigh_real_csr<T: FeastReal>(
     uplo: UpLo,
     n: usize,
     sa: &[T],
-    isa: &[i32],
-    jsa: &[i32],
+    isa: &[MKL_INT],
+    jsa: &[MKL_INT],
     emin: T,
     emax: T,
     m0_estimate: usize,
@@ -215,18 +220,18 @@ pub fn eigh_real_csr<T: FeastReal>(
             "jsa and sa must have the same length",
         ));
     }
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let m0_i: c_int = m0_estimate
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let m0_i: MKL_INT = m0_estimate
         .try_into()
         .map_err(|_| Error::DimensionOverflow)?;
-    let mut fpm: [c_int; 128] = [0; 128];
+    let mut fpm: [MKL_INT; 128] = [0; 128];
     unsafe { sys::feastinit(fpm.as_mut_ptr()) };
     let uplo_c: c_char = uplo.as_char() as c_char;
     let mut epsout = T::zero();
-    let mut loop_count: c_int = 0;
-    let mut m_actual: c_int = 0;
-    let mut info: c_int = 0;
-    let mut m0_inout: c_int = m0_i;
+    let mut loop_count: MKL_INT = 0;
+    let mut m_actual: MKL_INT = 0;
+    let mut info: MKL_INT = 0;
+    let mut m0_inout: MKL_INT = m0_i;
     let mut eigenvalues: Vec<T> = vec![T::zero(); m0_estimate];
     let mut eigenvectors: Vec<T> = vec![T::zero(); n * m0_estimate];
     let mut residuals: Vec<T> = vec![T::zero(); m0_estimate];
@@ -274,8 +279,8 @@ pub fn eigh_complex_csr<T: FeastComplex>(
     uplo: UpLo,
     n: usize,
     sa: &[T],
-    isa: &[i32],
-    jsa: &[i32],
+    isa: &[MKL_INT],
+    jsa: &[MKL_INT],
     emin: T::Real,
     emax: T::Real,
     m0_estimate: usize,
@@ -288,18 +293,18 @@ pub fn eigh_complex_csr<T: FeastComplex>(
             "jsa and sa must have the same length",
         ));
     }
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let m0_i: c_int = m0_estimate
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let m0_i: MKL_INT = m0_estimate
         .try_into()
         .map_err(|_| Error::DimensionOverflow)?;
-    let mut fpm: [c_int; 128] = [0; 128];
+    let mut fpm: [MKL_INT; 128] = [0; 128];
     unsafe { sys::feastinit(fpm.as_mut_ptr()) };
     let uplo_c: c_char = uplo.as_char() as c_char;
     let mut epsout = T::Real::zero();
-    let mut loop_count: c_int = 0;
-    let mut m_actual: c_int = 0;
-    let mut info: c_int = 0;
-    let mut m0_inout: c_int = m0_i;
+    let mut loop_count: MKL_INT = 0;
+    let mut m_actual: MKL_INT = 0;
+    let mut info: MKL_INT = 0;
+    let mut m0_inout: MKL_INT = m0_i;
     let mut eigenvalues: Vec<T::Real> = vec![T::Real::zero(); m0_estimate];
     let mut eigenvectors: Vec<T> = vec![T::zero_complex(); n * m0_estimate];
     let mut residuals: Vec<T::Real> = vec![T::Real::zero(); m0_estimate];
@@ -360,20 +365,20 @@ pub fn eigh_real_banded<T: FeastReal>(
     if a.len() < lda * n {
         return Err(Error::InvalidArgument("A buffer is smaller than lda * n"));
     }
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let kla_i: c_int = kla.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let lda_i: c_int = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let m0_i: c_int = m0_estimate
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let kla_i: MKL_INT = kla.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let lda_i: MKL_INT = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let m0_i: MKL_INT = m0_estimate
         .try_into()
         .map_err(|_| Error::DimensionOverflow)?;
-    let mut fpm: [c_int; 128] = [0; 128];
+    let mut fpm: [MKL_INT; 128] = [0; 128];
     unsafe { sys::feastinit(fpm.as_mut_ptr()) };
     let uplo_c: c_char = uplo.as_char() as c_char;
     let mut epsout = T::zero();
-    let mut loop_count: c_int = 0;
-    let mut m_actual: c_int = 0;
-    let mut info: c_int = 0;
-    let mut m0_inout: c_int = m0_i;
+    let mut loop_count: MKL_INT = 0;
+    let mut m_actual: MKL_INT = 0;
+    let mut info: MKL_INT = 0;
+    let mut m0_inout: MKL_INT = m0_i;
     let mut eigenvalues: Vec<T> = vec![T::zero(); m0_estimate];
     let mut eigenvectors: Vec<T> = vec![T::zero(); n * m0_estimate];
     let mut residuals: Vec<T> = vec![T::zero(); m0_estimate];
@@ -430,20 +435,20 @@ pub fn eigh_complex_banded<T: FeastComplex>(
     if a.len() < lda * n {
         return Err(Error::InvalidArgument("A buffer is smaller than lda * n"));
     }
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let kla_i: c_int = kla.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let lda_i: c_int = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let m0_i: c_int = m0_estimate
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let kla_i: MKL_INT = kla.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let lda_i: MKL_INT = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let m0_i: MKL_INT = m0_estimate
         .try_into()
         .map_err(|_| Error::DimensionOverflow)?;
-    let mut fpm: [c_int; 128] = [0; 128];
+    let mut fpm: [MKL_INT; 128] = [0; 128];
     unsafe { sys::feastinit(fpm.as_mut_ptr()) };
     let uplo_c: c_char = uplo.as_char() as c_char;
     let mut epsout = T::Real::zero();
-    let mut loop_count: c_int = 0;
-    let mut m_actual: c_int = 0;
-    let mut info: c_int = 0;
-    let mut m0_inout: c_int = m0_i;
+    let mut loop_count: MKL_INT = 0;
+    let mut m_actual: MKL_INT = 0;
+    let mut info: MKL_INT = 0;
+    let mut m0_inout: MKL_INT = m0_i;
     let mut eigenvalues: Vec<T::Real> = vec![T::Real::zero(); m0_estimate];
     let mut eigenvectors: Vec<T> = vec![T::zero_complex(); n * m0_estimate];
     let mut residuals: Vec<T::Real> = vec![T::Real::zero(); m0_estimate];
@@ -505,20 +510,20 @@ pub fn gen_eigh_real_dense<T: FeastReal>(
             "A or B buffer is smaller than its leading dimension * n",
         ));
     }
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let lda_i: c_int = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let ldb_i: c_int = ldb.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let m0_i: c_int = m0_estimate
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let lda_i: MKL_INT = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let ldb_i: MKL_INT = ldb.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let m0_i: MKL_INT = m0_estimate
         .try_into()
         .map_err(|_| Error::DimensionOverflow)?;
-    let mut fpm: [c_int; 128] = [0; 128];
+    let mut fpm: [MKL_INT; 128] = [0; 128];
     unsafe { sys::feastinit(fpm.as_mut_ptr()) };
     let uplo_c: c_char = uplo.as_char() as c_char;
     let mut epsout = T::zero();
-    let mut loop_count: c_int = 0;
-    let mut m_actual: c_int = 0;
-    let mut info: c_int = 0;
-    let mut m0_inout: c_int = m0_i;
+    let mut loop_count: MKL_INT = 0;
+    let mut m_actual: MKL_INT = 0;
+    let mut info: MKL_INT = 0;
+    let mut m0_inout: MKL_INT = m0_i;
     let mut eigenvalues: Vec<T> = vec![T::zero(); m0_estimate];
     let mut eigenvectors: Vec<T> = vec![T::zero(); n * m0_estimate];
     let mut residuals: Vec<T> = vec![T::zero(); m0_estimate];
@@ -581,20 +586,20 @@ pub fn gen_eigh_complex_dense<T: FeastComplex>(
             "A or B buffer is smaller than its leading dimension * n",
         ));
     }
-    let n_i: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let lda_i: c_int = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let ldb_i: c_int = ldb.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let m0_i: c_int = m0_estimate
+    let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let lda_i: MKL_INT = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let ldb_i: MKL_INT = ldb.try_into().map_err(|_| Error::DimensionOverflow)?;
+    let m0_i: MKL_INT = m0_estimate
         .try_into()
         .map_err(|_| Error::DimensionOverflow)?;
-    let mut fpm: [c_int; 128] = [0; 128];
+    let mut fpm: [MKL_INT; 128] = [0; 128];
     unsafe { sys::feastinit(fpm.as_mut_ptr()) };
     let uplo_c: c_char = uplo.as_char() as c_char;
     let mut epsout = T::Real::zero();
-    let mut loop_count: c_int = 0;
-    let mut m_actual: c_int = 0;
-    let mut info: c_int = 0;
-    let mut m0_inout: c_int = m0_i;
+    let mut loop_count: MKL_INT = 0;
+    let mut m_actual: MKL_INT = 0;
+    let mut info: MKL_INT = 0;
+    let mut m0_inout: MKL_INT = m0_i;
     let mut eigenvalues: Vec<T::Real> = vec![T::Real::zero(); m0_estimate];
     let mut eigenvectors: Vec<T> = vec![T::zero_complex(); n * m0_estimate];
     let mut residuals: Vec<T::Real> = vec![T::Real::zero(); m0_estimate];
@@ -637,10 +642,10 @@ pub fn gen_eigh_complex_dense<T: FeastComplex>(
 /// What a FEAST driver reports besides the buffers (`info`, the eigenvalue
 /// count found, the last residual norm and the refinement loop count).
 struct FeastStatus<R> {
-    info: c_int,
-    m_actual: c_int,
+    info: MKL_INT,
+    m_actual: MKL_INT,
     epsout: R,
-    loop_count: c_int,
+    loop_count: MKL_INT,
 }
 
 fn finish_real_result<T: FeastReal>(
@@ -657,7 +662,9 @@ fn finish_real_result<T: FeastReal>(
         loop_count,
     } = status;
     if !(0..=1).contains(&info) {
-        return Err(Error::LapackComputationFailure { info });
+        return Err(Error::LapackComputationFailure {
+            info: status_i32(info),
+        });
     }
     let m = m_actual.max(0) as usize;
     eigenvalues.truncate(m);
@@ -687,7 +694,9 @@ fn finish_complex_result<T: FeastComplex>(
         loop_count,
     } = status;
     if !(0..=1).contains(&info) {
-        return Err(Error::LapackComputationFailure { info });
+        return Err(Error::LapackComputationFailure {
+            info: status_i32(info),
+        });
     }
     let m = m_actual.max(0) as usize;
     eigenvalues.truncate(m);
@@ -715,9 +724,9 @@ pub trait FeastReal: Copy + 'static {
     ///
     /// # Safety
     ///
-    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `c_int` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the search interval, `emin < emax`).
+    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `MKL_INT` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the search interval, `emin < emax`).
     /// `a` must be valid for reads of `lda * n` elements (column-major, `lda >= n` pointed to by `lda`), at least the triangle selected by `uplo`; real symmetric (or Hermitian per the type).
-    /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
+    /// `m0` points to one `MKL_INT` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `MKL_INT`. None of the output buffers may overlap each other or the inputs.
     /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `a`: n * n (uplo = F), `e`: m0, `x`: n * m0, `res`: m0 elements, n = 20, m0 = 10, via `dfeast_syev`; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(
@@ -726,29 +735,29 @@ pub trait FeastReal: Copy + 'static {
     )]
     unsafe fn feast_dense_real(
         uplo: *const c_char,
-        n: *const c_int,
+        n: *const MKL_INT,
         a: *const Self,
-        lda: *const c_int,
-        fpm: *mut c_int,
+        lda: *const MKL_INT,
+        fpm: *mut MKL_INT,
         epsout: *mut Self,
-        loop_: *mut c_int,
+        loop_: *mut MKL_INT,
         emin: *const Self,
         emax: *const Self,
-        m0: *mut c_int,
+        m0: *mut MKL_INT,
         e: *mut Self,
         x: *mut Self,
-        m: *mut c_int,
+        m: *mut MKL_INT,
         res: *mut Self,
-        info: *mut c_int,
+        info: *mut MKL_INT,
     );
 
     /// Raw `feast_csr_real` call.
     ///
     /// # Safety
     ///
-    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `c_int` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the search interval, `emin < emax`).
+    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `MKL_INT` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the search interval, `emin < emax`).
     /// `sa`, `isa`, `jsa` describe an `n x n` CSR matrix (1-based, as FEAST requires): `isa` must hold `n + 1` entries, `jsa` and `sa` `isa[n] - 1` entries; only the triangle selected by `uplo` is read; `sa`, `isa`, `jsa` must be readable for those lengths.
-    /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
+    /// `m0` points to one `MKL_INT` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `MKL_INT`. None of the output buffers may overlap each other or the inputs.
     /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (`tools/size-probes/feast2.c`, smallest buffer for which the call did not fault, n = 20, m0 = 10, tridiagonal matrix, via `dfeast_scsrev`; oneMKL 2026.2, Linux x86_64): `sa` and `jsa`: nnz of the stored triangle (58 for uplo = F, 39 for uplo = U), `isa`: n + 1, `e`: m0, `x`: n * m0, `res`: m0 elements.
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
@@ -758,30 +767,30 @@ pub trait FeastReal: Copy + 'static {
     )]
     unsafe fn feast_csr_real(
         uplo: *const c_char,
-        n: *const c_int,
+        n: *const MKL_INT,
         sa: *const Self,
-        isa: *const c_int,
-        jsa: *const c_int,
-        fpm: *mut c_int,
+        isa: *const MKL_INT,
+        jsa: *const MKL_INT,
+        fpm: *mut MKL_INT,
         epsout: *mut Self,
-        loop_: *mut c_int,
+        loop_: *mut MKL_INT,
         emin: *const Self,
         emax: *const Self,
-        m0: *mut c_int,
+        m0: *mut MKL_INT,
         e: *mut Self,
         x: *mut Self,
-        m: *mut c_int,
+        m: *mut MKL_INT,
         res: *mut Self,
-        info: *mut c_int,
+        info: *mut MKL_INT,
     );
 
     /// Raw `feast_banded_real` call.
     ///
     /// # Safety
     ///
-    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `c_int` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the search interval, `emin < emax`).
+    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `MKL_INT` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the search interval, `emin < emax`).
     /// `a` must be valid for reads of `lda * n` elements in LAPACK band storage with `kla` (pointed to) super/sub-diagonals, `lda >= kla + 1`.
-    /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
+    /// `m0` points to one `MKL_INT` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `MKL_INT`. None of the output buffers may overlap each other or the inputs.
     /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (`tools/size-probes/feast2.c`, smallest buffer for which the call did not fault, n = 20, kla = 1, m0 = 10, via `dfeast_sbev`; oneMKL 2026.2, Linux x86_64): `a`: lda * n (40 for uplo = U or L with lda = 2, 60 for uplo = F with lda = 3), `e`: m0, `x`: n * m0, `res`: m0 elements.
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
@@ -791,30 +800,30 @@ pub trait FeastReal: Copy + 'static {
     )]
     unsafe fn feast_banded_real(
         uplo: *const c_char,
-        n: *const c_int,
-        kla: *const c_int,
+        n: *const MKL_INT,
+        kla: *const MKL_INT,
         a: *const Self,
-        lda: *const c_int,
-        fpm: *mut c_int,
+        lda: *const MKL_INT,
+        fpm: *mut MKL_INT,
         epsout: *mut Self,
-        loop_: *mut c_int,
+        loop_: *mut MKL_INT,
         emin: *const Self,
         emax: *const Self,
-        m0: *mut c_int,
+        m0: *mut MKL_INT,
         e: *mut Self,
         x: *mut Self,
-        m: *mut c_int,
+        m: *mut MKL_INT,
         res: *mut Self,
-        info: *mut c_int,
+        info: *mut MKL_INT,
     );
 
     /// Raw `feast_dense_gen_real` call.
     ///
     /// # Safety
     ///
-    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `c_int` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the search interval, `emin < emax`).
+    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `MKL_INT` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the search interval, `emin < emax`).
     /// `a` and `b` must be valid for reads of `lda * n` and `ldb * n` elements (column-major, `lda`, `ldb >= n`), `b` symmetric positive definite; only the triangle selected by `uplo` is read.
-    /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
+    /// `m0` points to one `MKL_INT` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `MKL_INT`. None of the output buffers may overlap each other or the inputs.
     /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (`tools/size-probes/feast2.c`, smallest buffer for which the call did not fault, n = 20, m0 = 10, uplo = F, B = I, via `dfeast_sygv`; oneMKL 2026.2, Linux x86_64): `a` and `b`: n * n elements each (lda = ldb = n).
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
@@ -824,22 +833,22 @@ pub trait FeastReal: Copy + 'static {
     )]
     unsafe fn feast_dense_gen_real(
         uplo: *const c_char,
-        n: *const c_int,
+        n: *const MKL_INT,
         a: *const Self,
-        lda: *const c_int,
+        lda: *const MKL_INT,
         b: *const Self,
-        ldb: *const c_int,
-        fpm: *mut c_int,
+        ldb: *const MKL_INT,
+        fpm: *mut MKL_INT,
         epsout: *mut Self,
-        loop_: *mut c_int,
+        loop_: *mut MKL_INT,
         emin: *const Self,
         emax: *const Self,
-        m0: *mut c_int,
+        m0: *mut MKL_INT,
         e: *mut Self,
         x: *mut Self,
-        m: *mut c_int,
+        m: *mut MKL_INT,
         res: *mut Self,
-        info: *mut c_int,
+        info: *mut MKL_INT,
     );
 }
 
@@ -854,20 +863,20 @@ macro_rules! impl_feast_real {
             }
             unsafe fn feast_dense_real(
                 uplo: *const c_char,
-                n: *const c_int,
+                n: *const MKL_INT,
                 a: *const Self,
-                lda: *const c_int,
-                fpm: *mut c_int,
+                lda: *const MKL_INT,
+                fpm: *mut MKL_INT,
                 epsout: *mut Self,
-                loop_: *mut c_int,
+                loop_: *mut MKL_INT,
                 emin: *const Self,
                 emax: *const Self,
-                m0: *mut c_int,
+                m0: *mut MKL_INT,
                 e: *mut Self,
                 x: *mut Self,
-                m: *mut c_int,
+                m: *mut MKL_INT,
                 res: *mut Self,
-                info: *mut c_int,
+                info: *mut MKL_INT,
             ) {
                 unsafe {
                     sys::$syev(
@@ -877,21 +886,21 @@ macro_rules! impl_feast_real {
             }
             unsafe fn feast_csr_real(
                 uplo: *const c_char,
-                n: *const c_int,
+                n: *const MKL_INT,
                 sa: *const Self,
-                isa: *const c_int,
-                jsa: *const c_int,
-                fpm: *mut c_int,
+                isa: *const MKL_INT,
+                jsa: *const MKL_INT,
+                fpm: *mut MKL_INT,
                 epsout: *mut Self,
-                loop_: *mut c_int,
+                loop_: *mut MKL_INT,
                 emin: *const Self,
                 emax: *const Self,
-                m0: *mut c_int,
+                m0: *mut MKL_INT,
                 e: *mut Self,
                 x: *mut Self,
-                m: *mut c_int,
+                m: *mut MKL_INT,
                 res: *mut Self,
-                info: *mut c_int,
+                info: *mut MKL_INT,
             ) {
                 unsafe {
                     sys::$scsrev(
@@ -902,21 +911,21 @@ macro_rules! impl_feast_real {
             }
             unsafe fn feast_banded_real(
                 uplo: *const c_char,
-                n: *const c_int,
-                kla: *const c_int,
+                n: *const MKL_INT,
+                kla: *const MKL_INT,
                 a: *const Self,
-                lda: *const c_int,
-                fpm: *mut c_int,
+                lda: *const MKL_INT,
+                fpm: *mut MKL_INT,
                 epsout: *mut Self,
-                loop_: *mut c_int,
+                loop_: *mut MKL_INT,
                 emin: *const Self,
                 emax: *const Self,
-                m0: *mut c_int,
+                m0: *mut MKL_INT,
                 e: *mut Self,
                 x: *mut Self,
-                m: *mut c_int,
+                m: *mut MKL_INT,
                 res: *mut Self,
-                info: *mut c_int,
+                info: *mut MKL_INT,
             ) {
                 unsafe {
                     sys::$sbev(
@@ -927,22 +936,22 @@ macro_rules! impl_feast_real {
             }
             unsafe fn feast_dense_gen_real(
                 uplo: *const c_char,
-                n: *const c_int,
+                n: *const MKL_INT,
                 a: *const Self,
-                lda: *const c_int,
+                lda: *const MKL_INT,
                 b: *const Self,
-                ldb: *const c_int,
-                fpm: *mut c_int,
+                ldb: *const MKL_INT,
+                fpm: *mut MKL_INT,
                 epsout: *mut Self,
-                loop_: *mut c_int,
+                loop_: *mut MKL_INT,
                 emin: *const Self,
                 emax: *const Self,
-                m0: *mut c_int,
+                m0: *mut MKL_INT,
                 e: *mut Self,
                 x: *mut Self,
-                m: *mut c_int,
+                m: *mut MKL_INT,
                 res: *mut Self,
-                info: *mut c_int,
+                info: *mut MKL_INT,
             ) {
                 unsafe {
                     sys::$sygv(
@@ -981,9 +990,9 @@ pub trait FeastComplex: Copy + 'static {
     ///
     /// # Safety
     ///
-    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `c_int` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the real search interval, `emin < emax`).
+    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `MKL_INT` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the real search interval, `emin < emax`).
     /// `a` must be valid for reads of `lda * n` elements (column-major, `lda >= n`), the Hermitian matrix; at least the triangle selected by `uplo` is read.
-    /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
+    /// `m0` points to one `MKL_INT` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `MKL_INT`. None of the output buffers may overlap each other or the inputs.
     /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(
@@ -992,29 +1001,29 @@ pub trait FeastComplex: Copy + 'static {
     )]
     unsafe fn feast_dense_complex(
         uplo: *const c_char,
-        n: *const c_int,
+        n: *const MKL_INT,
         a: *const Self,
-        lda: *const c_int,
-        fpm: *mut c_int,
+        lda: *const MKL_INT,
+        fpm: *mut MKL_INT,
         epsout: *mut Self::Real,
-        loop_: *mut c_int,
+        loop_: *mut MKL_INT,
         emin: *const Self::Real,
         emax: *const Self::Real,
-        m0: *mut c_int,
+        m0: *mut MKL_INT,
         e: *mut Self::Real,
         x: *mut Self,
-        m: *mut c_int,
+        m: *mut MKL_INT,
         res: *mut Self::Real,
-        info: *mut c_int,
+        info: *mut MKL_INT,
     );
 
     /// Raw `feast_csr_complex` call.
     ///
     /// # Safety
     ///
-    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `c_int` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the real search interval, `emin < emax`).
+    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `MKL_INT` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the real search interval, `emin < emax`).
     /// `sa`, `isa`, `jsa` describe an `n x n` Hermitian CSR matrix (1-based): `isa` holds `n + 1` entries, `jsa` and `sa` `isa[n] - 1` entries; only the triangle selected by `uplo` is read.
-    /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
+    /// `m0` points to one `MKL_INT` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `MKL_INT`. None of the output buffers may overlap each other or the inputs.
     /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(
@@ -1023,30 +1032,30 @@ pub trait FeastComplex: Copy + 'static {
     )]
     unsafe fn feast_csr_complex(
         uplo: *const c_char,
-        n: *const c_int,
+        n: *const MKL_INT,
         sa: *const Self,
-        isa: *const c_int,
-        jsa: *const c_int,
-        fpm: *mut c_int,
+        isa: *const MKL_INT,
+        jsa: *const MKL_INT,
+        fpm: *mut MKL_INT,
         epsout: *mut Self::Real,
-        loop_: *mut c_int,
+        loop_: *mut MKL_INT,
         emin: *const Self::Real,
         emax: *const Self::Real,
-        m0: *mut c_int,
+        m0: *mut MKL_INT,
         e: *mut Self::Real,
         x: *mut Self,
-        m: *mut c_int,
+        m: *mut MKL_INT,
         res: *mut Self::Real,
-        info: *mut c_int,
+        info: *mut MKL_INT,
     );
 
     /// Raw `feast_banded_complex` call.
     ///
     /// # Safety
     ///
-    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `c_int` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the real search interval, `emin < emax`).
+    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `MKL_INT` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the real search interval, `emin < emax`).
     /// `a` must be valid for reads of `lda * n` elements in LAPACK band storage with `kla` (pointed to) super/sub-diagonals, `lda >= kla + 1`.
-    /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
+    /// `m0` points to one `MKL_INT` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `MKL_INT`. None of the output buffers may overlap each other or the inputs.
     /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(
@@ -1055,30 +1064,30 @@ pub trait FeastComplex: Copy + 'static {
     )]
     unsafe fn feast_banded_complex(
         uplo: *const c_char,
-        n: *const c_int,
-        kla: *const c_int,
+        n: *const MKL_INT,
+        kla: *const MKL_INT,
         a: *const Self,
-        lda: *const c_int,
-        fpm: *mut c_int,
+        lda: *const MKL_INT,
+        fpm: *mut MKL_INT,
         epsout: *mut Self::Real,
-        loop_: *mut c_int,
+        loop_: *mut MKL_INT,
         emin: *const Self::Real,
         emax: *const Self::Real,
-        m0: *mut c_int,
+        m0: *mut MKL_INT,
         e: *mut Self::Real,
         x: *mut Self,
-        m: *mut c_int,
+        m: *mut MKL_INT,
         res: *mut Self::Real,
-        info: *mut c_int,
+        info: *mut MKL_INT,
     );
 
     /// Raw `feast_dense_gen_complex` call.
     ///
     /// # Safety
     ///
-    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `c_int` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the real search interval, `emin < emax`).
+    /// `uplo` points to one `c_char` (`U`, `L` or `F`); `n` to one `MKL_INT` (matrix order, >= 1). `fpm` must point to the 128-entry FEAST parameter array (initialised with `feastinit`, entries editable as documented; **verified**: `feastinit` overwrote exactly entries 0..=127 of a 512-entry sentinel buffer and nothing beyond, oneMKL 2026.2, Linux x86_64) and is read and written. `epsout`, `loop_` and `m` each point to one writable scalar; `emin` and `emax` to one readable `Real` each (the real search interval, `emin < emax`).
     /// `a` and `b` must be valid for reads of `lda * n` and `ldb * n` elements (column-major, `lda`, `ldb >= n`), `b` Hermitian positive definite; only the triangle selected by `uplo` is read.
-    /// `m0` points to one `c_int` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `c_int`. None of the output buffers may overlap each other or the inputs.
+    /// `m0` points to one `MKL_INT` (the initial subspace size, `1 <= m0 <= n`). `e` must be valid for writes of `m0` `Real` values; `x` for reads (initial guess when `fpm[4] == 1`) and writes of `n * m0` elements (column-major, leading dimension `n`); `res` for writes of `m0` `Real` values; `info` for one `MKL_INT`. None of the output buffers may overlap each other or the inputs.
     /// On return `*info` holds the FEAST status (0 success; non-zero warnings/errors) and `*m` the number of eigenvalues found; only the first `*m` entries of `e`, `res` and the first `*m` columns of `x` are meaningful. The MKL library must be linked and usable.
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
     #[allow(
@@ -1087,22 +1096,22 @@ pub trait FeastComplex: Copy + 'static {
     )]
     unsafe fn feast_dense_gen_complex(
         uplo: *const c_char,
-        n: *const c_int,
+        n: *const MKL_INT,
         a: *const Self,
-        lda: *const c_int,
+        lda: *const MKL_INT,
         b: *const Self,
-        ldb: *const c_int,
-        fpm: *mut c_int,
+        ldb: *const MKL_INT,
+        fpm: *mut MKL_INT,
         epsout: *mut Self::Real,
-        loop_: *mut c_int,
+        loop_: *mut MKL_INT,
         emin: *const Self::Real,
         emax: *const Self::Real,
-        m0: *mut c_int,
+        m0: *mut MKL_INT,
         e: *mut Self::Real,
         x: *mut Self,
-        m: *mut c_int,
+        m: *mut MKL_INT,
         res: *mut Self::Real,
-        info: *mut c_int,
+        info: *mut MKL_INT,
     );
 }
 
@@ -1118,20 +1127,20 @@ macro_rules! impl_feast_complex {
             }
             unsafe fn feast_dense_complex(
                 uplo: *const c_char,
-                n: *const c_int,
+                n: *const MKL_INT,
                 a: *const Self,
-                lda: *const c_int,
-                fpm: *mut c_int,
+                lda: *const MKL_INT,
+                fpm: *mut MKL_INT,
                 epsout: *mut Self::Real,
-                loop_: *mut c_int,
+                loop_: *mut MKL_INT,
                 emin: *const Self::Real,
                 emax: *const Self::Real,
-                m0: *mut c_int,
+                m0: *mut MKL_INT,
                 e: *mut Self::Real,
                 x: *mut Self,
-                m: *mut c_int,
+                m: *mut MKL_INT,
                 res: *mut Self::Real,
-                info: *mut c_int,
+                info: *mut MKL_INT,
             ) {
                 unsafe {
                     sys::$heev(
@@ -1155,21 +1164,21 @@ macro_rules! impl_feast_complex {
             }
             unsafe fn feast_csr_complex(
                 uplo: *const c_char,
-                n: *const c_int,
+                n: *const MKL_INT,
                 sa: *const Self,
-                isa: *const c_int,
-                jsa: *const c_int,
-                fpm: *mut c_int,
+                isa: *const MKL_INT,
+                jsa: *const MKL_INT,
+                fpm: *mut MKL_INT,
                 epsout: *mut Self::Real,
-                loop_: *mut c_int,
+                loop_: *mut MKL_INT,
                 emin: *const Self::Real,
                 emax: *const Self::Real,
-                m0: *mut c_int,
+                m0: *mut MKL_INT,
                 e: *mut Self::Real,
                 x: *mut Self,
-                m: *mut c_int,
+                m: *mut MKL_INT,
                 res: *mut Self::Real,
-                info: *mut c_int,
+                info: *mut MKL_INT,
             ) {
                 unsafe {
                     sys::$hcsrev(
@@ -1194,21 +1203,21 @@ macro_rules! impl_feast_complex {
             }
             unsafe fn feast_banded_complex(
                 uplo: *const c_char,
-                n: *const c_int,
-                kla: *const c_int,
+                n: *const MKL_INT,
+                kla: *const MKL_INT,
                 a: *const Self,
-                lda: *const c_int,
-                fpm: *mut c_int,
+                lda: *const MKL_INT,
+                fpm: *mut MKL_INT,
                 epsout: *mut Self::Real,
-                loop_: *mut c_int,
+                loop_: *mut MKL_INT,
                 emin: *const Self::Real,
                 emax: *const Self::Real,
-                m0: *mut c_int,
+                m0: *mut MKL_INT,
                 e: *mut Self::Real,
                 x: *mut Self,
-                m: *mut c_int,
+                m: *mut MKL_INT,
                 res: *mut Self::Real,
-                info: *mut c_int,
+                info: *mut MKL_INT,
             ) {
                 unsafe {
                     sys::$hbev(
@@ -1233,22 +1242,22 @@ macro_rules! impl_feast_complex {
             }
             unsafe fn feast_dense_gen_complex(
                 uplo: *const c_char,
-                n: *const c_int,
+                n: *const MKL_INT,
                 a: *const Self,
-                lda: *const c_int,
+                lda: *const MKL_INT,
                 b: *const Self,
-                ldb: *const c_int,
-                fpm: *mut c_int,
+                ldb: *const MKL_INT,
+                fpm: *mut MKL_INT,
                 epsout: *mut Self::Real,
-                loop_: *mut c_int,
+                loop_: *mut MKL_INT,
                 emin: *const Self::Real,
                 emax: *const Self::Real,
-                m0: *mut c_int,
+                m0: *mut MKL_INT,
                 e: *mut Self::Real,
                 x: *mut Self,
-                m: *mut c_int,
+                m: *mut MKL_INT,
                 res: *mut Self::Real,
-                info: *mut c_int,
+                info: *mut MKL_INT,
             ) {
                 unsafe {
                     sys::$hegv(

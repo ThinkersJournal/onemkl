@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Changed
+
+- ILP64 package 3a of 4 (`docs/ILP64-DESIGN.md`): `feast`, `pde` and `optim` spell extents, indices, found-eigenvalue counts and statuses as `MKL_INT` instead of `c_int` / `i32`. `MKL_INT` is `i32` under the default `lp64` interface, so no public signature changes for callers (checked: the unchanged tests and examples compile and pass under `lp64`). Error payloads use `util::status_i32`. The `ilp64` feature is still refused by `onemkl/build.rs` until package 4. Not checked: `aarch64-apple-darwin` (bindgen on the build box cannot find `stddef.h` for that target).
+
 ## 0.6.2 - 2026-11-27 (PM-allocated; additive: ILP64 package 2 of 4, sparse, pardiso, dss, iss, preconditioners and util; MKL_INT is i32 under lp64: no change)
 
 ### Changed

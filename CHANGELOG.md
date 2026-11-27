@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 0.6.5 - 2026-11-27 (PM-allocated; additive: ILP64 package 4 of 4, tests, examples, CI and docs: the ILP64 CI step arrives; MKL_INT is i32 under lp64: no change)
 
 ### Added
 

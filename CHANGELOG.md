@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.5.1 - 2026-11-27 (PM-allocated; no call that succeeded before now fails or differs)
+
+### Changed
+
+- `SummaryStats::robust_covariance_tbs` returns `InvalidArgument` when `n <= 2 * p` (oneMKL fails with -4002 there; measured p = 3, n = 6, `tools/size-probes/ss5.c`) (it returned the oneMKL status -4002 as an error before, so no call that worked changes; counts 0 to 6 parameters all computed on oneMKL 2026.2, so there is no parameter-count check); its doc now lists the four TBS parameters and defaults from the oneMKL 2026.0 reference. The BACON third parameter is a stopping criterion (oneMKL default 0.005), not an initial subset fraction as the old comment said; `bacon_default_params()` keeps passing 0.05, so results do not change (doc only). Not measured: BACON's flagged set against a known-answer dataset.
+- `SummaryStats::stream_quantiles` never worked: it asked oneMKL for `VSL_SS_METHOD_FAST` (refused, -4029). It now uses `VSL_SS_METHOD_SQUANTS_ZW`, requires exactly one parameter (the accuracy, in (0, 1)) and returns `InvalidArgument` otherwise; measured on oneMKL 2026.2 (`tools/size-probes/ss6.c`): 0.25 / 0.5 / 0.9 of 1000 distinct values came back 0.25 / 0.497 / 0.898 at accuracy 0.01. The parameter layout is from the probe, not from the Application Notes.
+
 ## 0.5.0 - 2026-11-27 (PM-allocated; BREAKING)
 
 ### Changed (breaking)

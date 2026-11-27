@@ -575,14 +575,28 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
         Ok(out)
     }
 
-    /// Streaming-quantile estimator (Zhang-Wang). Suitable for
-    /// online data where you can't hold the full sample but want an
-    /// approximate quantile. `params` controls the estimator
-    /// (typically `[buffer_size_per_quantile]`). Returns the same
-    /// `num_variables × orders.len()` layout as [`Self::quantiles`].
+    /// Streaming-quantile estimator (Zhang-Wang, `VSL_SS_METHOD_SQUANTS_ZW`).
+    /// Returns the same `num_variables × orders.len()` layout as
+    /// [`Self::quantiles`].
+    ///
+    /// `params` must hold exactly one value, the accuracy of the
+    /// estimate, in `(0, 1)` (typical 0.01). Measured on oneMKL 2026.2
+    /// (`tools/size-probes/ss6.c`): 0 or 2 parameters and an accuracy of
+    /// 0 or 2 are refused by oneMKL (-4064 / -4066 / -4067), and the
+    /// `VSL_SS_METHOD_FAST` method that earlier versions of this wrapper
+    /// passed is refused with -4029, so earlier versions always failed.
+    /// With accuracy 0.01 on 1000 distinct values the orders 0.25, 0.5,
+    /// 0.9 came back as 0.25, 0.497, 0.898. The Summary Statistics
+    /// Application Notes, which would define the parameter, were not
+    /// consulted: the layout is from the probe.
     pub fn stream_quantiles(&mut self, orders: &[T], params: &[T]) -> Result<Vec<T>> {
         if orders.is_empty() {
             return Err(Error::InvalidArgument("orders must be non-empty"));
+        }
+        if params.len() != 1 {
+            return Err(Error::InvalidArgument(
+                "stream quantiles take exactly one parameter, the accuracy",
+            ));
         }
         let order_n: c_int = orders
             .len()
@@ -608,7 +622,7 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
             T::ss_compute(
                 self.task,
                 sys::VSL_SS_STREAM_QUANTS as u64,
-                sys::VSL_SS_METHOD_FAST as c_int,
+                sys::VSL_SS_METHOD_SQUANTS_ZW as c_int,
             )
         };
         check_vsl(status)?;
@@ -619,15 +633,27 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     /// (`VSL_SS_METHOD_TBS` in MKL).
     ///
     /// Returns `(mean, cov)` where `cov` is the `p × p` covariance
-    /// stored in column-major (full) layout. `params` is the TBS
-    /// configuration — pass an empty slice to accept MKL's defaults,
-    /// or supply `[breakdown_point]` (typical value `0.5`) to control
-    /// the maximum fraction of outliers the estimator tolerates.
+    /// stored in full layout. `params` holds up to four values, in this
+    /// order (oneMKL 2026.0 C reference, `vslSSEditRobustCovariance`):
+    /// breakdown point (default `(n - p) / (2 n)`), asymptotic
+    /// rejection probability (default 0.001), stopping tolerance
+    /// (default 0.001), maximum iterations (default 10; 0 returns the
+    /// Maronna initial estimate only). An empty slice accepts every
+    /// default; a shorter slice sets the leading values. oneMKL
+    /// requires `n > 2 p`: otherwise this returns `InvalidArgument`
+    /// (measured on oneMKL 2026.2: the call itself fails with -4002 for
+    /// `p = 3`, `n = 6`; `n = 7` works; counts 0 to 4 are accepted;
+    /// `tools/size-probes/ss5.c`).
     ///
     /// Note: MKL exposes BACON only for *outlier weights*
     /// (see [`Self::outliers_bacon`]); for a full robust covariance
     /// estimate the supported algorithm is TBS.
     pub fn robust_covariance_tbs(&mut self, params: &[T]) -> Result<(Vec<T>, Vec<T>)> {
+        if self._n <= 2 * self.p {
+            return Err(Error::InvalidArgument(
+                "robust covariance (TBS) needs more than 2 * num_variables observations",
+            ));
+        }
         let cov_storage: c_int = sys::VSL_SS_MATRIX_STORAGE_FULL as c_int;
         let n_params: c_int = params
             .len()
@@ -672,7 +698,11 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     ///   (`VSL_SS_METHOD_BACON_MEDIAN_INIT` or
     ///   `VSL_SS_METHOD_BACON_MAHALANOBIS_INIT` from `onemkl-sys`),
     /// - `params[1]` = significance level (e.g. `0.05`),
-    /// - `params[2]` = initial subset size as fraction of `n`.
+    /// - `params[2]` = stopping criterion: the algorithm ends when the
+    ///   size of the basic subset changes by less than this (oneMKL
+    ///   default 0.005; the reference describes it so, an earlier
+    ///   version of this comment called it an initial subset fraction).
+    ///   The reference recommends `params[1]` = α / n.
     ///
     /// Use [`SummaryStats::<f64>::bacon_default_params`] for sensible
     /// defaults.
@@ -701,8 +731,9 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
 }
 
 impl SummaryStats<'_, f64> {
-    /// Default BACON parameters: median initialization, α = 0.05,
-    /// β = 0.05.
+    /// Default BACON parameters: median initialization, 0.05
+    /// probability, 0.005 stopping criterion (oneMKL's documented
+    /// defaults).
     #[inline]
     #[must_use]
     pub fn bacon_default_params() -> [f64; 3] {

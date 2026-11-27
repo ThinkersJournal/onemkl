@@ -21,6 +21,7 @@
 use core::ffi::c_int;
 use core::marker::PhantomData;
 use core::ptr;
+use onemkl_sys::MKL_INT;
 
 use onemkl_sys::{self as sys, VSLSSTaskPtr};
 
@@ -42,19 +43,19 @@ pub trait SsScalar: Copy + Default + 'static {
     ///
     /// # Safety
     ///
-    /// `task` must be valid for a write of one `VSLSSTaskPtr`. `p`, `n` and `xstorage` must each point to one readable `c_int` (dimension `p >= 1`, observation count `n >= 1`, and a `VSL_SS_MATRIX_STORAGE_*` constant); they are read during the call.
+    /// `task` must be valid for a write of one `VSLSSTaskPtr`. `p`, `n` and `xstorage` must each point to one readable `MKL_INT` (dimension `p >= 1`, observation count `n >= 1`, and a `VSL_SS_MATRIX_STORAGE_*` constant); they are read during the call.
     /// `x` must point to the `p x n` observation matrix, `p * n` elements, stored per `*xstorage`. `w` may be null (equal weights) or point to `n` weights. `indices` may be null or point to `p` entries of 0/1 selecting which variables are used.
     /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
     /// On a non-zero return `*task` must not be used. A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `x`: p * n and `w`: n elements, row storage; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
     unsafe fn ss_new_task(
         task: *mut VSLSSTaskPtr,
-        p: *const c_int,
-        n: *const c_int,
-        xstorage: *const c_int,
+        p: *const MKL_INT,
+        n: *const MKL_INT,
+        xstorage: *const MKL_INT,
         x: *const Self,
         w: *const Self,
-        indices: *const c_int,
+        indices: *const MKL_INT,
     ) -> c_int;
 
     /// Raw `ss_edit_task` call.
@@ -66,7 +67,7 @@ pub trait SsScalar: Copy + Default + 'static {
     /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
-    unsafe fn ss_edit_task(task: VSLSSTaskPtr, parameter: c_int, address: *const Self) -> c_int;
+    unsafe fn ss_edit_task(task: VSLSSTaskPtr, parameter: MKL_INT, address: *const Self) -> c_int;
 
     /// Raw `ss_edit_moments` call.
     ///
@@ -100,24 +101,24 @@ pub trait SsScalar: Copy + Default + 'static {
     /// All pointers previously registered with the task via `ss_new_task` and the `ss_edit_*` calls must still be valid per their own contracts. `estimates` must be a bitwise OR of `VSL_SS_*` estimate flags for which the corresponding output buffers were registered; otherwise MKL writes through unset pointers. `method` must be a valid `VSL_SS_METHOD_*`.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
-    unsafe fn ss_compute(task: VSLSSTaskPtr, estimates: u64, method: c_int) -> c_int;
+    unsafe fn ss_compute(task: VSLSSTaskPtr, estimates: u64, method: MKL_INT) -> c_int;
 
     /// Raw `ss_edit_quantiles` call.
     ///
     /// # Safety
     ///
     /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
-    /// `quant_order_n` points to one `c_int` (number of quantile orders `m`); `quant_orders` points to `m` values in `[0, 1]`; `quants_out` must be valid for writes of `p * m` elements; `order_stats_out` and `order_stats_storage` may be null together, otherwise `order_stats_out` must be valid for writes of `p * n` elements stored per `*order_stats_storage`.
+    /// `quant_order_n` points to one `MKL_INT` (number of quantile orders `m`); `quant_orders` points to `m` values in `[0, 1]`; `quants_out` must be valid for writes of `p * m` elements; `order_stats_out` and `order_stats_storage` may be null together, otherwise `order_stats_out` must be valid for writes of `p * n` elements stored per `*order_stats_storage`.
     /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `quants_out`: p * q elements; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
     unsafe fn ss_edit_quantiles(
         task: VSLSSTaskPtr,
-        quant_order_n: *const c_int,
+        quant_order_n: *const MKL_INT,
         quant_orders: *const Self,
         quants_out: *mut Self,
         order_stats_out: *mut Self,
-        order_stats_storage: *const c_int,
+        order_stats_storage: *const MKL_INT,
     ) -> c_int;
 
     /// Raw `ss_edit_stream_quantiles` call.
@@ -125,17 +126,17 @@ pub trait SsScalar: Copy + Default + 'static {
     /// # Safety
     ///
     /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
-    /// `quant_order_n` points to one `c_int` (`m`); `quant_orders` points to `m` values in `[0, 1]`; `quants_out` must be valid for writes of `p * m` elements; `params_n` points to one `c_int` (the number of parameters, at least 1) and `params` to that many values (the accuracy parameter).
+    /// `quant_order_n` points to one `MKL_INT` (`m`); `quant_orders` points to `m` values in `[0, 1]`; `quants_out` must be valid for writes of `p * m` elements; `params_n` points to one `MKL_INT` (the number of parameters, at least 1) and `params` to that many values (the accuracy parameter).
     /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (`tools/size-probes/ss2.c`, smallest buffer for which the call did not fault, p = 3, n = 40, row storage; oneMKL 2026.2, Linux x86_64): `quants_out`: p * m elements (m = 3 orders; ZW method, accuracy 0.01, computed over one batch of n observations, not a multi-block stream).
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
     unsafe fn ss_edit_stream_quantiles(
         task: VSLSSTaskPtr,
-        quant_order_n: *const c_int,
+        quant_order_n: *const MKL_INT,
         quant_orders: *const Self,
         quants_out: *mut Self,
-        params_n: *const c_int,
+        params_n: *const MKL_INT,
         params: *const Self,
     ) -> c_int;
 
@@ -144,22 +145,22 @@ pub trait SsScalar: Copy + Default + 'static {
     /// # Safety
     ///
     /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
-    /// `idx` points to `p` entries, each `-1` (component of Z, conditioned on) or `1` (component of Y); `cov` and `cor` are valid for writes of `p * p` elements, `pcov` and `pcor` for `p * p` (only `ny * ny` were written when measured); each `*_storage` points to one `c_int` (a `VSL_SS_MATRIX_STORAGE_*`).
+    /// `idx` points to `p` entries, each `-1` (component of Z, conditioned on) or `1` (component of Y); `cov` and `cor` are valid for writes of `p * p` elements, `pcov` and `pcor` for `p * p` (only `ny * ny` were written when measured); each `*_storage` points to one `MKL_INT` (a `VSL_SS_MATRIX_STORAGE_*`).
     /// **Pointer retention:** the task stores the pointers it is given; each buffer must stay allocated at a stable address, and not be accessed through Rust references, until the task has been deleted or the pointers replaced, including across every `ss_compute` call.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// Extents beyond the measured ones are unverified (from MKL documentation).
     #[allow(clippy::too_many_arguments, reason = "mirrors the C routine")]
     unsafe fn ss_edit_partial_cov_cor(
         task: VSLSSTaskPtr,
-        idx: *const c_int,
+        idx: *const MKL_INT,
         cov: *mut Self,
-        cov_storage: *const c_int,
+        cov_storage: *const MKL_INT,
         cor: *mut Self,
-        cor_storage: *const c_int,
+        cor_storage: *const MKL_INT,
         pcov: *mut Self,
-        pcov_storage: *const c_int,
+        pcov_storage: *const MKL_INT,
         pcor: *mut Self,
-        pcor_storage: *const c_int,
+        pcor_storage: *const MKL_INT,
     ) -> c_int;
 
     /// Raw `ss_edit_robust_covariance` call.
@@ -167,15 +168,15 @@ pub trait SsScalar: Copy + Default + 'static {
     /// # Safety
     ///
     /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
-    /// `cov_storage` points to one `c_int` giving the storage of `cov_out` (a `VSL_SS_MATRIX_STORAGE_*`); `n_params` points to one `c_int` and `params` to that many parameters; `mean_out` must be valid for writes of `p` elements and `cov_out` of `p * p` elements (or the packed size for packed storage).
+    /// `cov_storage` points to one `MKL_INT` giving the storage of `cov_out` (a `VSL_SS_MATRIX_STORAGE_*`); `n_params` points to one `MKL_INT` and `params` to that many parameters; `mean_out` must be valid for writes of `p` elements and `cov_out` of `p * p` elements (or the packed size for packed storage).
     /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (`tools/size-probes/ss2.c`, smallest buffer for which the call did not fault, p = 3, n = 40, row storage; oneMKL 2026.2, Linux x86_64): `mean_out`: p and `cov_out`: p * p elements (full storage, TBS method with 4 parameters).
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
     unsafe fn ss_edit_robust_covariance(
         task: VSLSSTaskPtr,
-        cov_storage: *const c_int,
-        n_params: *const c_int,
+        cov_storage: *const MKL_INT,
+        n_params: *const MKL_INT,
         params: *const Self,
         mean_out: *mut Self,
         cov_out: *mut Self,
@@ -186,14 +187,14 @@ pub trait SsScalar: Copy + Default + 'static {
     /// # Safety
     ///
     /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
-    /// `n_params` points to one `c_int` and `params` to that many parameters (3 as MKL documents); `weights_out` must be valid for writes of `n` elements (one weight per observation).
+    /// `n_params` points to one `MKL_INT` and `params` to that many parameters (3 as MKL documents); `weights_out` must be valid for writes of `n` elements (one weight per observation).
     /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (`tools/size-probes/ss2.c`, smallest buffer for which the call did not fault, p = 3, n = 40, row storage; oneMKL 2026.2, Linux x86_64): `weights_out`: n elements (BACON method with 3 parameters).
     /// Extents not listed as verified in this block are unverified (from MKL documentation).
     unsafe fn ss_edit_outliers_detection(
         task: VSLSSTaskPtr,
-        n_params: *const c_int,
+        n_params: *const MKL_INT,
         params: *const Self,
         weights_out: *mut Self,
     ) -> c_int;
@@ -203,7 +204,7 @@ pub trait SsScalar: Copy + Default + 'static {
     /// # Safety
     ///
     /// `task` must be a live `VSLSSTaskPtr` from `ss_new_task` that has not been deleted, and must not be used from another thread during the call.
-    /// `n_params`/`params`, `init_estimates_n`/`init_estimates`, `prior_n`/`prior` and `simul_vals_n`/`estimates_n` are (count, data) pairs: each count points to one `c_int` and the paired data to that many `Self` values (null where MKL allows a default). `simul_vals_out` must be valid for writes of `simul_vals * p` elements and `estimates_out` of the estimates the task defines (the mean `p` and covariance `p * p` as requested).
+    /// `n_params`/`params`, `init_estimates_n`/`init_estimates`, `prior_n`/`prior` and `simul_vals_n`/`estimates_n` are (count, data) pairs: each count points to one `MKL_INT` and the paired data to that many `Self` values (null where MKL allows a default). `simul_vals_out` must be valid for writes of `simul_vals * p` elements and `estimates_out` of the estimates the task defines (the mean `p` and covariance `p * p` as requested).
     /// **Pointer retention:** the task stores the pointers it is given (it does not copy the data). Each buffer must stay allocated, at a stable address, and not be mutated through Rust references (outputs: not accessed at all) from this call until the task has been deleted or the pointer replaced, including across every `ss_compute` call.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// **Not verifiable so far:** `tools/size-probes/ss3.c` and a parameter sweep on oneMKL 2026.2 could not get `VSL_SS_METHOD_MI` to compute: with a null `simul_vals_out` (what `SummaryStats::impute_missing` passes) the compute step returns `VSL_SS_ERROR_BAD_MI_SIMUL_VALS_ADDR` (-4054), and with a buffer of `k * m` elements every parameter set tried returned `VSL_SS_ERROR_BAD_MI_PARAMS` (-4051) or `VSL_SS_ERROR_BAD_MI_MISSING_VALS_N` (-4063). The meaning of the five method parameters is not in the Developer Reference (it points to the separate Summary Statistics Application Notes), so no extent here is verified; treat the extents above as the documentation's.
@@ -214,15 +215,15 @@ pub trait SsScalar: Copy + Default + 'static {
     )]
     unsafe fn ss_edit_missing_values(
         task: VSLSSTaskPtr,
-        n_params: *const c_int,
+        n_params: *const MKL_INT,
         params: *const Self,
-        init_estimates_n: *const c_int,
+        init_estimates_n: *const MKL_INT,
         init_estimates: *const Self,
-        prior_n: *const c_int,
+        prior_n: *const MKL_INT,
         prior: *const Self,
-        simul_vals_n: *const c_int,
+        simul_vals_n: *const MKL_INT,
         simul_vals_out: *mut Self,
-        estimates_n: *const c_int,
+        estimates_n: *const MKL_INT,
         estimates_out: *mut Self,
     ) -> c_int;
 }
@@ -249,18 +250,18 @@ macro_rules! impl_ss_scalar {
             }
             unsafe fn ss_new_task(
                 task: *mut VSLSSTaskPtr,
-                p: *const c_int,
-                n: *const c_int,
-                xstorage: *const c_int,
+                p: *const MKL_INT,
+                n: *const MKL_INT,
+                xstorage: *const MKL_INT,
                 x: *const Self,
                 w: *const Self,
-                indices: *const c_int,
+                indices: *const MKL_INT,
             ) -> c_int {
                 unsafe { sys::$new(task, p, n, xstorage, x, w, indices) }
             }
             unsafe fn ss_edit_task(
                 task: VSLSSTaskPtr,
-                parameter: c_int,
+                parameter: MKL_INT,
                 address: *const Self,
             ) -> c_int {
                 unsafe { sys::$edit(task, parameter, address) }
@@ -277,16 +278,16 @@ macro_rules! impl_ss_scalar {
             ) -> c_int {
                 unsafe { sys::$moments(task, mean, r2m, r3m, r4m, c2m, c3m, c4m) }
             }
-            unsafe fn ss_compute(task: VSLSSTaskPtr, estimates: u64, method: c_int) -> c_int {
+            unsafe fn ss_compute(task: VSLSSTaskPtr, estimates: u64, method: MKL_INT) -> c_int {
                 unsafe { sys::$compute(task, estimates, method) }
             }
             unsafe fn ss_edit_quantiles(
                 task: VSLSSTaskPtr,
-                quant_order_n: *const c_int,
+                quant_order_n: *const MKL_INT,
                 quant_orders: *const Self,
                 quants_out: *mut Self,
                 order_stats_out: *mut Self,
-                order_stats_storage: *const c_int,
+                order_stats_storage: *const MKL_INT,
             ) -> c_int {
                 unsafe {
                     sys::$quantiles(
@@ -301,10 +302,10 @@ macro_rules! impl_ss_scalar {
             }
             unsafe fn ss_edit_stream_quantiles(
                 task: VSLSSTaskPtr,
-                quant_order_n: *const c_int,
+                quant_order_n: *const MKL_INT,
                 quant_orders: *const Self,
                 quants_out: *mut Self,
-                params_n: *const c_int,
+                params_n: *const MKL_INT,
                 params: *const Self,
             ) -> c_int {
                 unsafe {
@@ -321,15 +322,15 @@ macro_rules! impl_ss_scalar {
             #[allow(clippy::too_many_arguments, reason = "mirrors the C routine")]
             unsafe fn ss_edit_partial_cov_cor(
                 task: VSLSSTaskPtr,
-                idx: *const c_int,
+                idx: *const MKL_INT,
                 cov: *mut Self,
-                cov_storage: *const c_int,
+                cov_storage: *const MKL_INT,
                 cor: *mut Self,
-                cor_storage: *const c_int,
+                cor_storage: *const MKL_INT,
                 pcov: *mut Self,
-                pcov_storage: *const c_int,
+                pcov_storage: *const MKL_INT,
                 pcor: *mut Self,
-                pcor_storage: *const c_int,
+                pcor_storage: *const MKL_INT,
             ) -> c_int {
                 unsafe {
                     sys::$partial(
@@ -348,8 +349,8 @@ macro_rules! impl_ss_scalar {
             }
             unsafe fn ss_edit_robust_covariance(
                 task: VSLSSTaskPtr,
-                cov_storage: *const c_int,
-                n_params: *const c_int,
+                cov_storage: *const MKL_INT,
+                n_params: *const MKL_INT,
                 params: *const Self,
                 mean_out: *mut Self,
                 cov_out: *mut Self,
@@ -358,7 +359,7 @@ macro_rules! impl_ss_scalar {
             }
             unsafe fn ss_edit_outliers_detection(
                 task: VSLSSTaskPtr,
-                n_params: *const c_int,
+                n_params: *const MKL_INT,
                 params: *const Self,
                 weights_out: *mut Self,
             ) -> c_int {
@@ -366,15 +367,15 @@ macro_rules! impl_ss_scalar {
             }
             unsafe fn ss_edit_missing_values(
                 task: VSLSSTaskPtr,
-                n_params: *const c_int,
+                n_params: *const MKL_INT,
                 params: *const Self,
-                init_estimates_n: *const c_int,
+                init_estimates_n: *const MKL_INT,
                 init_estimates: *const Self,
-                prior_n: *const c_int,
+                prior_n: *const MKL_INT,
                 prior: *const Self,
-                simul_vals_n: *const c_int,
+                simul_vals_n: *const MKL_INT,
                 simul_vals_out: *mut Self,
-                estimates_n: *const c_int,
+                estimates_n: *const MKL_INT,
                 estimates_out: *mut Self,
             ) -> c_int {
                 unsafe {
@@ -460,9 +461,9 @@ pub struct SummaryStats<'data, T: SsScalar> {
     // MKL stores raw pointers to these inside the task, so they must
     // outlive every Edit/Compute call. Boxed so the addresses are
     // stable across moves of `Self`.
-    _p_holder: Box<c_int>,
-    _n_holder: Box<c_int>,
-    _xstorage_holder: Box<c_int>,
+    _p_holder: Box<MKL_INT>,
+    _n_holder: Box<MKL_INT>,
+    _xstorage_holder: Box<MKL_INT>,
     _data: &'data [T],
     _weights: Option<&'data [T]>,
     _marker: PhantomData<T>,
@@ -520,17 +521,17 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
                 "data buffer is smaller than num_variables * num_observations",
             ));
         }
-        let p_box: Box<c_int> = Box::new(
+        let p_box: Box<MKL_INT> = Box::new(
             num_variables
                 .try_into()
                 .map_err(|_| Error::DimensionOverflow)?,
         );
-        let n_box: Box<c_int> = Box::new(
+        let n_box: Box<MKL_INT> = Box::new(
             num_observations
                 .try_into()
                 .map_err(|_| Error::DimensionOverflow)?,
         );
-        let xstorage_box: Box<c_int> = Box::new(sys::VSL_SS_MATRIX_STORAGE_ROWS as c_int);
+        let xstorage_box: Box<MKL_INT> = Box::new(sys::VSL_SS_MATRIX_STORAGE_ROWS as MKL_INT);
         let mut task: VSLSSTaskPtr = ptr::null_mut();
         let status = unsafe {
             T::ss_new_task(
@@ -560,14 +561,15 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     /// Per-variable mean. Length is `num_variables`.
     pub fn mean(&mut self) -> Result<Vec<T>> {
         let mut mean = vec![T::default(); self.p];
-        let status =
-            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_MEAN as c_int, mean.as_mut_ptr()) };
+        let status = unsafe {
+            T::ss_edit_task(self.task, sys::VSL_SS_ED_MEAN as MKL_INT, mean.as_mut_ptr())
+        };
         check_vsl(status)?;
         let status = unsafe {
             T::ss_compute(
                 self.task,
                 sys::VSL_SS_MEAN as u64,
-                sys::VSL_SS_METHOD_FAST as c_int,
+                sys::VSL_SS_METHOD_FAST as MKL_INT,
             )
         };
         check_vsl(status)?;
@@ -582,18 +584,29 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
         let mut mean = vec![T::default(); self.p];
         let mut r2m = vec![T::default(); self.p];
         let mut c2m = vec![T::default(); self.p];
-        let status =
-            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_MEAN as c_int, mean.as_mut_ptr()) };
+        let status = unsafe {
+            T::ss_edit_task(self.task, sys::VSL_SS_ED_MEAN as MKL_INT, mean.as_mut_ptr())
+        };
         check_vsl(status)?;
-        let status =
-            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_2R_MOM as c_int, r2m.as_mut_ptr()) };
+        let status = unsafe {
+            T::ss_edit_task(
+                self.task,
+                sys::VSL_SS_ED_2R_MOM as MKL_INT,
+                r2m.as_mut_ptr(),
+            )
+        };
         check_vsl(status)?;
-        let status =
-            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_2C_MOM as c_int, c2m.as_mut_ptr()) };
+        let status = unsafe {
+            T::ss_edit_task(
+                self.task,
+                sys::VSL_SS_ED_2C_MOM as MKL_INT,
+                c2m.as_mut_ptr(),
+            )
+        };
         check_vsl(status)?;
         let estimates = (sys::VSL_SS_MEAN | sys::VSL_SS_2R_MOM | sys::VSL_SS_2C_MOM) as u64;
         let status =
-            unsafe { T::ss_compute(self.task, estimates, sys::VSL_SS_METHOD_FAST as c_int) };
+            unsafe { T::ss_compute(self.task, estimates, sys::VSL_SS_METHOD_FAST as MKL_INT) };
         check_vsl(status)?;
         Ok(c2m)
     }
@@ -605,13 +618,13 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     pub fn min(&mut self) -> Result<Vec<T>> {
         let mut min = self.seed_from_first_observation();
         let status =
-            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_MIN as c_int, min.as_mut_ptr()) };
+            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_MIN as MKL_INT, min.as_mut_ptr()) };
         check_vsl(status)?;
         let status = unsafe {
             T::ss_compute(
                 self.task,
                 sys::VSL_SS_MIN as u64,
-                sys::VSL_SS_METHOD_FAST as c_int,
+                sys::VSL_SS_METHOD_FAST as MKL_INT,
             )
         };
         check_vsl(status)?;
@@ -623,13 +636,13 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     pub fn max(&mut self) -> Result<Vec<T>> {
         let mut max = self.seed_from_first_observation();
         let status =
-            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_MAX as c_int, max.as_mut_ptr()) };
+            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_MAX as MKL_INT, max.as_mut_ptr()) };
         check_vsl(status)?;
         let status = unsafe {
             T::ss_compute(
                 self.task,
                 sys::VSL_SS_MAX as u64,
-                sys::VSL_SS_METHOD_FAST as c_int,
+                sys::VSL_SS_METHOD_FAST as MKL_INT,
             )
         };
         check_vsl(status)?;
@@ -647,13 +660,13 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     pub fn sum(&mut self) -> Result<Vec<T>> {
         let mut sum = vec![T::default(); self.p];
         let status =
-            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_SUM as c_int, sum.as_mut_ptr()) };
+            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_SUM as MKL_INT, sum.as_mut_ptr()) };
         check_vsl(status)?;
         let status = unsafe {
             T::ss_compute(
                 self.task,
                 sys::VSL_SS_SUM as u64,
-                sys::VSL_SS_METHOD_FAST as c_int,
+                sys::VSL_SS_METHOD_FAST as MKL_INT,
             )
         };
         check_vsl(status)?;
@@ -674,7 +687,7 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
         if orders.is_empty() {
             return Err(Error::InvalidArgument("orders must be non-empty"));
         }
-        let order_n: c_int = orders
+        let order_n: MKL_INT = orders
             .len()
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
@@ -694,7 +707,7 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
             T::ss_compute(
                 self.task,
                 sys::VSL_SS_QUANTS as u64,
-                sys::VSL_SS_METHOD_FAST as c_int,
+                sys::VSL_SS_METHOD_FAST as MKL_INT,
             )
         };
         check_vsl(status)?;
@@ -724,11 +737,11 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
                 "stream quantiles take exactly one parameter, the accuracy",
             ));
         }
-        let order_n: c_int = orders
+        let order_n: MKL_INT = orders
             .len()
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
-        let params_n: c_int = params
+        let params_n: MKL_INT = params
             .len()
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
@@ -748,7 +761,7 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
             T::ss_compute(
                 self.task,
                 sys::VSL_SS_STREAM_QUANTS as u64,
-                sys::VSL_SS_METHOD_SQUANTS_ZW as c_int,
+                sys::VSL_SS_METHOD_SQUANTS_ZW as MKL_INT,
             )
         };
         check_vsl(status)?;
@@ -780,8 +793,8 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
                 "robust covariance (TBS) needs more than 2 * num_variables observations",
             ));
         }
-        let cov_storage: c_int = sys::VSL_SS_MATRIX_STORAGE_FULL as c_int;
-        let n_params: c_int = params
+        let cov_storage: MKL_INT = sys::VSL_SS_MATRIX_STORAGE_FULL as MKL_INT;
+        let n_params: MKL_INT = params
             .len()
             .try_into()
             .map_err(|_| Error::DimensionOverflow)?;
@@ -806,7 +819,7 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
             T::ss_compute(
                 self.task,
                 sys::VSL_SS_ROBUST_COV as u64,
-                sys::VSL_SS_METHOD_TBS as c_int,
+                sys::VSL_SS_METHOD_TBS as MKL_INT,
             )
         };
         check_vsl(status)?;
@@ -833,19 +846,20 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
                 "partial covariance needs at least one conditioning and one target variable",
             ));
         }
-        let idx: Vec<c_int> = roles
+        let idx: Vec<MKL_INT> = roles
             .iter()
             .map(|r| if *r == PartialRole::Target { 1 } else { -1 })
             .collect();
-        let full: c_int = sys::VSL_SS_MATRIX_STORAGE_FULL as c_int;
+        let full: MKL_INT = sys::VSL_SS_MATRIX_STORAGE_FULL as MKL_INT;
         let pp = self.p * self.p;
         let mut mean = vec![T::default(); self.p];
         let mut cov = vec![T::default(); pp];
         let mut cor = vec![T::default(); pp];
         let mut pcov = vec![T::default(); pp];
         let mut pcor = vec![T::default(); pp];
-        let status =
-            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_MEAN as c_int, mean.as_mut_ptr()) };
+        let status = unsafe {
+            T::ss_edit_task(self.task, sys::VSL_SS_ED_MEAN as MKL_INT, mean.as_mut_ptr())
+        };
         check_vsl(status)?;
         let status = unsafe {
             T::ss_edit_partial_cov_cor(
@@ -868,7 +882,7 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
             | sys::VSL_SS_PARTIAL_COV
             | sys::VSL_SS_PARTIAL_COR) as u64;
         let status =
-            unsafe { T::ss_compute(self.task, estimates, sys::VSL_SS_METHOD_FAST as c_int) };
+            unsafe { T::ss_compute(self.task, estimates, sys::VSL_SS_METHOD_FAST as MKL_INT) };
         check_vsl(status)?;
         pcov.truncate(ny * ny);
         pcor.truncate(ny * ny);
@@ -899,7 +913,7 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
     /// Use [`SummaryStats::<f64>::bacon_default_params`] for sensible
     /// defaults.
     pub fn outliers_bacon(&mut self, params: &[T; 3]) -> Result<Vec<T>> {
-        let n_params: c_int = 3;
+        let n_params: MKL_INT = 3;
         let mut weights = vec![T::default(); self._n];
         let status = unsafe {
             T::ss_edit_outliers_detection(
@@ -914,7 +928,7 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
             T::ss_compute(
                 self.task,
                 sys::VSL_SS_OUTLIERS as u64,
-                sys::VSL_SS_METHOD_BACON as c_int,
+                sys::VSL_SS_METHOD_BACON as MKL_INT,
             )
         };
         check_vsl(status)?;
@@ -1032,11 +1046,12 @@ pub fn impute_missing<T: SsScalar>(
         .checked_mul(options.da_iterations)
         .and_then(|v| v.checked_mul(p + (p * p + p) / 2))
         .ok_or(Error::DimensionOverflow)?;
-    let to_int = |v: usize| -> Result<c_int> { v.try_into().map_err(|_| Error::DimensionOverflow) };
+    let to_int =
+        |v: usize| -> Result<MKL_INT> { v.try_into().map_err(|_| Error::DimensionOverflow) };
     let (p_i, n_i) = (to_int(p)?, to_int(num_observations)?);
-    let xstorage = sys::VSL_SS_MATRIX_STORAGE_ROWS as c_int;
-    let n_params: c_int = 5;
-    let zero: c_int = 0;
+    let xstorage = sys::VSL_SS_MATRIX_STORAGE_ROWS as MKL_INT;
+    let n_params: MKL_INT = 5;
+    let zero: MKL_INT = 0;
     let (simul_n, est_n) = (to_int(simul_len)?, to_int(est_len)?);
     let mut simulated = vec![T::default(); simul_len];
     let mut estimates = vec![T::default(); est_len];
@@ -1073,7 +1088,7 @@ pub fn impute_missing<T: SsScalar>(
             T::ss_compute(
                 task,
                 sys::VSL_SS_MISSING_VALS as u64,
-                sys::VSL_SS_METHOD_MI as c_int,
+                sys::VSL_SS_METHOD_MI as MKL_INT,
             )
         }
     } else {

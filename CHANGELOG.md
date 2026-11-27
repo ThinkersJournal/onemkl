@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.6.4 - 2026-11-27 (PM-allocated; additive: ILP64 package 3b of 4, data_fitting, rng convolution and summary_stats; MKL_INT is i32 under lp64: no change)
+
+### Changed
+
+- ILP64 package 3b of 4 (`docs/ILP64-DESIGN.md`): `data_fitting` and `rng/{mod,summary_stats,convolution}` spell extents, strides, dimensions and statuses as `MKL_INT` instead of `c_int` / `i32`. `MKL_INT` is `i32` under the default `lp64` interface, so no public signature changes for callers (checked: the unchanged tests and examples compile and pass under `lp64`). The `ilp64` feature is still refused by `onemkl/build.rs` until package 4. `aarch64-apple-darwin` is a type-check against box-local stub headers, not Apple's SDK.
+
 ## 0.6.3 - 2026-11-27 (PM-allocated; additive: ILP64 package 3a of 4, feast, pde and optim; MKL_INT is i32 under lp64: no change)
 
 ### Changed

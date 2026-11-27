@@ -27,7 +27,6 @@
 //! plan.forward(&mut f).unwrap();
 //! ```
 
-use core::ffi::c_int;
 use core::marker::PhantomData;
 use core::ptr;
 use onemkl_sys::MKL_INT;

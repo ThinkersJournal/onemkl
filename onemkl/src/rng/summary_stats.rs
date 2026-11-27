@@ -152,15 +152,15 @@ pub trait SsScalar: Copy + Default + 'static {
     #[allow(clippy::too_many_arguments, reason = "mirrors the C routine")]
     unsafe fn ss_edit_partial_cov_cor(
         task: VSLSSTaskPtr,
-        idx: *const c_int,
+        idx: *const MKL_INT,
         cov: *mut Self,
-        cov_storage: *const c_int,
+        cov_storage: *const MKL_INT,
         cor: *mut Self,
-        cor_storage: *const c_int,
+        cor_storage: *const MKL_INT,
         pcov: *mut Self,
-        pcov_storage: *const c_int,
+        pcov_storage: *const MKL_INT,
         pcor: *mut Self,
-        pcor_storage: *const c_int,
+        pcor_storage: *const MKL_INT,
     ) -> c_int;
 
     /// Raw `ss_edit_robust_covariance` call.
@@ -322,15 +322,15 @@ macro_rules! impl_ss_scalar {
             #[allow(clippy::too_many_arguments, reason = "mirrors the C routine")]
             unsafe fn ss_edit_partial_cov_cor(
                 task: VSLSSTaskPtr,
-                idx: *const c_int,
+                idx: *const MKL_INT,
                 cov: *mut Self,
-                cov_storage: *const c_int,
+                cov_storage: *const MKL_INT,
                 cor: *mut Self,
-                cor_storage: *const c_int,
+                cor_storage: *const MKL_INT,
                 pcov: *mut Self,
-                pcov_storage: *const c_int,
+                pcov_storage: *const MKL_INT,
                 pcor: *mut Self,
-                pcor_storage: *const c_int,
+                pcor_storage: *const MKL_INT,
             ) -> c_int {
                 unsafe {
                     sys::$partial(
@@ -846,19 +846,20 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
                 "partial covariance needs at least one conditioning and one target variable",
             ));
         }
-        let idx: Vec<c_int> = roles
+        let idx: Vec<MKL_INT> = roles
             .iter()
             .map(|r| if *r == PartialRole::Target { 1 } else { -1 })
             .collect();
-        let full: c_int = sys::VSL_SS_MATRIX_STORAGE_FULL as c_int;
+        let full: MKL_INT = sys::VSL_SS_MATRIX_STORAGE_FULL as MKL_INT;
         let pp = self.p * self.p;
         let mut mean = vec![T::default(); self.p];
         let mut cov = vec![T::default(); pp];
         let mut cor = vec![T::default(); pp];
         let mut pcov = vec![T::default(); pp];
         let mut pcor = vec![T::default(); pp];
-        let status =
-            unsafe { T::ss_edit_task(self.task, sys::VSL_SS_ED_MEAN as c_int, mean.as_mut_ptr()) };
+        let status = unsafe {
+            T::ss_edit_task(self.task, sys::VSL_SS_ED_MEAN as MKL_INT, mean.as_mut_ptr())
+        };
         check_vsl(status)?;
         let status = unsafe {
             T::ss_edit_partial_cov_cor(
@@ -881,7 +882,7 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
             | sys::VSL_SS_PARTIAL_COV
             | sys::VSL_SS_PARTIAL_COR) as u64;
         let status =
-            unsafe { T::ss_compute(self.task, estimates, sys::VSL_SS_METHOD_FAST as c_int) };
+            unsafe { T::ss_compute(self.task, estimates, sys::VSL_SS_METHOD_FAST as MKL_INT) };
         check_vsl(status)?;
         pcov.truncate(ny * ny);
         pcor.truncate(ny * ny);

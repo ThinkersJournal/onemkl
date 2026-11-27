@@ -29,6 +29,7 @@ use crate::enums::{Layout, Side, Transpose, UpLo};
 use crate::error::{Error, Result};
 use crate::matrix::{MatrixMut, MatrixRef};
 use crate::util::dim_to_mkl_int;
+use onemkl_sys::MKL_INT;
 
 /// Job enum used by several LAPACK routines to indicate whether to
 /// compute eigenvectors / singular vectors, and how.
@@ -73,13 +74,18 @@ impl Job {
 // =====================================================================
 
 #[inline]
-fn check_info(info: i32) -> Result<()> {
+fn check_info(info: MKL_INT) -> Result<()> {
+    // `info` is `MKL_INT`; under ILP64 it is 64 bits wide while the error
+    // fields stay `MKL_INT`, so a value that does not fit saturates.
+    let narrow = |v: MKL_INT| i32::try_from(v).unwrap_or(i32::MAX);
     if info == 0 {
         Ok(())
     } else if info < 0 {
-        Err(Error::LapackIllegalArgument { argument: -info })
+        Err(Error::LapackIllegalArgument {
+            argument: narrow(-info),
+        })
     } else {
-        Err(Error::LapackComputationFailure { info })
+        Err(Error::LapackComputationFailure { info: narrow(info) })
     }
 }
 
@@ -110,7 +116,7 @@ fn ensure_square_ref<T>(a: &MatrixRef<'_, T>) -> Result<usize> {
 /// pivot indices.
 pub fn gesv<T: LapackScalar>(
     a: &mut MatrixMut<'_, T>,
-    ipiv: &mut [i32],
+    ipiv: &mut [MKL_INT],
     b: &mut MatrixMut<'_, T>,
 ) -> Result<()> {
     let n = ensure_square(a)?;
@@ -140,7 +146,7 @@ pub fn gesv<T: LapackScalar>(
 
 /// LU factorization of a general matrix `A = P * L * U`. `a` is
 /// overwritten in place. `ipiv` (length `min(m, n)`) receives the pivots.
-pub fn getrf<T: LapackScalar>(a: &mut MatrixMut<'_, T>, ipiv: &mut [i32]) -> Result<()> {
+pub fn getrf<T: LapackScalar>(a: &mut MatrixMut<'_, T>, ipiv: &mut [MKL_INT]) -> Result<()> {
     let need = a.rows().min(a.cols());
     if ipiv.len() < need {
         return Err(Error::InvalidArgument(
@@ -164,7 +170,7 @@ pub fn getrf<T: LapackScalar>(a: &mut MatrixMut<'_, T>, ipiv: &mut [i32]) -> Res
 pub fn getrs<T: LapackScalar>(
     trans: Transpose,
     a: &MatrixRef<'_, T>,
-    ipiv: &[i32],
+    ipiv: &[MKL_INT],
     b: &mut MatrixMut<'_, T>,
 ) -> Result<()> {
     let n = ensure_square_ref(a)?;
@@ -194,7 +200,7 @@ pub fn getrs<T: LapackScalar>(
 }
 
 /// Compute `A⁻¹` from the LU factorization produced by [`getrf`].
-pub fn getri<T: LapackScalar>(a: &mut MatrixMut<'_, T>, ipiv: &[i32]) -> Result<()> {
+pub fn getri<T: LapackScalar>(a: &mut MatrixMut<'_, T>, ipiv: &[MKL_INT]) -> Result<()> {
     let n = ensure_square(a)?;
     if ipiv.len() < n {
         return Err(Error::InvalidArgument("ipiv must have at least n entries"));
@@ -291,7 +297,7 @@ pub fn potrs<T: LapackScalar>(
 pub fn sysv<T: RealLapackScalar>(
     uplo: UpLo,
     a: &mut MatrixMut<'_, T>,
-    ipiv: &mut [i32],
+    ipiv: &mut [MKL_INT],
     b: &mut MatrixMut<'_, T>,
 ) -> Result<()> {
     let n = ensure_square(a)?;
@@ -324,7 +330,7 @@ pub fn sysv<T: RealLapackScalar>(
 pub fn hesv<T: ComplexLapackScalar>(
     uplo: UpLo,
     a: &mut MatrixMut<'_, T>,
-    ipiv: &mut [i32],
+    ipiv: &mut [MKL_INT],
     b: &mut MatrixMut<'_, T>,
 ) -> Result<()> {
     let n = ensure_square(a)?;
@@ -454,7 +460,7 @@ pub fn gelsd<T: LapackScalar>(
     b: &mut MatrixMut<'_, T>,
     s: &mut [T::Real],
     rcond: T::Real,
-) -> Result<i32> {
+) -> Result<MKL_INT> {
     let layout = ensure_layout(&[a.layout(), b.layout()])?;
     let need = a.rows().min(a.cols());
     if s.len() < need {
@@ -462,7 +468,7 @@ pub fn gelsd<T: LapackScalar>(
             "s must have at least min(m, n) entries",
         ));
     }
-    let mut rank: i32 = 0;
+    let mut rank: MKL_INT = 0;
     let info = unsafe {
         T::lapacke_gelsd(
             layout.as_lapack(),
@@ -755,7 +761,7 @@ pub fn gbsv<T: LapackScalar>(
     nrhs: usize,
     ab: &mut [T],
     ldab: usize,
-    ipiv: &mut [i32],
+    ipiv: &mut [MKL_INT],
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
@@ -792,7 +798,7 @@ pub fn gbtrf<T: LapackScalar>(
     ku: usize,
     ab: &mut [T],
     ldab: usize,
-    ipiv: &mut [i32],
+    ipiv: &mut [MKL_INT],
 ) -> Result<()> {
     if ipiv.len() < m.min(n) {
         return Err(Error::InvalidArgument(
@@ -828,7 +834,7 @@ pub fn gbtrs<T: LapackScalar>(
     nrhs: usize,
     ab: &[T],
     ldab: usize,
-    ipiv: &[i32],
+    ipiv: &[MKL_INT],
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
@@ -896,7 +902,7 @@ pub fn gttrf<T: LapackScalar>(
     d: &mut [T],
     du: &mut [T],
     du2: &mut [T],
-    ipiv: &mut [i32],
+    ipiv: &mut [MKL_INT],
 ) -> Result<()> {
     if du2.len() < n.saturating_sub(2) || ipiv.len() < n {
         return Err(Error::InvalidArgument(
@@ -930,7 +936,7 @@ pub fn gttrs<T: LapackScalar>(
     d: &[T],
     du: &[T],
     du2: &[T],
-    ipiv: &[i32],
+    ipiv: &[MKL_INT],
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
@@ -1153,7 +1159,7 @@ pub fn spsv<T: LapackScalar>(
     n: usize,
     nrhs: usize,
     ap: &mut [T],
-    ipiv: &mut [i32],
+    ipiv: &mut [MKL_INT],
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
@@ -1186,7 +1192,7 @@ pub fn sptrf<T: LapackScalar>(
     uplo: UpLo,
     n: usize,
     ap: &mut [T],
-    ipiv: &mut [i32],
+    ipiv: &mut [MKL_INT],
 ) -> Result<()> {
     if ap.len() < n * (n + 1) / 2 {
         return Err(Error::InvalidArgument(
@@ -1219,7 +1225,7 @@ pub fn sptrs<T: LapackScalar>(
     n: usize,
     nrhs: usize,
     ap: &[T],
-    ipiv: &[i32],
+    ipiv: &[MKL_INT],
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
@@ -1321,7 +1327,7 @@ pub fn hpsv<T: ComplexLapackScalar>(
     n: usize,
     nrhs: usize,
     ap: &mut [T],
-    ipiv: &mut [i32],
+    ipiv: &mut [MKL_INT],
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
@@ -1354,7 +1360,7 @@ pub fn hptrf<T: ComplexLapackScalar>(
     uplo: UpLo,
     n: usize,
     ap: &mut [T],
-    ipiv: &mut [i32],
+    ipiv: &mut [MKL_INT],
 ) -> Result<()> {
     if ap.len() < n * (n + 1) / 2 {
         return Err(Error::InvalidArgument(
@@ -1387,7 +1393,7 @@ pub fn hptrs<T: ComplexLapackScalar>(
     n: usize,
     nrhs: usize,
     ap: &[T],
-    ipiv: &[i32],
+    ipiv: &[MKL_INT],
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
@@ -1427,7 +1433,7 @@ pub enum GeneralizedEigenType {
 
 impl GeneralizedEigenType {
     #[inline]
-    fn as_int(self) -> core::ffi::c_int {
+    fn as_int(self) -> MKL_INT {
         match self {
             Self::AxLambdaBx => 1,
             Self::AbxLambdaX => 2,
@@ -1586,9 +1592,9 @@ pub enum EigenRange<R> {
     /// ascending order. Indices are 1-based.
     Indices {
         /// 1-based start index.
-        il: i32,
+        il: MKL_INT,
         /// 1-based end index (inclusive).
-        iu: i32,
+        iu: MKL_INT,
     },
 }
 
@@ -1668,7 +1674,7 @@ pub struct RrrEigResult<T, R> {
     pub eigenvectors: Vec<T>,
     /// Indices of the first / last non-zero entry of each
     /// eigenvector. Empty if `jobz == Job::None`.
-    pub isuppz: Vec<i32>,
+    pub isuppz: Vec<MKL_INT>,
 }
 
 /// Symmetric eigensolver via RRR (Relatively Robust Representations).
@@ -1688,22 +1694,22 @@ pub fn syevr<T: RealLapackScalar + Default>(
     let layout = a.layout();
     let range_char = range.as_char() as core::ffi::c_char;
     let (vl, vu, il, iu) = match range {
-        EigenRange::All => (T::default(), T::default(), 1_i32, n.max(1) as i32),
-        EigenRange::Values { vl, vu } => (vl, vu, 1_i32, n.max(1) as i32),
+        EigenRange::All => (T::default(), T::default(), 1, n.max(1) as MKL_INT),
+        EigenRange::Values { vl, vu } => (vl, vu, 1, n.max(1) as MKL_INT),
         EigenRange::Indices { il, iu } => (T::default(), T::default(), il, iu),
     };
     let il = dim_to_mkl_int(il.max(1) as usize)?;
     let iu = dim_to_mkl_int(iu.max(1) as usize)?;
     let want_z = matches!(jobz, Job::Compute);
-    let mut m_out: i32 = 0;
+    let mut m_out: MKL_INT = 0;
     let mut w: Vec<T> = vec![T::default(); n.max(1)];
     let mut z: Vec<T> = if want_z {
         vec![T::default(); n.max(1) * n.max(1)]
     } else {
         Vec::new()
     };
-    let mut isuppz: Vec<i32> = if want_z {
-        vec![0_i32; 2 * n.max(1)]
+    let mut isuppz: Vec<MKL_INT> = if want_z {
+        vec![0; 2 * n.max(1)]
     } else {
         Vec::new()
     };
@@ -1772,24 +1778,24 @@ where
         EigenRange::All => (
             T::Real::default(),
             T::Real::default(),
-            1_i32,
-            n.max(1) as i32,
+            1,
+            n.max(1) as MKL_INT,
         ),
-        EigenRange::Values { vl, vu } => (vl, vu, 1_i32, n.max(1) as i32),
+        EigenRange::Values { vl, vu } => (vl, vu, 1, n.max(1) as MKL_INT),
         EigenRange::Indices { il, iu } => (T::Real::default(), T::Real::default(), il, iu),
     };
     let il = dim_to_mkl_int(il.max(1) as usize)?;
     let iu = dim_to_mkl_int(iu.max(1) as usize)?;
     let want_z = matches!(jobz, Job::Compute);
-    let mut m_out: i32 = 0;
+    let mut m_out: MKL_INT = 0;
     let mut w: Vec<T::Real> = vec![T::Real::default(); n.max(1)];
     let mut z: Vec<T> = if want_z {
         vec![T::default(); n.max(1) * n.max(1)]
     } else {
         Vec::new()
     };
-    let mut isuppz: Vec<i32> = if want_z {
-        vec![0_i32; 2 * n.max(1)]
+    let mut isuppz: Vec<MKL_INT> = if want_z {
+        vec![0; 2 * n.max(1)]
     } else {
         Vec::new()
     };
@@ -2041,10 +2047,10 @@ where
 /// them in reverse order.
 pub fn laswp<T: LapackScalar>(
     a: &mut MatrixMut<'_, T>,
-    k1: i32,
-    k2: i32,
-    ipiv: &[i32],
-    incx: i32,
+    k1: MKL_INT,
+    k2: MKL_INT,
+    ipiv: &[MKL_INT],
+    incx: MKL_INT,
 ) -> Result<()> {
     let n = dim_to_mkl_int(a.cols())?;
     let lda = dim_to_mkl_int(a.leading_dim())?;
@@ -2097,7 +2103,7 @@ pub struct HouseholderReflector<T> {
 pub struct IterRefineOutcome {
     /// Number of iterative-refinement steps performed. Negative
     /// values indicate MKL fell back to plain double precision.
-    pub iter: i32,
+    pub iter: MKL_INT,
 }
 
 /// Solve `A · X = B` (general `A`) by factoring in single precision
@@ -2115,7 +2121,7 @@ pub struct IterRefineOutcome {
 /// optimizers, Gauss-Newton steps, and Levenberg-Marquardt.
 pub fn iter_refine_gesv_f64(
     a: &mut MatrixMut<'_, f64>,
-    ipiv: &mut [i32],
+    ipiv: &mut [MKL_INT],
     b: &mut MatrixMut<'_, f64>,
     x: &mut MatrixMut<'_, f64>,
 ) -> Result<IterRefineOutcome> {
@@ -2130,7 +2136,7 @@ pub fn iter_refine_gesv_f64(
     if ipiv.len() < n {
         return Err(Error::InvalidArgument("ipiv must have at least n entries"));
     }
-    let mut iter: core::ffi::c_int = 0;
+    let mut iter: MKL_INT = 0;
     let info = unsafe {
         onemkl_sys::LAPACKE_dsgesv(
             layout.as_lapack(),
@@ -2171,7 +2177,7 @@ pub fn iter_refine_posv_f64(
     if x.rows() != n || x.cols() != b.cols() {
         return Err(Error::InvalidArgument("X must have the same shape as B"));
     }
-    let mut iter: core::ffi::c_int = 0;
+    let mut iter: MKL_INT = 0;
     let info = unsafe {
         onemkl_sys::LAPACKE_dsposv(
             layout.as_lapack(),
@@ -2195,7 +2201,7 @@ pub fn iter_refine_posv_f64(
 /// complex, refine to double complex. Wraps `LAPACKE_zcgesv`.
 pub fn iter_refine_gesv_c64(
     a: &mut MatrixMut<'_, num_complex::Complex64>,
-    ipiv: &mut [i32],
+    ipiv: &mut [MKL_INT],
     b: &mut MatrixMut<'_, num_complex::Complex64>,
     x: &mut MatrixMut<'_, num_complex::Complex64>,
 ) -> Result<IterRefineOutcome> {
@@ -2210,7 +2216,7 @@ pub fn iter_refine_gesv_c64(
     if ipiv.len() < n {
         return Err(Error::InvalidArgument("ipiv must have at least n entries"));
     }
-    let mut iter: core::ffi::c_int = 0;
+    let mut iter: MKL_INT = 0;
     let info = unsafe {
         onemkl_sys::LAPACKE_zcgesv(
             layout.as_lapack(),
@@ -2247,7 +2253,7 @@ pub fn iter_refine_posv_c64(
     if x.rows() != n || x.cols() != b.cols() {
         return Err(Error::InvalidArgument("X must have the same shape as B"));
     }
-    let mut iter: core::ffi::c_int = 0;
+    let mut iter: MKL_INT = 0;
     let info = unsafe {
         onemkl_sys::LAPACKE_zcposv(
             layout.as_lapack(),
@@ -2278,7 +2284,7 @@ pub fn larfg<T: LapackScalar + Default>(
     n: usize,
     alpha: &mut T,
     x: &mut [T],
-    incx: i32,
+    incx: MKL_INT,
 ) -> Result<HouseholderReflector<T>> {
     if n == 0 {
         return Err(Error::InvalidArgument("n must be ≥ 1"));
@@ -2447,7 +2453,7 @@ pub trait ComplexAuxScalar: Copy + 'static {
     ///
     /// `x` must be valid for reads and writes of `1 + (n - 1) * |incx|` elements with `incx != 0`; it is conjugated in place. No Rust reference to `x` may be live.
     /// The returned value is LAPACK's `info` (0 success, negative `-i` argument `i` invalid, positive numerical failure); outputs may be partly overwritten on non-zero. The MKL library must be linked and usable.
-    unsafe fn lapacke_lacgv(n: core::ffi::c_int, x: *mut Self, incx: core::ffi::c_int) -> i32;
+    unsafe fn lapacke_lacgv(n: MKL_INT, x: *mut Self, incx: MKL_INT) -> MKL_INT;
     /// Raw `lapacke_lacrm` call.
     ///
     /// # Safety
@@ -2460,39 +2466,35 @@ pub trait ComplexAuxScalar: Copy + 'static {
     )]
     unsafe fn lapacke_lacrm(
         layout: core::ffi::c_int,
-        m: core::ffi::c_int,
-        n: core::ffi::c_int,
+        m: MKL_INT,
+        n: MKL_INT,
         a: *const Self,
-        lda: core::ffi::c_int,
+        lda: MKL_INT,
         b: *const Self::Real,
-        ldb: core::ffi::c_int,
+        ldb: MKL_INT,
         c: *mut Self,
-        ldc: core::ffi::c_int,
-    ) -> i32;
+        ldc: MKL_INT,
+    ) -> MKL_INT;
 }
 
 macro_rules! impl_complex_aux {
     ($c:ty, $r:ty, $ct:ty, $lacgv:ident, $lacrm:ident) => {
         impl ComplexAuxScalar for $c {
             type Real = $r;
-            unsafe fn lapacke_lacgv(
-                n: core::ffi::c_int,
-                x: *mut Self,
-                incx: core::ffi::c_int,
-            ) -> i32 {
+            unsafe fn lapacke_lacgv(n: MKL_INT, x: *mut Self, incx: MKL_INT) -> MKL_INT {
                 unsafe { onemkl_sys::$lacgv(n, x.cast::<$ct>(), incx) }
             }
             unsafe fn lapacke_lacrm(
                 layout: core::ffi::c_int,
-                m: core::ffi::c_int,
-                n: core::ffi::c_int,
+                m: MKL_INT,
+                n: MKL_INT,
                 a: *const Self,
-                lda: core::ffi::c_int,
+                lda: MKL_INT,
                 b: *const $r,
-                ldb: core::ffi::c_int,
+                ldb: MKL_INT,
                 c: *mut Self,
-                ldc: core::ffi::c_int,
-            ) -> i32 {
+                ldc: MKL_INT,
+            ) -> MKL_INT {
                 unsafe {
                     onemkl_sys::$lacrm(
                         layout,
@@ -2527,7 +2529,7 @@ impl_complex_aux!(
 
 /// Conjugate `n` elements of a complex vector in place (stride `incx`,
 /// which may be negative). Wraps `LAPACKE_*lacgv`.
-pub fn lacgv<T: ComplexAuxScalar>(n: usize, x: &mut [T], incx: i32) -> Result<()> {
+pub fn lacgv<T: ComplexAuxScalar>(n: usize, x: &mut [T], incx: MKL_INT) -> Result<()> {
     if incx == 0 {
         return Err(Error::InvalidArgument("incx must be non-zero"));
     }
@@ -2586,11 +2588,11 @@ pub trait SymConvScalar: Copy + 'static {
     unsafe fn lapacke_sytrf(
         layout: core::ffi::c_int,
         uplo: core::ffi::c_char,
-        n: core::ffi::c_int,
+        n: MKL_INT,
         a: *mut Self,
-        lda: core::ffi::c_int,
-        ipiv: *mut core::ffi::c_int,
-    ) -> i32;
+        lda: MKL_INT,
+        ipiv: *mut MKL_INT,
+    ) -> MKL_INT;
     /// Raw `lapacke_syconv` call.
     ///
     /// # Safety
@@ -2605,12 +2607,12 @@ pub trait SymConvScalar: Copy + 'static {
         layout: core::ffi::c_int,
         uplo: core::ffi::c_char,
         way: core::ffi::c_char,
-        n: core::ffi::c_int,
+        n: MKL_INT,
         a: *mut Self,
-        lda: core::ffi::c_int,
-        ipiv: *const core::ffi::c_int,
+        lda: MKL_INT,
+        ipiv: *const MKL_INT,
         e: *mut Self,
-    ) -> i32;
+    ) -> MKL_INT;
 }
 
 macro_rules! impl_symconv {
@@ -2619,23 +2621,23 @@ macro_rules! impl_symconv {
             unsafe fn lapacke_sytrf(
                 layout: core::ffi::c_int,
                 uplo: core::ffi::c_char,
-                n: core::ffi::c_int,
+                n: MKL_INT,
                 a: *mut Self,
-                lda: core::ffi::c_int,
-                ipiv: *mut core::ffi::c_int,
-            ) -> i32 {
+                lda: MKL_INT,
+                ipiv: *mut MKL_INT,
+            ) -> MKL_INT {
                 unsafe { onemkl_sys::$sytrf(layout, uplo, n, a.cast::<$ct>(), lda, ipiv) }
             }
             unsafe fn lapacke_syconv(
                 layout: core::ffi::c_int,
                 uplo: core::ffi::c_char,
                 way: core::ffi::c_char,
-                n: core::ffi::c_int,
+                n: MKL_INT,
                 a: *mut Self,
-                lda: core::ffi::c_int,
-                ipiv: *const core::ffi::c_int,
+                lda: MKL_INT,
+                ipiv: *const MKL_INT,
                 e: *mut Self,
-            ) -> i32 {
+            ) -> MKL_INT {
                 unsafe {
                     onemkl_sys::$syconv(
                         layout,
@@ -2684,7 +2686,7 @@ pub enum SyconvWay {
 pub fn sytrf<T: SymConvScalar>(
     uplo: UpLo,
     a: &mut MatrixMut<'_, T>,
-    ipiv: &mut [i32],
+    ipiv: &mut [MKL_INT],
 ) -> Result<()> {
     let n = a.rows();
     if a.cols() != n {
@@ -2714,7 +2716,7 @@ pub fn syconv<T: SymConvScalar>(
     uplo: UpLo,
     way: SyconvWay,
     a: &mut MatrixMut<'_, T>,
-    ipiv: &[i32],
+    ipiv: &[MKL_INT],
     e: &mut [T],
 ) -> Result<()> {
     let n = a.rows();

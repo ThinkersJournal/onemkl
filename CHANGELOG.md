@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- `docs/W1-TOO-MANY-ARGUMENTS.md`: first-pass classification of the 196 functions flagged by `clippy::too_many_arguments` (124 raw FFI methods, 68 published safe wrappers, 4 private), and the ROADMAP row W1 corrected (the "impl allows do nothing" hypothesis is not supported). Docs only.
+- 76 `#[allow(clippy::too_many_arguments)]` on the raw `cblas_*` and `lapacke_*` trait declarations now carry a `reason` naming the C function (each checked by argument count against the installed oneMKL headers); no behaviour change. Tools in `tools/w1/`, table in `docs/W1-TOO-MANY-ARGUMENTS.md`.
 
 ## 0.4.12 - 2026-11-27 (allocated by pm-assist; additive: QuadraticSpline1d; Subbotin writes order*n coefficients, the wrapper sizes by the measured extent)
 

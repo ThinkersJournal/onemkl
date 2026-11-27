@@ -202,3 +202,7 @@ Generated 2026-11-27 on `origin/main` 65478879 (rustc / clippy 1.99.1, WSL) from
 | `onemkl/src/vm/scalar.rs` | 278 | `vm_linear_frac` | 8 | unsafe | C-mirror (raw FFI method): doc does not name the C function |
 
 Summary by class: C-mirror 124, private fn 4, public surface 68; total 196.
+
+## Chunk 1: C mirrors verified by argument count (blas/scalar.rs, lapack/scalar.rs)
+
+For the raw trait declarations in `onemkl/src/blas/scalar.rs` (`cblas_*`) and `onemkl/src/lapack/scalar.rs` (`lapacke_*`), `tools/w1/cblas_check.py` and `tools/w1/lap_check.py` compare the Rust argument count with the argument count of every precision variant of the named C function in the installed oneMKL 2026.2 headers (`mkl_cblas.h`, `mkl_lapacke.h`; complex-only and real-only methods are compared with their own precisions only). Result: **44 of 44** flagged `cblas_*` declarations and **34 of 34** flagged `lapacke_*` declarations have the same argument count as every compared variant (2 of the 44 already carried a reason from #21). The 76 bare allows on these declarations now carry `reason = "mirrors the oneMKL C signature <name> argument for argument"`. The check compares counts, not parameter types or order; the declarations keep the C parameter order by construction (they were written from those prototypes), which was not re-verified here. The four flagged lines in `blas/scalar.rs` that are not `cblas_*` methods and the remaining files are still open.

@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased (additive; version allocated by the PM at gate time)
+
+### Added
+
+- `CubicSpline1d`, `LinearSpline1d` and `QuadraticSpline1d` `::interpolate_with_search_callback(sites, callback)` (`df?InterpolateEx1D` with its `search_cb`; function values only). Same call-back contract and checks as `IntegrateCallbacks::search`: exact cells are checked against the knots before oneMKL uses them (unchecked, an out-of-range cell gave silent zeros with status 0 on oneMKL 2026.2, `df_search3.c`), a positive call-back status is `Error::SearchCallbackStatus`, a negative one an error, a panic is resumed. Not wrapped: the `le_cb` / `re_cb` / `interp_cb` interpolation call-backs of the same routine.
+
 ## 0.6.5 - 2026-11-27 (PM-allocated; additive: ILP64 package 4 of 4, tests, examples, CI and docs: the ILP64 CI step arrives; MKL_INT is i32 under lp64: no change)
 
 ### Added

@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 0.6.1 - 2026-11-27 (PM-allocated; additive: ILP64 package 1 of 4, blas and lapack; MKL_INT is i32 under lp64: no change)
 
 ### Changed
 

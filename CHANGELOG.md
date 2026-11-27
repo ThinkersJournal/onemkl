@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.5.0 - 2026-11-27 (PM-allocated; BREAKING)
+
+### Changed (breaking)
+
+- `summary_stats::impute_missing(&mut data, p, n, &ImputeOptions)` replaces `SummaryStats::impute_missing` and `impute_default_params`, which never worked (-4054 / -4051 / -4063). Root cause, three faults: the `params` layout is `{em_iter, da_iter, tolerance, m, missing_count}` (we sent the method id first); missing cells are recognised by the `VSL_SS_DNAN` / `VSL_SS_SNAN` bit pattern, not by `NAN`; and the simulated-values buffer (`m * k`) was null. The new function counts the cells marked `SsScalar::MISSING`, takes the data by `&mut` (oneMKL rewrites the marked cells), and returns the `k * m` simulated values and the DA parameter estimates. `SsScalar` gains `MISSING`, `is_missing`, `from_f64`. Verified on oneMKL 2026.2 (Linux, `tools/size-probes/ss4.c`): compute -4063 with `NAN`-valued marker, 0 with the bit pattern and the documented layout. Not measured: initial estimates and priors (left at defaults), statistical quality of the draws, storage orders other than variable-major.
+
 ## 0.4.16 - 2026-11-27 (allocated by pm-assist; the ilp64 feature is refused by build.rs (measured ~590 type errors with real bindgen), corr_exec extents verified, ROADMAP row for SummaryStats::impute_missing)
 
 ### Changed

@@ -29,6 +29,13 @@ use crate::error::{Error, Result};
 /// Real scalar types supported by the summary-statistics task family.
 #[allow(missing_docs)]
 pub trait SsScalar: Copy + Default + 'static {
+    /// The bit pattern oneMKL's `VSL_SS_SNAN` / `VSL_SS_DNAN` uses to mark a missing observation (a quiet NaN with the sign bit set: `0xFFC00000` for `f32`, `0xFFF8000000000000` for `f64`). oneMKL compares bit patterns, so an ordinary `NAN` is not recognised.
+    const MISSING: Self;
+    /// Whether `self` has exactly the bit pattern of [`Self::MISSING`].
+    fn is_missing(self) -> bool;
+    /// Lossy conversion from `f64` (parameter counts).
+    fn from_f64(v: f64) -> Self;
+
     /// Raw `ss_new_task` call.
     ///
     /// # Safety
@@ -202,8 +209,16 @@ macro_rules! impl_ss_scalar {
         quantiles=$quantiles:ident, stream_quantiles=$stream_quantiles:ident,
         robust_cov=$robust_cov:ident, outliers=$outliers:ident,
         missing=$missing:ident,
+        marker=$marker:expr,
     ) => {
         impl SsScalar for $ty {
+            const MISSING: Self = <$ty>::from_bits($marker);
+            fn is_missing(self) -> bool {
+                self.to_bits() == $marker
+            }
+            fn from_f64(v: f64) -> Self {
+                v as $ty
+            }
             unsafe fn ss_new_task(
                 task: *mut VSLSSTaskPtr,
                 p: *const c_int,
@@ -337,6 +352,7 @@ impl_ss_scalar!(
     robust_cov = vslsSSEditRobustCovariance,
     outliers = vslsSSEditOutliersDetection,
     missing = vslsSSEditMissingValues,
+    marker = 0xFFC0_0000,
 );
 impl_ss_scalar!(
     f64,
@@ -349,6 +365,7 @@ impl_ss_scalar!(
     robust_cov = vsldSSEditRobustCovariance,
     outliers = vsldSSEditOutliersDetection,
     missing = vsldSSEditMissingValues,
+    marker = 0xFFF8_0000_0000_0000,
 );
 
 /// Owned summary-statistics task. Each compute method registers output
@@ -681,55 +698,6 @@ impl<'data, T: SsScalar> SummaryStats<'data, T> {
         check_vsl(status)?;
         Ok(weights)
     }
-
-    /// Imputed mean + covariance for data containing missing values
-    /// (marked as `NaN`). Runs MKL's multiple-imputation EM
-    /// estimator with the supplied `params` (length-5 vector;
-    /// `VSL_SS_MI_PARAMS_SIZE` in `onemkl-sys`).
-    ///
-    /// Returns `(mean, cov)`. The simulated imputations themselves
-    /// are written into the *original* data buffer in-place where
-    /// supported by MKL — pass a mutable copy if you need to retain
-    /// the original.
-    ///
-    /// Most callers should use
-    /// [`SummaryStats::<f64>::impute_default_params`] which supplies
-    /// a sensible default `params` array.
-    pub fn impute_missing(&mut self, params: &[T; 5]) -> Result<(Vec<T>, Vec<T>)> {
-        let n_params: c_int = 5;
-        let init_n: c_int = 0;
-        let prior_n: c_int = 0;
-        let simul_n: c_int = 0;
-        let estimates_n: c_int = (self.p + self.p * self.p) as c_int;
-        let mut estimates = vec![T::default(); self.p + self.p * self.p];
-        let status = unsafe {
-            T::ss_edit_missing_values(
-                self.task,
-                &n_params,
-                params.as_ptr(),
-                &init_n,
-                ptr::null(),
-                &prior_n,
-                ptr::null(),
-                &simul_n,
-                ptr::null_mut(),
-                &estimates_n,
-                estimates.as_mut_ptr(),
-            )
-        };
-        check_vsl(status)?;
-        let status = unsafe {
-            T::ss_compute(
-                self.task,
-                sys::VSL_SS_MISSING_VALS as u64,
-                sys::VSL_SS_METHOD_MI as c_int,
-            )
-        };
-        check_vsl(status)?;
-        let mean = estimates[..self.p].to_vec();
-        let cov = estimates[self.p..].to_vec();
-        Ok((mean, cov))
-    }
 }
 
 impl SummaryStats<'_, f64> {
@@ -740,20 +708,6 @@ impl SummaryStats<'_, f64> {
     pub fn bacon_default_params() -> [f64; 3] {
         [sys::VSL_SS_METHOD_BACON_MEDIAN_INIT as f64, 0.05, 0.05]
     }
-
-    /// Default multiple-imputation parameters: copy input, 25 EM
-    /// iterations, 1e-4 stopping tolerance.
-    #[inline]
-    #[must_use]
-    pub fn impute_default_params() -> [f64; 5] {
-        [
-            sys::VSL_SS_METHOD_MI as f64, // method id
-            25.0,                         // max iterations
-            1.0e-4,                       // tolerance
-            1.0,                          // copy data flag
-            0.0,                          // reserved
-        ]
-    }
 }
 
 impl SummaryStats<'_, f32> {
@@ -763,13 +717,154 @@ impl SummaryStats<'_, f32> {
     pub fn bacon_default_params() -> [f32; 3] {
         [sys::VSL_SS_METHOD_BACON_MEDIAN_INIT as f32, 0.05, 0.05]
     }
+}
 
-    /// `f32` counterpart of [`SummaryStats::<f64>::impute_default_params`].
-    #[inline]
-    #[must_use]
-    pub fn impute_default_params() -> [f32; 5] {
-        [sys::VSL_SS_METHOD_MI as f32, 25.0, 1.0e-4, 1.0, 0.0]
+/// Settings for [`impute_missing`] (the multiple-imputation method, `VSL_SS_METHOD_MI`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ImputeOptions<T> {
+    /// Maximum iterations of the EM algorithm that starts the sampler (oneMKL default 50).
+    pub em_iterations: usize,
+    /// Iterations of the data-augmentation sampler (oneMKL default 30).
+    pub da_iterations: usize,
+    /// EM stopping tolerance (oneMKL default 0.001).
+    pub tolerance: T,
+    /// Number of imputed sets `m` to draw.
+    pub sets: usize,
+}
+
+impl<T: SsScalar + From<f32>> Default for ImputeOptions<T> {
+    /// oneMKL's documented defaults (50 EM iterations, 30 DA iterations, tolerance 0.001) and two sets.
+    fn default() -> Self {
+        Self {
+            em_iterations: 50,
+            da_iterations: 30,
+            tolerance: T::from(0.001_f32),
+            sets: 2,
+        }
     }
+}
+
+/// Result of [`impute_missing`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct Imputation<T> {
+    /// Number of missing cells `k` found in the data.
+    pub missing_count: usize,
+    /// `k * sets` imputed values: for each missing cell in order of appearance, its `sets` draws are consecutive.
+    pub simulated: Vec<T>,
+    /// `sets * da_iterations` parameter estimates drawn by the sampler, each `p` means followed by the upper triangle of the `p x p` covariance (`p + (p*p + p) / 2` values).
+    pub estimates: Vec<T>,
+}
+
+/// Multiple imputation of missing observations (`vsl?SSEditMissingValues`, method `VSL_SS_METHOD_MI`).
+///
+/// `data` is `num_variables x num_observations`, variable `i` at `data[i * num_observations ..]` as in [`SummaryStats::new`]. Mark each missing cell with [`SsScalar::MISSING`] (oneMKL compares bit patterns; `f64::NAN` is not recognised). The cells are counted here and oneMKL is told the count.
+///
+/// **`data` is modified**: oneMKL rewrites the missing cells (so `data` is taken by `&mut`). Re-mark them to run again.
+///
+/// Facts below come from the oneMKL 2026.0 C reference (`vslSSEditMissingValues`: parameter layout `{em_iter, da_iter, tolerance, m, missing_count}`, `simul` size `m * missing_count`, estimates size `m * da_iter * (p + (p*p + p)/2)`) and a run on oneMKL 2026.2, Linux x86_64 (`tools/size-probes/ss4.c`): the call succeeds with that layout. The initial-estimate and prior parameters are left at oneMKL's defaults. The earlier `SummaryStats::impute_missing` never worked (it passed no marker, a wrong parameter layout and no simulated-values buffer) and was removed.
+///
+/// # Errors
+///
+/// `InvalidArgument` if `data` is shorter than `p * n`, `sets` or `da_iterations` is 0, or no cell is marked missing; otherwise the oneMKL status.
+pub fn impute_missing<T: SsScalar>(
+    data: &mut [T],
+    num_variables: usize,
+    num_observations: usize,
+    options: &ImputeOptions<T>,
+) -> Result<Imputation<T>> {
+    let cells = num_variables
+        .checked_mul(num_observations)
+        .ok_or(Error::DimensionOverflow)?;
+    if data.len() < cells {
+        return Err(Error::InvalidArgument(
+            "data buffer is smaller than num_variables * num_observations",
+        ));
+    }
+    if options.sets == 0 || options.da_iterations == 0 {
+        return Err(Error::InvalidArgument(
+            "sets and da_iterations must be at least 1",
+        ));
+    }
+    let missing_count = data[..cells].iter().filter(|v| v.is_missing()).count();
+    if missing_count == 0 {
+        return Err(Error::InvalidArgument(
+            "no cell is marked with SsScalar::MISSING",
+        ));
+    }
+    let conv = |v: usize| -> Result<T> { Ok(T::from_f64(v as f64)) };
+    let params = [
+        conv(options.em_iterations)?,
+        conv(options.da_iterations)?,
+        options.tolerance,
+        conv(options.sets)?,
+        conv(missing_count)?,
+    ];
+    let p = num_variables;
+    let simul_len = options
+        .sets
+        .checked_mul(missing_count)
+        .ok_or(Error::DimensionOverflow)?;
+    let est_len = options
+        .sets
+        .checked_mul(options.da_iterations)
+        .and_then(|v| v.checked_mul(p + (p * p + p) / 2))
+        .ok_or(Error::DimensionOverflow)?;
+    let to_int = |v: usize| -> Result<c_int> { v.try_into().map_err(|_| Error::DimensionOverflow) };
+    let (p_i, n_i) = (to_int(p)?, to_int(num_observations)?);
+    let xstorage = sys::VSL_SS_MATRIX_STORAGE_ROWS as c_int;
+    let n_params: c_int = 5;
+    let zero: c_int = 0;
+    let (simul_n, est_n) = (to_int(simul_len)?, to_int(est_len)?);
+    let mut simulated = vec![T::default(); simul_len];
+    let mut estimates = vec![T::default(); est_len];
+    let mut task: VSLSSTaskPtr = ptr::null_mut();
+    let status = unsafe {
+        T::ss_new_task(
+            &mut task,
+            &p_i,
+            &n_i,
+            &xstorage,
+            data.as_ptr(),
+            ptr::null(),
+            ptr::null(),
+        )
+    };
+    check_vsl(status)?;
+    let status = unsafe {
+        T::ss_edit_missing_values(
+            task,
+            &n_params,
+            params.as_ptr(),
+            &zero,
+            ptr::null(),
+            &zero,
+            ptr::null(),
+            &simul_n,
+            simulated.as_mut_ptr(),
+            &est_n,
+            estimates.as_mut_ptr(),
+        )
+    };
+    let status = if status == 0 {
+        unsafe {
+            T::ss_compute(
+                task,
+                sys::VSL_SS_MISSING_VALS as u64,
+                sys::VSL_SS_METHOD_MI as c_int,
+            )
+        }
+    } else {
+        status
+    };
+    unsafe {
+        let _ = sys::vslSSDeleteTask(&mut task);
+    }
+    check_vsl(status)?;
+    Ok(Imputation {
+        missing_count,
+        simulated,
+        estimates,
+    })
 }
 
 impl<T: SsScalar> Drop for SummaryStats<'_, T> {

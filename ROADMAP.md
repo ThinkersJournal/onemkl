@@ -211,6 +211,11 @@ Every non-MPI domain at Comprehensive:
   document it). Reason: Fuel lost its f16 hgemm when its old oneMKL code
   was removed. Source: CireSnave 2026-11-22.
 
+### Known gaps found by probing (2026-11-27; rows, not builds)
+
+- **ILP64 for `onemkl`.** Measured on oneMKL 2026.2 with bindgen on the ILP64 headers (`--features ilp64` with the ILP64 libraries on the rig): about 590 `E0308` type errors in `onemkl` (342 mismatched types, 197 wrong arguments, 52 `?` conversions), so the safe wrappers do not support ILP64 at all; `onemkl-sys` alone is fine. `onemkl/build.rs` now refuses the feature with one message and CI checks it. Real support means making every wrapper generic over `MKL_INT`; not scheduled.
+- **`SummaryStats::impute_missing` does not work as shipped.** With its default parameters and a null simulated-values buffer the MI compute step returns `VSL_SS_ERROR_BAD_MI_SIMUL_VALS_ADDR` (-4054); with a `k * m` buffer all parameter sets tried returned -4051 or -4063 (`tools/size-probes/ss3.c`). The five method parameters are only in the Summary Statistics Application Notes, not the Developer Reference. Row: obtain those notes, fix the wrapper (a simulated-values buffer is required), add a test, then verify the extents; until then the API is untested and its extents unverified.
+
 ### CI lint gates (unscheduled; rows, not builds)
 
 - **CI has no fmt / clippy job.** Reason: `cargo fmt --all --check` and

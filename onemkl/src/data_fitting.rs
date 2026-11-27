@@ -1001,6 +1001,251 @@ impl<T: DataFittingScalar> Drop for LinearSpline1d<T> {
     }
 }
 
+// =====================================================================
+// QuadraticSpline1d
+// =====================================================================
+
+/// A piecewise-quadratic interpolant: the default quadratic
+/// (`DF_PP_QUADRATIC`, `DF_PP_DEFAULT`) fixed by one extra value
+/// (`DF_BC_Q_VAL`), or the Subbotin quadratic (`DF_PP_SUBBOTIN`) with free
+/// ends and a knot array (`DF_IC_Q_KNOT`). The conditions are those measured
+/// on oneMKL 2026.2 (`tools/size-probes/df_probe3.c`, `docs/DATA-FITTING-FACTS.md`):
+/// `DF_NO_BC` is rejected for the default quadratic (-1014) and Subbotin is
+/// rejected without a knot array (-1012). `x` must be strictly increasing.
+pub struct QuadraticSpline1d<T: DataFittingScalar> {
+    task: DFTaskPtr,
+    // MKL keeps raw pointers into all of these while the task is open.
+    _x: Box<[T]>,
+    _y: Box<[T]>,
+    _coeffs: Box<[T]>,
+    _bc: Option<Box<[T]>>,
+    _ic: Option<Box<[T]>>,
+}
+
+unsafe impl<T: DataFittingScalar + Send> Send for QuadraticSpline1d<T> {}
+
+impl<T: DataFittingScalar + Default + PartialOrd> QuadraticSpline1d<T> {
+    /// The default quadratic spline through `(x[i], y[i])`, fixed by its
+    /// value `q_value` at the midpoint `(x[0] + x[1]) / 2`.
+    pub fn with_midpoint_value(x: Vec<T>, y: Vec<T>, q_value: T) -> Result<Self> {
+        Self::build(
+            x,
+            y,
+            sys::DF_PP_DEFAULT as c_int,
+            sys::DF_BC_Q_VAL as c_int,
+            Some(vec![q_value]),
+            sys::DF_NO_IC as c_int,
+            None,
+        )
+    }
+
+    /// A Subbotin quadratic spline through `(x[i], y[i])` with free ends and
+    /// the knots at the midpoints of the cells, the library's own default
+    /// (`t_0 = x_0`, `t_n = x_{n-1}`, `t_i = (x_i + x_{i-1}) / 2`). The
+    /// knots are passed explicitly because oneMKL rejects the call without a
+    /// knot array (-1012, measured).
+    pub fn subbotin(x: Vec<T>, y: Vec<T>) -> Result<Self>
+    where
+        T: core::ops::Add<Output = T> + core::ops::Div<Output = T> + From<u8>,
+    {
+        let n = x.len();
+        if n < 2 {
+            return Err(Error::InvalidArgument(
+                "Subbotin spline needs at least 2 knots",
+            ));
+        }
+        let two = T::from(2u8);
+        let mut knots = Vec::with_capacity(n + 1);
+        knots.push(x[0]);
+        for i in 1..n {
+            knots.push((x[i] + x[i - 1]) / two);
+        }
+        knots.push(x[n - 1]);
+        Self::subbotin_with_knots(x, y, knots)
+    }
+
+    /// A Subbotin quadratic spline with caller-chosen knots: `x.len() + 1`
+    /// of them, `t_0 = x_0`, `t_n = x_{n-1}` and each interior `t_i` strictly
+    /// inside `(x_{i-1}, x_i)`.
+    pub fn subbotin_with_knots(x: Vec<T>, y: Vec<T>, knots: Vec<T>) -> Result<Self> {
+        let n = x.len();
+        if n < 2 {
+            return Err(Error::InvalidArgument(
+                "Subbotin spline needs at least 2 knots",
+            ));
+        }
+        if knots.len() != n + 1 {
+            return Err(Error::InvalidArgument(
+                "Subbotin knot array must have x.len() + 1 entries",
+            ));
+        }
+        let ends_ok = knots[0] == x[0] && knots[n] == x[n - 1];
+        let inside_ok = (1..n).all(|i| knots[i] > x[i - 1] && knots[i] < x[i]);
+        if !(ends_ok && inside_ok) {
+            return Err(Error::InvalidArgument(
+                "Subbotin knots need t_0 = x_0, t_n = x_{n-1} and t_i inside (x_{i-1}, x_i)",
+            ));
+        }
+        Self::build(
+            x,
+            y,
+            sys::DF_PP_SUBBOTIN as c_int,
+            sys::DF_BC_FREE_END as c_int,
+            None,
+            sys::DF_IC_Q_KNOT as c_int,
+            Some(knots),
+        )
+    }
+
+    fn build(
+        x: Vec<T>,
+        y: Vec<T>,
+        s_type: c_int,
+        bc_type: c_int,
+        bc: Option<Vec<T>>,
+        ic_type: c_int,
+        ic: Option<Vec<T>>,
+    ) -> Result<Self> {
+        if x.len() != y.len() {
+            return Err(Error::InvalidArgument("x and y must have the same length"));
+        }
+        let n = x.len();
+        if n < 2 {
+            return Err(Error::InvalidArgument(
+                "quadratic spline needs at least 2 knots",
+            ));
+        }
+        let x_box = x.into_boxed_slice();
+        let y_box = y.into_boxed_slice();
+        // oneMKL writes order * (n - 1) coefficients for every spline type
+        // except the Subbotin quadratic, which writes order * n (measured on
+        // 2026.2 with `tools/size-probes/df_coeff_extent.c`; the Intel
+        // reference says n - 1 for all).
+        let cells = if s_type == sys::DF_PP_SUBBOTIN as c_int {
+            n
+        } else {
+            n - 1
+        };
+        let coeffs_box: Box<[T]> = (0..cells * sys::DF_PP_QUADRATIC as usize)
+            .map(|_| T::default())
+            .collect::<Vec<_>>()
+            .into_boxed_slice();
+        let bc_box = bc.map(Vec::into_boxed_slice);
+        let ic_box = ic.map(Vec::into_boxed_slice);
+        let nx: c_int = n.try_into().map_err(|_| Error::DimensionOverflow)?;
+        let mut task: DFTaskPtr = ptr::null_mut();
+        check_df(unsafe {
+            T::df_new_task_1d(
+                &mut task,
+                nx,
+                x_box.as_ptr(),
+                sys::DF_NON_UNIFORM_PARTITION as c_int,
+                1,
+                y_box.as_ptr(),
+                sys::DF_NO_HINT as c_int,
+            )
+        })?;
+        let this = Self {
+            task,
+            _x: x_box,
+            _y: y_box,
+            _coeffs: coeffs_box,
+            _bc: bc_box,
+            _ic: ic_box,
+        };
+        let bc_ptr = this._bc.as_ref().map_or(ptr::null(), |b| b.as_ptr());
+        let ic_ptr = this._ic.as_ref().map_or(ptr::null(), |b| b.as_ptr());
+        check_df(unsafe {
+            T::df_edit_pp_spline_1d(
+                this.task,
+                sys::DF_PP_QUADRATIC as c_int,
+                s_type,
+                bc_type,
+                bc_ptr,
+                ic_type,
+                ic_ptr,
+                this._coeffs.as_ptr(),
+                sys::DF_NO_HINT as c_int,
+            )
+        })?;
+        check_df(unsafe {
+            T::df_construct_1d(
+                this.task,
+                sys::DF_PP_SPLINE as c_int,
+                sys::DF_METHOD_STD as c_int,
+            )
+        })?;
+        Ok(this)
+    }
+
+    /// Evaluate the interpolant at `sites`.
+    pub fn interpolate(&self, sites: &[T]) -> Result<Vec<T>> {
+        let nsite: c_int = sites
+            .len()
+            .try_into()
+            .map_err(|_| Error::DimensionOverflow)?;
+        let mut out: Vec<T> = (0..sites.len()).map(|_| T::default()).collect();
+        let dorder: [c_int; 1] = [1];
+        check_df(unsafe {
+            T::df_interpolate_1d(
+                self.task,
+                sys::DF_INTERP as c_int,
+                sys::DF_METHOD_PP as c_int,
+                nsite,
+                sites.as_ptr(),
+                sys::DF_NO_HINT as c_int,
+                1,
+                dorder.as_ptr(),
+                ptr::null(),
+                out.as_mut_ptr(),
+                sys::DF_NO_HINT as c_int,
+                ptr::null_mut(),
+            )
+        })?;
+        Ok(out)
+    }
+
+    /// Integrate over `[left[i], right[i]]` for each pair.
+    pub fn integrate(&self, left: &[T], right: &[T]) -> Result<Vec<T>> {
+        if left.len() != right.len() {
+            return Err(Error::InvalidArgument(
+                "left and right limit slices must have the same length",
+            ));
+        }
+        let nlim: c_int = left
+            .len()
+            .try_into()
+            .map_err(|_| Error::DimensionOverflow)?;
+        let mut out: Vec<T> = (0..left.len()).map(|_| T::default()).collect();
+        check_df(unsafe {
+            T::df_integrate_1d(
+                self.task,
+                sys::DF_METHOD_PP as c_int,
+                nlim,
+                left.as_ptr(),
+                sys::DF_NO_HINT as c_int,
+                right.as_ptr(),
+                sys::DF_NO_HINT as c_int,
+                ptr::null(),
+                ptr::null(),
+                out.as_mut_ptr(),
+                sys::DF_NO_HINT as c_int,
+            )
+        })?;
+        Ok(out)
+    }
+}
+
+impl<T: DataFittingScalar> Drop for QuadraticSpline1d<T> {
+    fn drop(&mut self) {
+        if !self.task.is_null() {
+            unsafe {
+                let _ = sys::dfDeleteTask(&mut self.task);
+            }
+        }
+    }
+}
+
 #[inline]
 fn integrate_ex_impl<T: DataFittingScalar + Default>(
     task: DFTaskPtr,

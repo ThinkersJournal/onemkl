@@ -198,7 +198,7 @@ Every non-MPI domain at Comprehensive:
 - **Data Fitting Comprehensive**: integration call-back form, cell
   search call-backs, all spline editors.
   Hyman (`CubicSpline1d::hyman`): wrapped with `DF_BC_FREE_END`. Measured 2026-11-26 on oneMKL 2026.2 (`tools/size-probes/df_probe3.c`, 8 monotone plateau knots, worst downward step between samples): `DF_BC_FREE_END`, end first derivatives and end second derivatives 0.0 (monotone); `DF_BC_NOT_A_KNOT` 0.0140 (not monotone; natural cubic 0.0243); `DF_NO_BC` fails with -1014 although the Intel reference lists it as supported. An earlier note here called Hyman unsupported because it was probed with not-a-knot only; that conclusion is withdrawn.
-  Quadratics not wrapped yet: default quadratic constructs with `DF_BC_Q_VAL` (one value); Subbotin only with `DF_BC_FREE_END` plus `DF_IC_Q_KNOT` (n + 1 knots); `DF_NO_BC` gives -1014 and a missing knot array -1012 (`docs/DATA-FITTING-FACTS.md`).
+  Quadratics (`QuadraticSpline1d`): default quadratic with `DF_BC_Q_VAL` (one value; `DF_NO_BC` gives -1014) and Subbotin with `DF_BC_FREE_END` plus `DF_IC_Q_KNOT` (n + 1 knots; a missing knot array gives -1012). Measured: the Subbotin spline writes `order * n` coefficients, not the documented `order * (n - 1)` (`tools/size-probes/df_coeff_extent.c`), and does not pass through the breakpoints (`docs/DATA-FITTING-FACTS.md`).
 - **VSL Comprehensive**: every BRNG + every method code; summary
   statistics with all weights / outliers / partial-task variants.
 - **FEAST Comprehensive**: full RCI interface.

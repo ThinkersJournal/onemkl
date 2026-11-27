@@ -123,3 +123,10 @@ Spline construction (8 knots of monotone plateau data):
   of `n + 1` knots; without the knots, or with `DF_NO_BC`, `DF_BC_NOT_A_KNOT`,
   free-end or end derivatives alone, it returns -1012; `DF_NO_BC` with the
   knots returns -1014.
+
+Coefficient extent (`tools/size-probes/df_coeff_extent.c`, 8 knots, sentinel
+buffer): linear 14, every cubic type 28, default quadratic 21, all equal to
+`order * (nx - 1)`; the Subbotin quadratic wrote 24 = `order * nx`, three more
+than the reference's `order * (nx - 1)` = 21. A buffer sized by the reference
+is overrun (stack smashing seen in the probe). Also: the Subbotin spline did
+not pass through the breakpoints on `y = x^2` (value 0.29 at `x = 0`).

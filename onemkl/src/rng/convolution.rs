@@ -114,7 +114,6 @@ pub trait ConvCorrScalar: Copy + 'static {
     /// `x` must be valid for reads of `1 + (xshape - 1) * |xstride|` elements, `y` of `1 + (yshape - 1) * |ystride|`, and `z` for writes of `1 + (zshape - 1) * |zstride|`, with the shapes given when the task was created and all strides non-zero. `z` must not overlap `x` or `y`.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// **Verified** by guard-page probe (smallest buffer for which the call did not fault: `x`, `y`, `z` each `1 + (shape - 1) * stride` elements, strides 1 and 2, VSL_CONV_MODE_DIRECT, x = 8, y = 5, z = 12; oneMKL 2026.2, Linux x86_64). Extents not listed as verified in this block are unverified (from MKL documentation).
-    #[allow(clippy::too_many_arguments)]
     unsafe fn conv_exec_1d(
         task: VSLConvTaskPtr,
         x: *const Self,
@@ -133,7 +132,6 @@ pub trait ConvCorrScalar: Copy + 'static {
     /// `x` must be valid for reads of `1 + (xshape - 1) * |xstride|` elements, `y` of `1 + (yshape - 1) * |ystride|`, and `z` for writes of `1 + (zshape - 1) * |zstride|`, with the shapes given when the task was created and all strides non-zero. `z` must not overlap `x` or `y`.
     /// A non-zero return is the VSL status. The MKL library must be linked and usable.
     /// Same extent rule as `conv_exec_1d` (verified there for convolution only; for correlation unverified).
-    #[allow(clippy::too_many_arguments)]
     unsafe fn corr_exec_1d(
         task: VSLCorrTaskPtr,
         x: *const Self,
@@ -245,7 +243,6 @@ impl<T: ConvCorrScalar> Conv1d<T> {
     /// Execute the task: `z = x * y` (convolution).
     /// All three buffers may be strided; pass `xstride = ystride =
     /// zstride = 1` for the dense case.
-    #[allow(clippy::too_many_arguments)]
     pub fn execute(
         &mut self,
         x: &[T],
@@ -330,7 +327,6 @@ impl<T: ConvCorrScalar> Corr1d<T> {
     }
 
     /// Execute the task: `z = x ⋆ y` (cross-correlation).
-    #[allow(clippy::too_many_arguments)]
     pub fn execute(
         &mut self,
         x: &[T],

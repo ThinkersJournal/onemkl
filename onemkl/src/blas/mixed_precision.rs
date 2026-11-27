@@ -540,7 +540,6 @@ pub mod f16 {
 
     /// `C ← alpha · op(A) · op(B) + beta · C`, `A`/`B` in `f16`, `C` and the
     /// accumulator in `f32` (`cblas_gemm_f16f16f32`).
-    #[allow(clippy::too_many_arguments)]
     pub fn gemm_f16_f32(
         layout: Layout,
         transa: Transpose,
@@ -579,7 +578,6 @@ pub mod f16 {
     /// (`cblas_hgemm`). Each operand needs `cols * ld` elements (stricter than
     /// the Fortran `(cols-1)*ld + rows`). Accumulation precision is not
     /// measured here.
-    #[allow(clippy::too_many_arguments)]
     pub fn hgemm(
         layout: Layout,
         transa: Transpose,

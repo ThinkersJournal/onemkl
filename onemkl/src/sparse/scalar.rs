@@ -234,7 +234,6 @@ pub trait SparseScalar: Scalar {
     /// `a` must be a live, square, symmetric-described handle created by `sparse_create_*` and not yet destroyed.
     /// `b` must be valid for reads, and `x` and `y` for writes (`x` also read as the initial guess), of `n` elements, where `n` is the order of `A`; `y` receives `A * x`. `b`, `x` and `y` must not overlap.
     /// The MKL library must be linked and usable. The returned status is MKL's; on a non-success status `*a` must not be used.
-    #[allow(clippy::too_many_arguments)]
     unsafe fn sparse_symgs_mv(
         op: sparse_operation_t::Type,
         a: sparse_matrix_t,
@@ -252,7 +251,6 @@ pub trait SparseScalar: Scalar {
     /// `a` and `b` must be live handles whose dimensions make `op(A) * B` defined, created by `sparse_create_*` and not yet destroyed.
     /// `c` must be valid for writes of the dense `rows(op(A)) x cols(B)` result stored per `layout`: row-major needs `ldc >= cols(B)` and `rows(op(A)) * ldc` elements; column-major needs `ldc >= rows(op(A))` and `cols(B) * ldc` elements. `c` must not overlap any storage owned by `a` or `b`.
     /// The MKL library must be linked and usable. The returned status is MKL's; on a non-success status `*a` must not be used.
-    #[allow(clippy::too_many_arguments)]
     unsafe fn sparse_spmmd(
         op: sparse_operation_t::Type,
         a: sparse_matrix_t,

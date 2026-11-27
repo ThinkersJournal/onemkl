@@ -20,7 +20,6 @@ use crate::util::dim_to_mkl_int;
 // =====================================================================
 
 /// `C ← alpha * op(A) * op(B) + beta * C`.
-#[allow(clippy::too_many_arguments)]
 pub fn gemm<T: BlasScalar>(
     transa: Transpose,
     transb: Transpose,
@@ -130,7 +129,6 @@ pub fn gemmt<T: BlasScalar>(
 /// Faster than [`gemm`] for large complex matrices but with slightly
 /// different rounding behavior — see the oneMKL reference for accuracy
 /// considerations. Available only for complex types.
-#[allow(clippy::too_many_arguments)]
 pub fn gemm3m<T: ComplexBlasScalar>(
     transa: Transpose,
     transb: Transpose,
@@ -179,7 +177,6 @@ pub fn gemm3m<T: ComplexBlasScalar>(
 
 /// `C ← alpha * A * B + beta * C` (`side == Left`) or
 /// `C ← alpha * B * A + beta * C` (`side == Right`), where `A` is symmetric.
-#[allow(clippy::too_many_arguments)]
 pub fn symm<T: BlasScalar>(
     side: Side,
     uplo: UpLo,
@@ -231,7 +228,6 @@ pub fn symm<T: BlasScalar>(
 /// `C` is symmetric `n × n`; only the triangle indicated by `uplo` is read
 /// and written. With [`Transpose::NoTrans`], `A` is `n × k`; otherwise `A`
 /// is `k × n`.
-#[allow(clippy::too_many_arguments)]
 pub fn syrk<T: BlasScalar>(
     uplo: UpLo,
     trans: Transpose,
@@ -269,7 +265,6 @@ pub fn syrk<T: BlasScalar>(
 
 /// `C ← alpha * (op(A) * op(B)ᵀ + op(B) * op(A)ᵀ) + beta * C`
 /// (symmetric rank-2k update).
-#[allow(clippy::too_many_arguments)]
 pub fn syr2k<T: BlasScalar>(
     uplo: UpLo,
     trans: Transpose,
@@ -319,7 +314,6 @@ pub fn syr2k<T: BlasScalar>(
 // =====================================================================
 
 /// Hermitian matrix-matrix multiply (complex types).
-#[allow(clippy::too_many_arguments)]
 pub fn hemm<T: ComplexBlasScalar>(
     side: Side,
     uplo: UpLo,
@@ -368,7 +362,6 @@ pub fn hemm<T: ComplexBlasScalar>(
 /// Hermitian rank-k update with **real** `alpha` and `beta`.
 /// `C ← alpha * A * Aᴴ + beta * C` (`trans == NoTrans`) or
 /// `C ← alpha * Aᴴ * A + beta * C` (`trans == ConjTrans`).
-#[allow(clippy::too_many_arguments)]
 pub fn herk<T: ComplexBlasScalar>(
     uplo: UpLo,
     trans: Transpose,
@@ -411,7 +404,6 @@ pub fn herk<T: ComplexBlasScalar>(
 
 /// Hermitian rank-2k update with complex `alpha` and **real** `beta`.
 /// `C ← alpha * op(A) * op(B)ᴴ + conj(alpha) * op(B) * op(A)ᴴ + beta * C`.
-#[allow(clippy::too_many_arguments)]
 pub fn her2k<T: ComplexBlasScalar>(
     uplo: UpLo,
     trans: Transpose,
@@ -468,7 +460,6 @@ pub fn her2k<T: ComplexBlasScalar>(
 /// Triangular matrix-matrix multiply.
 /// `B ← alpha * op(A) * B` (`side == Left`) or
 /// `B ← alpha * B * op(A)` (`side == Right`).
-#[allow(clippy::too_many_arguments)]
 pub fn trmm<T: BlasScalar>(
     side: Side,
     uplo: UpLo,
@@ -513,7 +504,6 @@ pub fn trmm<T: BlasScalar>(
 /// Triangular solve with multiple right-hand sides.
 /// `B ← alpha * op(A)⁻¹ * B` (`side == Left`) or
 /// `B ← alpha * B * op(A)⁻¹` (`side == Right`).
-#[allow(clippy::too_many_arguments)]
 pub fn trsm<T: BlasScalar>(
     side: Side,
     uplo: UpLo,

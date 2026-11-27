@@ -783,7 +783,6 @@ impl<T: SparseScalar> SparseMatrix<T> {
 
     /// Hint that `mm` will be called approximately `expected_calls`
     /// times. Wraps `mkl_sparse_set_mm_hint`.
-    #[allow(clippy::too_many_arguments)]
     pub fn set_mm_hint(
         &self,
         op: Operation,

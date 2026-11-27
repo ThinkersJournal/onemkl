@@ -895,7 +895,6 @@ pub trait RealBlasScalar: BlasScalar + RealScalar {
     /// # Safety
     /// `x` and `y` must be uniquely accessible, each at least
     /// `(n - 1) * |inc?| + 1` elements.
-    #[allow(clippy::too_many_arguments)]
     unsafe fn cblas_rot(
         n: MKL_INT,
         x: *mut Self,

@@ -502,7 +502,6 @@ pub fn syr<T: RealBlasScalar>(
 }
 
 /// `A ← alpha * (x * yᵀ + y * xᵀ) + A` for a real symmetric `A`.
-#[allow(clippy::too_many_arguments)]
 pub fn syr2<T: RealBlasScalar>(
     uplo: UpLo,
     alpha: T,
@@ -745,7 +744,6 @@ pub fn her<T: ComplexBlasScalar>(
 
 /// `A ← alpha * x * yᴴ + conj(alpha) * y * xᴴ + A` for Hermitian `A`.
 /// `alpha` is complex.
-#[allow(clippy::too_many_arguments)]
 pub fn her2<T: ComplexBlasScalar>(
     uplo: UpLo,
     alpha: T,

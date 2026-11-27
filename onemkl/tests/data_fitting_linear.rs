@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 #![cfg(feature = "data-fitting")]
 
 //! `LinearSpline1d` (`DF_PP_LINEAR`, default type, no boundary or internal

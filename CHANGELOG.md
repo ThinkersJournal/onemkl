@@ -4,7 +4,9 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## 0.6.12 - 2026-11-27 (PM-allocated; additive; written by pm-assist from the diff and the lane's READY)
+## 0.7.0 - 2026-11-27 (PM-allocated; **Breaking** for code that names `InterpolateExArgs`; otherwise additive; written by pm-assist from the diff and the lane's READY)
+
+- **Breaking:** `data_fitting::InterpolateExArgs` is `pub` with all-`pub` fields and no `#[non_exhaustive]`, and `DataFittingScalar` is an unsealed `pub` trait whose `df_interpolate_ex_1d` takes it: `#[doc(hidden)]` hides only the documentation, so adding the fields `dorder` and `orders` breaks any struct literal of it or exhaustive pattern on it (the lane confirmed it can be named and built). Nothing in the repository constructs it outside the crate.
 
 - **data fitting:** derivative orders for the `InterpolateEx1D` call-backs (`CubicSpline1d` only): `InterpolationPieces` (`#[non_exhaustive]`) gains `orders` and the new method `interpolate_derivatives_with_callbacks`; the `#[doc(hidden)]` plumbing struct `InterpolateExArgs` gains `dorder` and `orders` (not part of the documented API). Additive: a patch on 0.6.x pre-1.0. WSL: 8 ok in the call-backs test binary, clippy `-D warnings` and fmt clean. UNMEASURED by the lane: ilp64, f32, Windows and macOS.
 

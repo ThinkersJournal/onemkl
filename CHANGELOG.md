@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased (lane entry; pm-assist allocates the version and heading)
+
+- **data fitting (additive):** `LinearSpline1d` and `QuadraticSpline1d` gain `interpolate_derivatives` (orders 0..=1 and 0..=2) and `interpolate_derivatives_with_callbacks` (call-back `out` is site-major, orders ascending, as for the cubic spline). Measured on oneMKL 2026.2 under WSL (Linux) ONLY: values exact, an interior call-back writing site-major reproduces the library result (3 new tests). UNMEASURED: ilp64, f32, Windows, macOS.
+- **lint hygiene (no behaviour change):** the 21 bare `#[allow(missing_docs)]` (one also `clippy::missing_safety_doc`) on the per-precision dispatch traits now carry a `reason`; 3 `non_*` allows remain, all in the generated `onemkl-sys/src/lib.rs`. ROADMAP W1c.
+
 ## 0.8.0 - 2026-11-28 (PM-allocated; **Breaking**; written by pm-assist from the diff and the lane's READY)
 
 - **Breaking (safe-API memory safety):** `blas::gemm_batch`, `gemv_batch`, `trsm_batch`, `pardiso::pardiso_64_raw` and `Pardiso::export` become `unsafe fn` (they take raw pointers or sizes the wrapper cannot check). `data_fitting::DataFittingScalar` is sealed. `SearchExArgs`, `IntegrateExArgs` and `InterpolateExArgs` become `#[non_exhaustive]`. Callers: the lane's git grep over fuel and cpufish found 0 callers (control: `onemkl::` in 3 files each); other repos not searched by the lane.

@@ -80,10 +80,13 @@ pub(crate) fn status_i32(status: MKL_INT) -> i32 {
 ///   `base .. base + inner_bound`.
 ///
 /// Returns the number of stored entries (`ptr[outer] - base`).
-#[allow(
-    dead_code,
-    reason = "each domain feature uses it; a minimal-feature build may not"
-)]
+#[cfg(any(
+    feature = "sparse",
+    feature = "dss",
+    feature = "pardiso",
+    feature = "feast",
+    feature = "preconditioners"
+))]
 pub(crate) fn validate_compressed(
     ptr: &[onemkl_sys::MKL_INT],
     idx: &[onemkl_sys::MKL_INT],
@@ -129,7 +132,7 @@ pub(crate) fn validate_compressed(
 
 /// Check that a `rows × cols` dense operand with leading dimension `ld`
 /// (row-major when `row_major`) fits a `len`-element buffer.
-#[allow(dead_code, reason = "used by the sparse domain only")]
+#[cfg(feature = "sparse")]
 pub(crate) fn check_dense_extent(
     row_major: bool,
     rows: usize,

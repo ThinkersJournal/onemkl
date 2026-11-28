@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.6.8 - 2026-11-27 (PM-allocated; CI only, no Rust change; written by pm-assist from the diff)
+
+- **CI:** `cargo clippy (Linux, -D warnings)` and `cargo clippy (target x86_64-pc-windows-msvc, cross from Linux, -D warnings)` jobs (the old REPORT-ONLY clippy job is kept), plus a report-only step counting `too_many_arguments` with the source allows overridden (ROADMAP row W1). The lane read both new jobs green by name on the head; control PRs #50/#51 (scratch drafts, do not merge) show the cross job lints `cfg(windows)` code.
+
 ## 0.6.7 - 2026-11-27 (PM-allocated; lint-only, no behaviour change; written by pm-assist from the diff)
 
 - `cargo clippy -D warnings` clean: 28 findings fixed across 14 files (Linux and Windows measured; aarch64 and macOS clippy UNMEASURED) and 7 narrow `#[allow(..., reason = ..)]` kept for cfg-dependent conversions (`MKL_INT` i32/i64, the bindgen enum type u32/i32) and one test literal (`approx_constant`). Lane: WSL clippy exit 0 and 77 tests ok before the final merge of main; Windows clippy no lint output at 21f3110; WSL not re-run after that merge.

@@ -187,3 +187,11 @@ pub mod prelude {
     #[cfg(feature = "rng")]
     pub use crate::rng::{BasicRng, Stream};
 }
+
+// CONTROL (scratch, never merge): one deliberate clippy lint in nonwin code.
+#[cfg(not(windows))]
+#[allow(dead_code)]
+fn ctl_nonwin() {
+    let x = 1u32;
+    let _ = x as u32;
+}

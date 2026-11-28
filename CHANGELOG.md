@@ -4,7 +4,9 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## 0.6.8 - 2026-11-27 (PM-allocated; CI only, no Rust change; written by pm-assist from the diff)
+## 0.6.8 - 2026-11-27 (PM-allocated; CI and one fix in `InterpolateEx1D` search call-backs; written by pm-assist from the diff)
+
+- **Fixed:** `run_search_callback` (data fitting, `InterpolateEx1D` search call-backs) read `cells` / `exact` after a NEGATIVE status that the call-back never wrote, so a stale `exact == 1` turned the call-back's `-5` into a bogus `SearchCell`; a negative status is now returned as it came, without reading them (test `negative_status_is_the_error_positive_status_is_a_typed_error` plus a deterministic unit test that fails before and passes after). **First affected version: 0.6.6 (never published; the same code is in the published 0.6.7).** Found by the new required Intel oneAPI CI job; a wrong error value, not a memory-safety defect (no yank asked).
 
 - **CI:** `cargo clippy (Linux, -D warnings)` and `cargo clippy (target x86_64-pc-windows-msvc, cross from Linux, -D warnings)` jobs (the old REPORT-ONLY clippy job is kept), plus a report-only step counting `too_many_arguments` with the source allows overridden (ROADMAP row W1). The lane read both new jobs green by name on the head; control PRs #50/#51 (scratch drafts, do not merge) show the cross job lints `cfg(windows)` code.
 

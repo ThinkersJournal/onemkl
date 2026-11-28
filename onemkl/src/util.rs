@@ -70,3 +70,89 @@ pub(crate) fn vector_min_len(n: usize, inc: i64) -> usize {
 pub(crate) fn status_i32(status: MKL_INT) -> i32 {
     i32::try_from(status).unwrap_or(if status < 0 { i32::MIN } else { i32::MAX })
 }
+
+/// Validate compressed (CSR/CSC-style) index arrays before they reach an
+/// index-chasing FFI routine (`MKL_INT` is `i32` or `i64`):
+///
+/// * `ptr.len() == outer + 1` and `ptr[0] == base`,
+/// * `ptr` is non-decreasing and `ptr[outer] - base <= idx.len()`,
+/// * every `idx` entry within `ptr[outer] - base` lies in
+///   `base .. base + inner_bound`.
+///
+/// Returns the number of stored entries (`ptr[outer] - base`).
+#[allow(
+    dead_code,
+    reason = "each domain feature uses it; a minimal-feature build may not"
+)]
+pub(crate) fn validate_compressed(
+    ptr: &[onemkl_sys::MKL_INT],
+    idx: &[onemkl_sys::MKL_INT],
+    base: onemkl_sys::MKL_INT,
+    outer: usize,
+    inner_bound: usize,
+) -> crate::error::Result<usize> {
+    use crate::error::Error;
+    if ptr.len() != outer + 1 {
+        return Err(Error::InvalidArgument(
+            "pointer array must have length outer + 1",
+        ));
+    }
+    if ptr[0] != base {
+        return Err(Error::InvalidArgument(
+            "pointer array must start at the index base",
+        ));
+    }
+    let mut prev = ptr[0];
+    for &p in &ptr[1..] {
+        if p < prev {
+            return Err(Error::InvalidArgument(
+                "pointer array must be non-decreasing",
+            ));
+        }
+        prev = p;
+    }
+    let nnz = (prev - base) as usize;
+    if nnz > idx.len() {
+        return Err(Error::InvalidArgument(
+            "pointer array ends past the end of the index array",
+        ));
+    }
+    let lo = base;
+    let hi = (base as i128) + (inner_bound as i128);
+    for &c in &idx[..nnz] {
+        if c < lo || (c as i128) >= hi {
+            return Err(Error::InvalidArgument("index entry out of range"));
+        }
+    }
+    Ok(nnz)
+}
+
+/// Check that a `rows × cols` dense operand with leading dimension `ld`
+/// (row-major when `row_major`) fits a `len`-element buffer.
+#[allow(dead_code, reason = "used by the sparse domain only")]
+pub(crate) fn check_dense_extent(
+    row_major: bool,
+    rows: usize,
+    cols: usize,
+    ld: usize,
+    len: usize,
+    what: &'static str,
+) -> crate::error::Result<()> {
+    use crate::error::Error;
+    let (contig, strided) = if row_major {
+        (cols, rows)
+    } else {
+        (rows, cols)
+    };
+    if contig == 0 || strided == 0 {
+        return Ok(());
+    }
+    let need = (strided - 1)
+        .checked_mul(ld)
+        .and_then(|v| v.checked_add(contig))
+        .ok_or(Error::DimensionOverflow)?;
+    if ld < contig || len < need {
+        return Err(Error::InvalidArgument(what));
+    }
+    Ok(())
+}

@@ -56,6 +56,10 @@ pub fn eigh_real_dense<T: FeastReal>(
     emax: T,
     m0_estimate: usize,
 ) -> Result<FeastResult<T, T>> {
+    check_feast_dims(n, m0_estimate)?;
+    if lda < n {
+        return Err(Error::InvalidArgument("lda must be at least n"));
+    }
     let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let lda_i: MKL_INT = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
     if a.len() < lda * n {
@@ -130,6 +134,10 @@ pub fn eigh_complex_dense<T: FeastComplex>(
     emax: T::Real,
     m0_estimate: usize,
 ) -> Result<FeastResult<T, T::Real>> {
+    check_feast_dims(n, m0_estimate)?;
+    if lda < n {
+        return Err(Error::InvalidArgument("lda must be at least n"));
+    }
     let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let lda_i: MKL_INT = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
     if a.len() < lda * n {
@@ -220,6 +228,8 @@ pub fn eigh_real_csr<T: FeastReal>(
             "jsa and sa must have the same length",
         ));
     }
+    check_feast_dims(n, m0_estimate)?;
+    crate::util::validate_compressed(isa, jsa, 1, n, n)?;
     let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let m0_i: MKL_INT = m0_estimate
         .try_into()
@@ -293,6 +303,8 @@ pub fn eigh_complex_csr<T: FeastComplex>(
             "jsa and sa must have the same length",
         ));
     }
+    check_feast_dims(n, m0_estimate)?;
+    crate::util::validate_compressed(isa, jsa, 1, n, n)?;
     let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let m0_i: MKL_INT = m0_estimate
         .try_into()
@@ -365,6 +377,10 @@ pub fn eigh_real_banded<T: FeastReal>(
     if a.len() < lda * n {
         return Err(Error::InvalidArgument("A buffer is smaller than lda * n"));
     }
+    check_feast_dims(n, m0_estimate)?;
+    if kla >= n || lda < kla + 1 {
+        return Err(Error::InvalidArgument("need kla < n and lda >= kla + 1"));
+    }
     let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let kla_i: MKL_INT = kla.try_into().map_err(|_| Error::DimensionOverflow)?;
     let lda_i: MKL_INT = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
@@ -434,6 +450,10 @@ pub fn eigh_complex_banded<T: FeastComplex>(
 ) -> Result<FeastResult<T, T::Real>> {
     if a.len() < lda * n {
         return Err(Error::InvalidArgument("A buffer is smaller than lda * n"));
+    }
+    check_feast_dims(n, m0_estimate)?;
+    if kla >= n || lda < kla + 1 {
+        return Err(Error::InvalidArgument("need kla < n and lda >= kla + 1"));
     }
     let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let kla_i: MKL_INT = kla.try_into().map_err(|_| Error::DimensionOverflow)?;
@@ -510,6 +530,10 @@ pub fn gen_eigh_real_dense<T: FeastReal>(
             "A or B buffer is smaller than its leading dimension * n",
         ));
     }
+    check_feast_dims(n, m0_estimate)?;
+    if lda < n || ldb < n {
+        return Err(Error::InvalidArgument("lda and ldb must be at least n"));
+    }
     let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let lda_i: MKL_INT = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
     let ldb_i: MKL_INT = ldb.try_into().map_err(|_| Error::DimensionOverflow)?;
@@ -585,6 +609,10 @@ pub fn gen_eigh_complex_dense<T: FeastComplex>(
         return Err(Error::InvalidArgument(
             "A or B buffer is smaller than its leading dimension * n",
         ));
+    }
+    check_feast_dims(n, m0_estimate)?;
+    if lda < n || ldb < n {
+        return Err(Error::InvalidArgument("lda and ldb must be at least n"));
     }
     let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let lda_i: MKL_INT = lda.try_into().map_err(|_| Error::DimensionOverflow)?;
@@ -1301,3 +1329,14 @@ impl_feast_complex!(
     hbev = zfeast_hbev,
     hegv = zfeast_hegv
 );
+
+/// FEAST requires `n >= 1` and `1 <= m0 <= n`; the eigenvector and
+/// eigenvalue buffers are sized from these.
+fn check_feast_dims(n: usize, m0: usize) -> Result<()> {
+    if n == 0 || m0 == 0 || m0 > n {
+        return Err(Error::InvalidArgument(
+            "FEAST requires n >= 1 and 1 <= m0_estimate <= n",
+        ));
+    }
+    Ok(())
+}

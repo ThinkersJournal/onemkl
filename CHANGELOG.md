@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.7.1 - 2026-11-28 (PM-allocated; safe-API memory safety: no signature change: a patch; written by pm-assist from the diff and the lane's audit)
+
+- **Fixed (safe-API memory safety):** the safe wrappers of `lapack`, `blas` (level2, extensions, packed, compact), `sparse`, `dss`, `pardiso`, `preconditioners` (ilu), `feast` and `iss` now check slice lengths, leading dimensions, strides and index ranges before the FFI call and return `Err`. Measured on oneMKL 2026.2 under WSL (Linux x86_64) ONLY, one probe process per case, against the unfixed `origin/main` bcf7f80 (= 0.7.0 development): 32 FAULT (SIGSEGV/abort), 22 ACCEPTED (the unfixed call returned `Ok` for invalid input; no fault observed, not counted as a measured hole), 6 already `Err`; after the fix all 60 probes return `Err`; 82 test binaries green. Windows and macOS are UNMEASURED. `docs/SAFE-API-AUDIT.md` has the table.
+- **Affected versions:** for the modules listed above the published 0.6.8 and 0.6.11 `.crate` sources are byte-identical to bcf7f80 (md5 per file), so the measured results hold for 0.6.8 and 0.6.11; earlier published versions differ per file (static identity only, `SAFE-API-AUDIT-versions.txt`): NOT yet run. **Yank of ALL affected versions and a GHSA are CireSnave board 526 B / 527, decided after the audit, not by this PR.**
+
 ## 0.7.0 - 2026-11-27 (PM-allocated; **Breaking** for code that names `InterpolateExArgs`; otherwise additive; written by pm-assist from the diff and the lane's READY)
 
 - **Breaking:** `data_fitting::InterpolateExArgs` is `pub` with all-`pub` fields and no `#[non_exhaustive]`, and `DataFittingScalar` is an unsealed `pub` trait whose `df_interpolate_ex_1d` takes it: `#[doc(hidden)]` hides only the documentation, so adding the fields `dorder` and `orders` breaks any struct literal of it or exhaustive pattern on it (the lane confirmed it can be named and built). Nothing in the repository constructs it outside the crate.

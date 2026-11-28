@@ -166,6 +166,15 @@ pub fn omatcopy2<T: BlasScalar>(
     if stridea == 0 || strideb == 0 {
         return Err(Error::InvalidArgument("matcopy2 strides must be non-zero"));
     }
+    // Element (i, j) of the contiguous dimension sits `stride` elements
+    // apart: the extent of a `rows × cols` operand is
+    // `(strided - 1) * ld + (contiguous - 1) * stride + 1`.
+    let (out_rows, out_cols) = match trans {
+        Transpose::NoTrans => (rows, cols),
+        Transpose::Trans | Transpose::ConjTrans => (cols, rows),
+    };
+    check_matcopy2_in(layout, rows, cols, lda, stridea, a.len(), "A")?;
+    check_matcopy2_in(layout, out_rows, out_cols, ldb, strideb, b.len(), "B")?;
     unsafe {
         T::mkl_omatcopy2(
             layout.as_char() as c_char,
@@ -267,6 +276,54 @@ fn check_matcopy_in(
         .checked_mul(ld)
         .and_then(|v| v.checked_add(contiguous))
         .ok_or(Error::DimensionOverflow)?;
+    if buf_len < needed {
+        return Err(invalid_arg_for(
+            name,
+            "buffer too small for declared dimensions",
+        ));
+    }
+    Ok(())
+}
+
+fn check_matcopy2_in(
+    layout: Layout,
+    rows: usize,
+    cols: usize,
+    ld: usize,
+    stride: usize,
+    buf_len: usize,
+    name: &'static str,
+) -> Result<()> {
+    let (contiguous, strided) = match layout {
+        Layout::RowMajor => (cols, rows),
+        Layout::ColMajor => (rows, cols),
+    };
+    if rows == 0 || cols == 0 {
+        return Ok(());
+    }
+    // `ld` is measured in units of `stride` elements per MKL's definition,
+    // so require the conservative extent with `ld` and `stride` both scaled.
+    if ld < contiguous {
+        return Err(invalid_arg_for(
+            name,
+            "leading dimension is smaller than the contiguous dimension",
+        ));
+    }
+    let needed = (strided - 1)
+        .checked_mul(ld)
+        .and_then(|v| v.checked_add((contiguous - 1).checked_mul(stride)?))
+        .and_then(|v| v.checked_add(1))
+        .ok_or(Error::DimensionOverflow)?;
+    // MKL's `ld` for omatcopy2 is in elements of the *strided* layout, so
+    // scale by `stride` as well to stay conservative (never under-check).
+    let needed = needed.max(
+        (strided - 1)
+            .checked_mul(ld)
+            .and_then(|v| v.checked_mul(stride))
+            .and_then(|v| v.checked_add((contiguous - 1).checked_mul(stride)?))
+            .and_then(|v| v.checked_add(1))
+            .ok_or(Error::DimensionOverflow)?,
+    );
     if buf_len < needed {
         return Err(invalid_arg_for(
             name,
@@ -393,7 +450,13 @@ pub fn gemv_batch_strided<T: BlasScalar>(
     stridey: i64,
     batch_size: usize,
 ) -> Result<()> {
-    let _ = (a.len(), x.len(), y.len()); // length checks deferred to MKL.
+    check_batch_matrices(layout, m, n, lda, stridea, batch_size, a.len(), "A")?;
+    let (x_len, y_len) = match trans {
+        Transpose::NoTrans => (n, m),
+        Transpose::Trans | Transpose::ConjTrans => (m, n),
+    };
+    check_batch_buffers(x.len(), x_len, incx, stridex, batch_size, "x")?;
+    check_batch_buffers(y.len(), y_len, incy, stridey, batch_size, "y")?;
     if batch_size == 0 {
         return Ok(());
     }
@@ -448,7 +511,11 @@ pub fn gemm_batch_strided<T: BlasScalar>(
     stridec: i64,
     batch_size: usize,
 ) -> Result<()> {
-    let _ = (a.len(), b.len(), c.len());
+    let (ar, ac) = op_dims(transa, m, k);
+    let (br, bc) = op_dims(transb, k, n);
+    check_batch_matrices(layout, ar, ac, lda, stridea, batch_size, a.len(), "A")?;
+    check_batch_matrices(layout, br, bc, ldb, strideb, batch_size, b.len(), "B")?;
+    check_batch_matrices(layout, m, n, ldc, stridec, batch_size, c.len(), "C")?;
     if batch_size == 0 {
         return Ok(());
     }
@@ -829,7 +896,12 @@ pub fn trsm_batch_strided<T: BlasScalar>(
     strideb: i64,
     batch_size: usize,
 ) -> Result<()> {
-    let _ = (a.len(), b.len());
+    let order = match side {
+        Side::Left => m,
+        Side::Right => n,
+    };
+    check_batch_matrices(layout, order, order, lda, stridea, batch_size, a.len(), "A")?;
+    check_batch_matrices(layout, m, n, ldb, strideb, batch_size, b.len(), "B")?;
     if batch_size == 0 {
         return Ok(());
     }
@@ -878,7 +950,13 @@ pub fn dgmm_batch_strided<T: BlasScalar>(
     stridec: i64,
     batch_size: usize,
 ) -> Result<()> {
-    let _ = (a.len(), x.len(), c.len());
+    check_batch_matrices(layout, m, n, lda, stridea, batch_size, a.len(), "A")?;
+    let x_len = match side {
+        Side::Left => m,
+        Side::Right => n,
+    };
+    check_batch_buffers(x.len(), x_len, incx, stridex, batch_size, "x")?;
+    check_batch_matrices(layout, m, n, ldc, stridec, batch_size, c.len(), "C")?;
     if batch_size == 0 {
         return Ok(());
     }
@@ -929,7 +1007,11 @@ pub fn gemm3m_batch_strided<T: ComplexBlasScalar>(
     stridec: i64,
     batch_size: usize,
 ) -> Result<()> {
-    let _ = (a.len(), b.len(), c.len());
+    let (ar, ac) = op_dims(transa, m, k);
+    let (br, bc) = op_dims(transb, k, n);
+    check_batch_matrices(layout, ar, ac, lda, stridea, batch_size, a.len(), "A")?;
+    check_batch_matrices(layout, br, bc, ldb, strideb, batch_size, b.len(), "B")?;
+    check_batch_matrices(layout, m, n, ldc, stridec, batch_size, c.len(), "C")?;
     if batch_size == 0 {
         return Ok(());
     }
@@ -973,15 +1055,88 @@ fn check_batch_buffers(
     if batch_size == 0 || n == 0 {
         return Ok(());
     }
-    let abs_stride = stride.unsigned_abs() as usize;
-    let elem_span = 1 + (n - 1) * inc.unsigned_abs() as usize;
-    let needed = (batch_size - 1) * abs_stride + elem_span;
+    if stride < 0 {
+        // Batch `i` starts at `base + i * stride`, which would lie before
+        // the slice for every `i > 0`.
+        return Err(Error::InvalidArgument(
+            "batch stride must be non-negative for a slice-based buffer",
+        ));
+    }
+    let too_big = Error::InvalidArgument("batched buffer size overflows usize");
+    let needed = (n - 1)
+        .checked_mul(inc.unsigned_abs() as usize)
+        .and_then(|v| v.checked_add(1))
+        .and_then(|span| {
+            (batch_size - 1)
+                .checked_mul(stride as usize)
+                .and_then(|v| v.checked_add(span))
+        })
+        .ok_or(too_big)?;
     if buf_len < needed {
         return Err(Error::InvalidArgument(
             "batched buffer too short for n, inc, stride, and batch_size",
         ));
     }
     Ok(())
+}
+
+/// Check one strided batch of `rows × cols` matrices (`stride` elements
+/// apart, leading dimension `ld`) against a `buf_len`-element buffer.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "private checker mirroring the shape/stride/ld/batch/buffer arguments of the strided-batch BLAS calls it guards"
+)]
+fn check_batch_matrices(
+    layout: Layout,
+    rows: usize,
+    cols: usize,
+    ld: usize,
+    stride: i64,
+    batch_size: usize,
+    buf_len: usize,
+    name: &'static str,
+) -> Result<()> {
+    if batch_size == 0 {
+        return Ok(());
+    }
+    if stride < 0 {
+        return Err(invalid_arg_for(name, "negative batch stride"));
+    }
+    // One matrix: reuse the single-matrix check against the exact extent.
+    let (contiguous, strided) = match layout {
+        Layout::RowMajor => (cols, rows),
+        Layout::ColMajor => (rows, cols),
+    };
+    if ld < contiguous.max(1) && contiguous != 0 {
+        return Err(invalid_arg_for(name, "leading dimension too small"));
+    }
+    if rows == 0 || cols == 0 {
+        return Ok(());
+    }
+    let one = (strided - 1)
+        .checked_mul(ld)
+        .and_then(|v| v.checked_add(contiguous))
+        .ok_or(Error::DimensionOverflow)?;
+    let needed = (batch_size - 1)
+        .checked_mul(stride as usize)
+        .and_then(|v| v.checked_add(one))
+        .ok_or(Error::DimensionOverflow)?;
+    if buf_len < needed {
+        return Err(invalid_arg_for(
+            name,
+            "buffer too small for declared dimensions",
+        ));
+    }
+    Ok(())
+}
+
+/// Dimensions `(rows, cols)` of `op(M)` stored for a `rows × cols` operand.
+#[inline]
+fn op_dims(trans: Transpose, rows: usize, cols: usize) -> (usize, usize) {
+    match trans {
+        Transpose::NoTrans => (rows, cols),
+        Transpose::Trans | Transpose::ConjTrans => (cols, rows),
+    }
 }
 
 fn invalid_arg_for(name: &'static str, msg: &'static str) -> Error {

@@ -433,6 +433,29 @@ pub fn gemm<T: CompactScalar>(
     format: CompactFormat,
     num_matrices: usize,
 ) -> Result<()> {
+    let (ar, ac) = match transa {
+        Transpose::NoTrans => (m, k),
+        _ => (k, m),
+    };
+    let (br, bc) = match transb {
+        Transpose::NoTrans => (k, n),
+        _ => (n, k),
+    };
+    if ap.len() < packed_len::<T>(layout, ar, ac, ldap, format, num_matrices)? {
+        return Err(Error::InvalidArgument(
+            "ap is smaller than the compact size of A",
+        ));
+    }
+    if bp.len() < packed_len::<T>(layout, br, bc, ldbp, format, num_matrices)? {
+        return Err(Error::InvalidArgument(
+            "bp is smaller than the compact size of B",
+        ));
+    }
+    if cp.len() < packed_len::<T>(layout, m, n, ldcp, format, num_matrices)? {
+        return Err(Error::InvalidArgument(
+            "cp is smaller than the compact size of C",
+        ));
+    }
     let m_i: MKL_INT = m.try_into().map_err(|_| Error::DimensionOverflow)?;
     let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let k_i: MKL_INT = k.try_into().map_err(|_| Error::DimensionOverflow)?;

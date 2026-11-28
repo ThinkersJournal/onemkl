@@ -43,6 +43,7 @@ pub fn ilu0(n: usize, a: &[f64], ia: &[MKL_INT], ja: &[MKL_INT]) -> Result<Vec<f
     if a.len() != ja.len() {
         return Err(Error::InvalidArgument("a and ja must have the same length"));
     }
+    crate::util::validate_compressed(ia, ja, 1, n, n)?;
     let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let mut alu = vec![0.0_f64; a.len()];
     // ipar / dpar are configuration arrays expected by RCI conventions.
@@ -112,9 +113,16 @@ pub fn ilut(
     if max_fill < 0 {
         return Err(Error::InvalidArgument("max_fill must be non-negative"));
     }
+    crate::util::validate_compressed(ia, ja, 1, n, n)?;
     let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
-    let mf = max_fill as usize;
-    let max_nnz = (2 * mf + 1) * n - mf.checked_mul(mf + 1).ok_or(Error::DimensionOverflow)? + 1;
+    // The bound `(2mf+1)n - mf(mf+1) + 1` peaks at `mf = n - 1` (a fully
+    // dense factor, `n² + 1`) and *shrinks* beyond it, so clamp `mf`.
+    let mf = (max_fill as usize).min(n.saturating_sub(1));
+    let max_nnz = (2 * mf + 1)
+        .checked_mul(n)
+        .and_then(|v| v.checked_sub(mf * (mf + 1)))
+        .and_then(|v| v.checked_add(1))
+        .ok_or(Error::DimensionOverflow)?;
     let mut alut = vec![0.0_f64; max_nnz];
     let mut jalut = vec![0; max_nnz];
     let mut ialut = vec![0; n + 1];
@@ -189,6 +197,7 @@ pub fn apply_ilu(
             "alu and ja must have the same length",
         ));
     }
+    crate::util::validate_compressed(ia, ja, 1, n, n)?;
     let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let mut tmp = vec![0.0_f64; n];
     let mut out = vec![0.0_f64; n];

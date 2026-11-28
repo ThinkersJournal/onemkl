@@ -331,6 +331,15 @@ impl<T: PackedGemmScalar> PackedMatrix<T> {
                 _ => (n, k),
             },
         };
+        let contiguous = match layout {
+            Layout::RowMajor => src_cols,
+            Layout::ColMajor => src_rows,
+        };
+        if contiguous > 0 && ld < contiguous {
+            return Err(Error::InvalidArgument(
+                "ld is smaller than the contiguous dimension of the pack source",
+            ));
+        }
         let needed_src = match layout {
             Layout::RowMajor => src_rows.saturating_mul(ld),
             Layout::ColMajor => src_cols.saturating_mul(ld),
@@ -379,6 +388,36 @@ impl<T: PackedGemmScalar> PackedMatrix<T> {
     }
 }
 
+/// `rows × cols` dense operand with leading dimension `ld` must fit `len`.
+fn check_dense(
+    layout: Layout,
+    rows: usize,
+    cols: usize,
+    ld: usize,
+    len: usize,
+    name: &'static str,
+) -> Result<()> {
+    let (contiguous, strided) = match layout {
+        Layout::RowMajor => (cols, rows),
+        Layout::ColMajor => (rows, cols),
+    };
+    if contiguous == 0 || strided == 0 {
+        return Ok(());
+    }
+    let needed = (strided - 1)
+        .checked_mul(ld)
+        .and_then(|v| v.checked_add(contiguous))
+        .ok_or(Error::DimensionOverflow)?;
+    if ld < contiguous || len < needed {
+        return Err(Error::InvalidArgument(match name {
+            "a" => "a is too small for its leading dimension and shape",
+            "b" => "b is too small for its leading dimension and shape",
+            _ => "c is too small for its leading dimension and shape",
+        }));
+    }
+    Ok(())
+}
+
 const CBLAS_PACKED: MKL_INT = 151; // sys::CBLAS_STORAGE::CblasPacked
 
 #[inline]
@@ -419,6 +458,12 @@ pub fn gemm_compute_packed_a<T: PackedGemmScalar>(
             "a_packed shape does not match the requested compute shape",
         ));
     }
+    let (b_rows, b_cols) = match transb {
+        Transpose::NoTrans => (k, n),
+        _ => (n, k),
+    };
+    check_dense(layout, b_rows, b_cols, ldb, b.len(), "b")?;
+    check_dense(layout, m, n, ldc, c.len(), "c")?;
     let m_i: MKL_INT = m.try_into().map_err(|_| Error::DimensionOverflow)?;
     let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let k_i: MKL_INT = k.try_into().map_err(|_| Error::DimensionOverflow)?;
@@ -476,6 +521,12 @@ pub fn gemm_compute_packed_b<T: PackedGemmScalar>(
             "b_packed shape does not match the requested compute shape",
         ));
     }
+    let (a_rows, a_cols) = match transa {
+        Transpose::NoTrans => (m, k),
+        _ => (k, m),
+    };
+    check_dense(layout, a_rows, a_cols, lda, a.len(), "a")?;
+    check_dense(layout, m, n, ldc, c.len(), "c")?;
     let m_i: MKL_INT = m.try_into().map_err(|_| Error::DimensionOverflow)?;
     let n_i: MKL_INT = n.try_into().map_err(|_| Error::DimensionOverflow)?;
     let k_i: MKL_INT = k.try_into().map_err(|_| Error::DimensionOverflow)?;

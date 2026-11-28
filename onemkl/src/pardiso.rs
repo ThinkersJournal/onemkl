@@ -153,6 +153,13 @@ impl<T: PardisoScalar> Pardiso<T> {
             T::IS_COMPLEX,
             "scalar type and matrix type disagree on real-vs-complex",
         );
+        assert!(
+            matches!(
+                (T::IS_COMPLEX, core::mem::size_of::<T>()),
+                (false, 4 | 8) | (true, 8 | 16)
+            ),
+            "unsupported scalar type for PARDISO",
+        );
 
         let mut pt: [*mut core::ffi::c_void; 64] = [ptr::null_mut(); 64];
         let mut iparm: [MKL_INT; 64] = [0; 64];
@@ -255,6 +262,9 @@ impl<T: PardisoScalar> Pardiso<T> {
         b: &[T],
         x: &mut [T],
     ) -> Result<()> {
+        if n == 0 {
+            return Err(Error::InvalidArgument("n must be positive"));
+        }
         let nrhs = (b.len() / n).max(1);
         let phase = if self.factorized && self.factorized_n as usize == n {
             33
@@ -346,6 +356,11 @@ impl<T: PardisoScalar> Pardiso<T> {
         if self.iparm[55] != 1 {
             return Err(Error::InvalidArgument(
                 "with_diagonal_enabled must be called before factorization",
+            ));
+        }
+        if self.factorized_n < 0 || n != self.factorized_n as usize {
+            return Err(Error::InvalidArgument(
+                "n must equal the order of the factorized matrix",
             ));
         }
         let mut df: Vec<T> = (0..n).map(|_| T::default()).collect();
@@ -518,6 +533,64 @@ impl<T: PardisoScalar> Pardiso<T> {
             IndexBase::One => 0,
             IndexBase::Zero => 1,
         };
+        // Phases that read the matrix (11, 12, 13, 22, 23, 33, 33x) need a
+        // structurally valid CSR whose arrays cover what PARDISO reads.
+        let reads_matrix = phase > 0;
+        if reads_matrix {
+            let base: MKL_INT = match self.indexing {
+                IndexBase::One => 1,
+                IndexBase::Zero => 0,
+            };
+            let nnz = crate::util::validate_compressed(ia, ja, base, n, n)?;
+            if a.len() < nnz {
+                return Err(Error::InvalidArgument(
+                    "a must hold one value per stored matrix entry (ia[n] - base)",
+                ));
+            }
+            // The element type fixes PARDISO's precision (iparm[27]).
+            let single = match (T::IS_COMPLEX, core::mem::size_of::<T>()) {
+                (false, 4) | (true, 8) => 1,
+                (false, 8) | (true, 16) => 0,
+                _ => {
+                    return Err(Error::InvalidArgument(
+                        "unsupported scalar type for PARDISO",
+                    ));
+                }
+            };
+            self.iparm[27] = single;
+            // A user permutation / partition (iparm[4] = 1|2, iparm[35] != 0)
+            // is read or written as `n` entries.
+            let needs_perm = matches!(self.iparm[4], 1 | 2) || self.iparm[35] != 0;
+            match self.perm.as_ref() {
+                Some(p) if p.len() < n => {
+                    return Err(Error::InvalidArgument("perm must have at least n entries"));
+                }
+                None if needs_perm => {
+                    return Err(Error::InvalidArgument(
+                        "iparm[4] / iparm[35] require a perm array (set_perm)",
+                    ));
+                }
+                _ => {}
+            }
+        }
+        // Phases that solve read `b` and write `x`: n * nrhs entries each.
+        let solves = matches!(phase, 13 | 23 | 33 | 331 | 332 | 333);
+        if solves {
+            let nrhs_us: usize = nrhs
+                .try_into()
+                .map_err(|_| Error::InvalidArgument("nrhs must be non-negative"))?;
+            let need = n.checked_mul(nrhs_us).ok_or(Error::DimensionOverflow)?;
+            if b.len() < need || x.len() < need {
+                return Err(Error::InvalidArgument(
+                    "b and x must each hold n * nrhs entries",
+                ));
+            }
+            if self.iparm[5] != 0 {
+                return Err(Error::InvalidArgument(
+                    "iparm[5] != 0 (solution written into b) is not supported: b is borrowed immutably",
+                ));
+            }
+        }
         let mtype = self.mtype;
         let perm_ptr: *mut MKL_INT = match self.perm.as_mut() {
             Some(p) => p.as_mut_ptr(),

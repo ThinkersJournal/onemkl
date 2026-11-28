@@ -184,9 +184,7 @@ pub fn getrs<T: LapackScalar>(
             "B must have the same number of rows as A",
         ));
     }
-    if ipiv.len() < n {
-        return Err(Error::InvalidArgument("ipiv must have at least n entries"));
-    }
+    check_ipiv_lu(ipiv, n)?;
     let info = unsafe {
         T::lapacke_getrs(
             layout.as_lapack(),
@@ -206,9 +204,7 @@ pub fn getrs<T: LapackScalar>(
 /// Compute `A⁻¹` from the LU factorization produced by [`getrf`].
 pub fn getri<T: LapackScalar>(a: &mut MatrixMut<'_, T>, ipiv: &[MKL_INT]) -> Result<()> {
     let n = ensure_square(a)?;
-    if ipiv.len() < n {
-        return Err(Error::InvalidArgument("ipiv must have at least n entries"));
-    }
+    check_ipiv_lu(ipiv, n)?;
     let info = unsafe {
         T::lapacke_getri(
             a.layout().as_lapack(),
@@ -440,6 +436,11 @@ pub fn gels<T: LapackScalar>(
     b: &mut MatrixMut<'_, T>,
 ) -> Result<()> {
     let layout = ensure_layout(&[a.layout(), b.layout()])?;
+    if b.rows() < a.rows().max(a.cols()) {
+        return Err(Error::InvalidArgument(
+            "B must have at least max(m, n) rows",
+        ));
+    }
     let info = unsafe {
         T::lapacke_gels(
             layout.as_lapack(),
@@ -466,6 +467,11 @@ pub fn gelsd<T: LapackScalar>(
     rcond: T::Real,
 ) -> Result<MKL_INT> {
     let layout = ensure_layout(&[a.layout(), b.layout()])?;
+    if b.rows() < a.rows().max(a.cols()) {
+        return Err(Error::InvalidArgument(
+            "B must have at least max(m, n) rows",
+        ));
+    }
     let need = a.rows().min(a.cols());
     if s.len() < need {
         return Err(Error::InvalidArgument(
@@ -565,6 +571,24 @@ pub fn geev_real<T: RealLapackScalar>(
             "wr and wi must have at least n entries",
         ));
     }
+    if jobvl == Job::Compute {
+        require_view(
+            view_dims(&vl),
+            a.layout(),
+            n,
+            n,
+            "vl must be an n × n view in a's layout when jobvl is Compute",
+        )?;
+    }
+    if jobvr == Job::Compute {
+        require_view(
+            view_dims(&vr),
+            a.layout(),
+            n,
+            n,
+            "vr must be an n × n view in a's layout when jobvr is Compute",
+        )?;
+    }
     let lapack_layout = a.layout().as_lapack();
     let lda = dim_to_mkl_int(a.leading_dim())?;
     let (vl_ptr, ldvl) = match vl {
@@ -607,6 +631,24 @@ pub fn geev_complex<T: ComplexLapackScalar>(
     let n = ensure_square(a)?;
     if w.len() < n {
         return Err(Error::InvalidArgument("w must have at least n entries"));
+    }
+    if jobvl == Job::Compute {
+        require_view(
+            view_dims(&vl),
+            a.layout(),
+            n,
+            n,
+            "vl must be an n × n view in a's layout when jobvl is Compute",
+        )?;
+    }
+    if jobvr == Job::Compute {
+        require_view(
+            view_dims(&vr),
+            a.layout(),
+            n,
+            n,
+            "vr must be an n × n view in a's layout when jobvr is Compute",
+        )?;
     }
     let lapack_layout = a.layout().as_lapack();
     let lda = dim_to_mkl_int(a.leading_dim())?;
@@ -653,6 +695,13 @@ pub fn gesdd<T: LapackScalar>(
             "s must have at least min(m, n) entries",
         ));
     }
+    // gesdd's Overwrite writes V^T (m >= n) or U (m < n) into the views.
+    let (ju, jv) = match jobz {
+        Job::Overwrite if m >= n => (Job::None, Job::All),
+        Job::Overwrite => (Job::All, Job::None),
+        j => (j, j),
+    };
+    check_svd_views(ju, jv, a.layout(), m, n, view_dims(&u), view_dims(&vt))?;
     let lapack_layout = a.layout().as_lapack();
     let lda = dim_to_mkl_int(a.leading_dim())?;
     let (u_ptr, ldu) = match u {
@@ -704,6 +753,7 @@ pub fn gesvd<T: LapackScalar>(
             "superb must have at least min(m, n) - 1 entries",
         ));
     }
+    check_svd_views(jobu, jobvt, a.layout(), m, n, view_dims(&u), view_dims(&vt))?;
     let lapack_layout = a.layout().as_lapack();
     let lda = dim_to_mkl_int(a.leading_dim())?;
     let (u_ptr, ldu) = match u {
@@ -746,6 +796,174 @@ fn ensure_layout(layouts: &[Layout]) -> Result<Layout> {
     }
 }
 
+/// Shape of an optional output view, as `(layout, rows, cols)`.
+type ViewDims = Option<(Layout, usize, usize)>;
+
+#[inline]
+fn view_dims<T>(v: &Option<&mut MatrixMut<'_, T>>) -> ViewDims {
+    v.as_ref().map(|m| (m.layout(), m.rows(), m.cols()))
+}
+
+/// An output view that LAPACK *will write* must exist, share `a`'s layout
+/// and be at least `rows × cols`.
+fn require_view(
+    dims: ViewDims,
+    layout: Layout,
+    rows: usize,
+    cols: usize,
+    what: &'static str,
+) -> Result<()> {
+    match dims {
+        Some((l, r, c)) if l == layout && r >= rows && c >= cols => Ok(()),
+        _ => Err(Error::InvalidArgument(what)),
+    }
+}
+
+/// Check the optional `U` / `Vᵀ` output views of an SVD driver against the
+/// job codes (`All`: `m × m` / `n × n`; `Some`: `m × k` / `k × n`).
+fn check_svd_views(
+    jobu: Job,
+    jobvt: Job,
+    layout: Layout,
+    m: usize,
+    n: usize,
+    u: ViewDims,
+    vt: ViewDims,
+) -> Result<()> {
+    let k = m.min(n);
+    match jobu {
+        Job::All => require_view(
+            u,
+            layout,
+            m,
+            m,
+            "u must be m × m in a's layout for Job::All",
+        )?,
+        Job::Some => require_view(
+            u,
+            layout,
+            m,
+            k,
+            "u must be m × min(m, n) in a's layout for Job::Some",
+        )?,
+        _ => {}
+    }
+    match jobvt {
+        Job::All => require_view(
+            vt,
+            layout,
+            n,
+            n,
+            "vt must be n × n in a's layout for Job::All",
+        )?,
+        Job::Some => require_view(
+            vt,
+            layout,
+            k,
+            n,
+            "vt must be min(m, n) × n in a's layout for Job::Some",
+        )?,
+        _ => {}
+    }
+    Ok(())
+}
+
+/// Validate a raw strided buffer: `ld ≥ contig` and
+/// `len ≥ (count - 1) * ld + contig` (zero-sized shapes need nothing).
+fn check_strided(
+    len: usize,
+    ld: usize,
+    contig: usize,
+    count: usize,
+    what: &'static str,
+) -> Result<()> {
+    if contig == 0 || count == 0 {
+        return Ok(());
+    }
+    if ld < contig {
+        return Err(Error::InvalidArgument(what));
+    }
+    let need = (count - 1)
+        .checked_mul(ld)
+        .and_then(|v| v.checked_add(contig))
+        .ok_or(Error::InvalidArgument(what))?;
+    if len < need {
+        return Err(Error::InvalidArgument(what));
+    }
+    Ok(())
+}
+
+/// Right-hand-side buffer `b` of an `n × nrhs` system, in `layout`.
+fn check_rhs(layout: Layout, n: usize, nrhs: usize, b_len: usize, ldb: usize) -> Result<()> {
+    let (contig, count) = match layout {
+        Layout::ColMajor => (n, nrhs),
+        Layout::RowMajor => (nrhs, n),
+    };
+    check_strided(
+        b_len,
+        ldb,
+        contig,
+        count,
+        "b is too short for ldb, n and nrhs (or ldb is too small)",
+    )
+}
+
+/// Band buffer `ab`: `n` stored columns (col-major) or rows (row-major),
+/// each holding `band` contiguous entries, `ldab` apart.
+fn check_band(n: usize, band: usize, ab_len: usize, ldab: usize) -> Result<()> {
+    check_strided(
+        ab_len,
+        ldab,
+        band,
+        n,
+        "ab is too short for ldab and n (or ldab is too small)",
+    )
+}
+
+/// Stored rows of an LU-factored band matrix: `2 * kl + ku + 1`.
+fn band_rows_lu(kl: usize, ku: usize) -> Result<usize> {
+    kl.checked_mul(2)
+        .and_then(|v| v.checked_add(ku))
+        .and_then(|v| v.checked_add(1))
+        .ok_or(Error::InvalidArgument("kl or ku is too large"))
+}
+
+/// `n * (n + 1) / 2`, overflow-checked.
+fn packed_len(n: usize) -> Result<usize> {
+    n.checked_add(1)
+        .and_then(|v| v.checked_mul(n))
+        .map(|v| v / 2)
+        .ok_or(Error::InvalidArgument("n is too large"))
+}
+
+/// Pivot indices of an LU-style factorization: the first `n` entries must
+/// lie in `1..=n` (they index rows of the matrix inside LAPACK).
+fn check_ipiv_lu(ipiv: &[MKL_INT], n: usize) -> Result<()> {
+    if ipiv.len() < n {
+        return Err(Error::InvalidArgument("ipiv must have at least n entries"));
+    }
+    for &p in &ipiv[..n] {
+        if p < 1 || (p as usize) > n {
+            return Err(Error::InvalidArgument("ipiv entry out of range 1..=n"));
+        }
+    }
+    Ok(())
+}
+
+/// Pivot indices of a Bunch-Kaufman factorization: `|ipiv[i]|` in `1..=n`.
+fn check_ipiv_bk(ipiv: &[MKL_INT], n: usize) -> Result<()> {
+    if ipiv.len() < n {
+        return Err(Error::InvalidArgument("ipiv must have at least n entries"));
+    }
+    for &p in &ipiv[..n] {
+        let a = p.unsigned_abs() as usize;
+        if a < 1 || a > n {
+            return Err(Error::InvalidArgument("ipiv entry out of range"));
+        }
+    }
+    Ok(())
+}
+
 // =====================================================================
 // Banded variants
 // =====================================================================
@@ -772,6 +990,8 @@ pub fn gbsv<T: LapackScalar>(
     if ipiv.len() < n {
         return Err(Error::InvalidArgument("ipiv must have at least n entries"));
     }
+    check_band(n, band_rows_lu(kl, ku)?, ab.len(), ldab)?;
+    check_rhs(layout, n, nrhs, b.len(), ldb)?;
     let info = unsafe {
         T::lapacke_gbsv(
             layout.as_lapack(),
@@ -809,6 +1029,7 @@ pub fn gbtrf<T: LapackScalar>(
             "ipiv must have at least min(m, n) entries",
         ));
     }
+    check_band(n, band_rows_lu(kl, ku)?, ab.len(), ldab)?;
     let info = unsafe {
         T::lapacke_gbtrf(
             layout.as_lapack(),
@@ -842,9 +1063,9 @@ pub fn gbtrs<T: LapackScalar>(
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
-    if ipiv.len() < n {
-        return Err(Error::InvalidArgument("ipiv must have at least n entries"));
-    }
+    check_ipiv_lu(ipiv, n)?;
+    check_band(n, band_rows_lu(kl, ku)?, ab.len(), ldab)?;
+    check_rhs(layout, n, nrhs, b.len(), ldb)?;
     let info = unsafe {
         T::lapacke_gbtrs(
             layout.as_lapack(),
@@ -884,6 +1105,7 @@ pub fn gtsv<T: LapackScalar>(
             "tridiagonal arrays too short: need |dl|, |du| ≥ n-1, |d| ≥ n",
         ));
     }
+    check_rhs(layout, n, nrhs, b.len(), ldb)?;
     let info = unsafe {
         T::lapacke_gtsv(
             layout.as_lapack(),
@@ -908,9 +1130,14 @@ pub fn gttrf<T: LapackScalar>(
     du2: &mut [T],
     ipiv: &mut [MKL_INT],
 ) -> Result<()> {
-    if du2.len() < n.saturating_sub(2) || ipiv.len() < n {
+    if du2.len() < n.saturating_sub(2)
+        || ipiv.len() < n
+        || dl.len() < n.saturating_sub(1)
+        || d.len() < n
+        || du.len() < n.saturating_sub(1)
+    {
         return Err(Error::InvalidArgument(
-            "du2 must have ≥ n-2 entries and ipiv ≥ n entries",
+            "tridiagonal arrays too short: need |dl|, |du| ≥ n-1, |d| ≥ n, |du2| ≥ n-2, |ipiv| ≥ n",
         ));
     }
     let info = unsafe {
@@ -944,6 +1171,17 @@ pub fn gttrs<T: LapackScalar>(
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
+    if dl.len() < n.saturating_sub(1)
+        || d.len() < n
+        || du.len() < n.saturating_sub(1)
+        || du2.len() < n.saturating_sub(2)
+    {
+        return Err(Error::InvalidArgument(
+            "tridiagonal arrays too short: need |dl|, |du| ≥ n-1, |d| ≥ n, |du2| ≥ n-2",
+        ));
+    }
+    check_ipiv_lu(ipiv, n)?;
+    check_rhs(layout, n, nrhs, b.len(), ldb)?;
     let info = unsafe {
         T::lapacke_gttrs(
             layout.as_lapack(),
@@ -978,6 +1216,14 @@ pub fn pbsv<T: LapackScalar>(
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
+    check_band(
+        n,
+        kd.checked_add(1)
+            .ok_or(Error::InvalidArgument("kd too large"))?,
+        ab.len(),
+        ldab,
+    )?;
+    check_rhs(layout, n, nrhs, b.len(), ldb)?;
     let info = unsafe {
         T::lapacke_pbsv(
             layout.as_lapack(),
@@ -1003,6 +1249,13 @@ pub fn pbtrf<T: LapackScalar>(
     ab: &mut [T],
     ldab: usize,
 ) -> Result<()> {
+    check_band(
+        n,
+        kd.checked_add(1)
+            .ok_or(Error::InvalidArgument("kd too large"))?,
+        ab.len(),
+        ldab,
+    )?;
     let info = unsafe {
         T::lapacke_pbtrf(
             layout.as_lapack(),
@@ -1032,6 +1285,14 @@ pub fn pbtrs<T: LapackScalar>(
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
+    check_band(
+        n,
+        kd.checked_add(1)
+            .ok_or(Error::InvalidArgument("kd too large"))?,
+        ab.len(),
+        ldab,
+    )?;
+    check_rhs(layout, n, nrhs, b.len(), ldb)?;
     let info = unsafe {
         T::lapacke_pbtrs(
             layout.as_lapack(),
@@ -1064,6 +1325,7 @@ pub fn ptsv<T: LapackScalar>(
             "PD tridiagonal arrays too short: need |d| ≥ n, |e| ≥ n-1",
         ));
     }
+    check_rhs(layout, n, nrhs, b.len(), ldb)?;
     let info = unsafe {
         T::lapacke_ptsv(
             layout.as_lapack(),
@@ -1099,6 +1361,12 @@ pub fn pttrs_real<T: RealLapackScalar>(
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
+    if d.len() < n || e.len() < n.saturating_sub(1) {
+        return Err(Error::InvalidArgument(
+            "PD tridiagonal arrays too short: need |d| ≥ n, |e| ≥ n-1",
+        ));
+    }
+    check_rhs(layout, n, nrhs, b.len(), ldb)?;
     let info = unsafe {
         T::lapacke_pttrs(
             layout.as_lapack(),
@@ -1130,6 +1398,12 @@ pub fn pttrs_complex<T: ComplexLapackScalar>(
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
+    if d.len() < n || e.len() < n.saturating_sub(1) {
+        return Err(Error::InvalidArgument(
+            "PD tridiagonal arrays too short: need |d| ≥ n, |e| ≥ n-1",
+        ));
+    }
+    check_rhs(layout, n, nrhs, b.len(), ldb)?;
     let info = unsafe {
         T::lapacke_pttrs_complex(
             layout.as_lapack(),
@@ -1167,7 +1441,7 @@ pub fn spsv<T: LapackScalar>(
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
-    if ap.len() < n * (n + 1) / 2 {
+    if ap.len() < packed_len(n)? {
         return Err(Error::InvalidArgument(
             "ap must have at least n*(n+1)/2 entries",
         ));
@@ -1175,6 +1449,7 @@ pub fn spsv<T: LapackScalar>(
     if ipiv.len() < n {
         return Err(Error::InvalidArgument("ipiv must have at least n entries"));
     }
+    check_rhs(layout, n, nrhs, b.len(), ldb)?;
     let info = unsafe {
         T::lapacke_spsv(
             layout.as_lapack(),
@@ -1198,7 +1473,7 @@ pub fn sptrf<T: LapackScalar>(
     ap: &mut [T],
     ipiv: &mut [MKL_INT],
 ) -> Result<()> {
-    if ap.len() < n * (n + 1) / 2 {
+    if ap.len() < packed_len(n)? {
         return Err(Error::InvalidArgument(
             "ap must have at least n*(n+1)/2 entries",
         ));
@@ -1233,6 +1508,13 @@ pub fn sptrs<T: LapackScalar>(
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
+    if ap.len() < packed_len(n)? {
+        return Err(Error::InvalidArgument(
+            "ap must have at least n*(n+1)/2 entries",
+        ));
+    }
+    check_ipiv_bk(ipiv, n)?;
+    check_rhs(layout, n, nrhs, b.len(), ldb)?;
     let info = unsafe {
         T::lapacke_sptrs(
             layout.as_lapack(),
@@ -1258,11 +1540,12 @@ pub fn ppsv<T: LapackScalar>(
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
-    if ap.len() < n * (n + 1) / 2 {
+    if ap.len() < packed_len(n)? {
         return Err(Error::InvalidArgument(
             "ap must have at least n*(n+1)/2 entries",
         ));
     }
+    check_rhs(layout, n, nrhs, b.len(), ldb)?;
     let info = unsafe {
         T::lapacke_ppsv(
             layout.as_lapack(),
@@ -1279,7 +1562,7 @@ pub fn ppsv<T: LapackScalar>(
 
 /// PD packed Cholesky factorization.
 pub fn pptrf<T: LapackScalar>(layout: Layout, uplo: UpLo, n: usize, ap: &mut [T]) -> Result<()> {
-    if ap.len() < n * (n + 1) / 2 {
+    if ap.len() < packed_len(n)? {
         return Err(Error::InvalidArgument(
             "ap must have at least n*(n+1)/2 entries",
         ));
@@ -1305,6 +1588,12 @@ pub fn pptrs<T: LapackScalar>(
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
+    if ap.len() < packed_len(n)? {
+        return Err(Error::InvalidArgument(
+            "ap must have at least n*(n+1)/2 entries",
+        ));
+    }
+    check_rhs(layout, n, nrhs, b.len(), ldb)?;
     let info = unsafe {
         T::lapacke_pptrs(
             layout.as_lapack(),
@@ -1335,7 +1624,7 @@ pub fn hpsv<T: ComplexLapackScalar>(
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
-    if ap.len() < n * (n + 1) / 2 {
+    if ap.len() < packed_len(n)? {
         return Err(Error::InvalidArgument(
             "ap must have at least n*(n+1)/2 entries",
         ));
@@ -1343,6 +1632,7 @@ pub fn hpsv<T: ComplexLapackScalar>(
     if ipiv.len() < n {
         return Err(Error::InvalidArgument("ipiv must have at least n entries"));
     }
+    check_rhs(layout, n, nrhs, b.len(), ldb)?;
     let info = unsafe {
         T::lapacke_hpsv(
             layout.as_lapack(),
@@ -1366,7 +1656,7 @@ pub fn hptrf<T: ComplexLapackScalar>(
     ap: &mut [T],
     ipiv: &mut [MKL_INT],
 ) -> Result<()> {
-    if ap.len() < n * (n + 1) / 2 {
+    if ap.len() < packed_len(n)? {
         return Err(Error::InvalidArgument(
             "ap must have at least n*(n+1)/2 entries",
         ));
@@ -1401,6 +1691,13 @@ pub fn hptrs<T: ComplexLapackScalar>(
     b: &mut [T],
     ldb: usize,
 ) -> Result<()> {
+    if ap.len() < packed_len(n)? {
+        return Err(Error::InvalidArgument(
+            "ap must have at least n*(n+1)/2 entries",
+        ));
+    }
+    check_ipiv_bk(ipiv, n)?;
+    check_rhs(layout, n, nrhs, b.len(), ldb)?;
     let info = unsafe {
         T::lapacke_hptrs(
             layout.as_lapack(),
@@ -1546,6 +1843,24 @@ pub fn ggev_real<T: RealLapackScalar>(
         return Err(Error::InvalidArgument(
             "alphar / alphai / beta must each have at least n entries",
         ));
+    }
+    if jobvl == Job::Compute {
+        require_view(
+            view_dims(&vl),
+            layout,
+            n,
+            n,
+            "vl must be an n × n view in a's layout when jobvl is Compute",
+        )?;
+    }
+    if jobvr == Job::Compute {
+        require_view(
+            view_dims(&vr),
+            layout,
+            n,
+            n,
+            "vr must be an n × n view in a's layout when jobvr is Compute",
+        )?;
     }
     let lda = dim_to_mkl_int(a.leading_dim())?;
     let ldb = dim_to_mkl_int(b.leading_dim())?;
@@ -1873,6 +2188,24 @@ pub fn ggev_complex<T: ComplexLapackScalar>(
             "alpha / beta must each have at least n entries",
         ));
     }
+    if jobvl == Job::Compute {
+        require_view(
+            view_dims(&vl),
+            layout,
+            n,
+            n,
+            "vl must be an n × n view in a's layout when jobvl is Compute",
+        )?;
+    }
+    if jobvr == Job::Compute {
+        require_view(
+            view_dims(&vr),
+            layout,
+            n,
+            n,
+            "vr must be an n × n view in a's layout when jobvr is Compute",
+        )?;
+    }
     let lda = dim_to_mkl_int(a.leading_dim())?;
     let ldb = dim_to_mkl_int(b.leading_dim())?;
     let (vl_ptr, ldvl) = match vl {
@@ -2062,6 +2395,20 @@ pub fn laswp<T: LapackScalar>(
         return Err(Error::InvalidArgument(
             "k1, k2 must satisfy 1 ≤ k1 ≤ k2 ≤ ipiv.len()",
         ));
+    }
+    if incx == 0 {
+        return Err(Error::InvalidArgument("incx must be non-zero"));
+    }
+    let rows = a.rows();
+    if (k2 as usize) > rows {
+        return Err(Error::InvalidArgument("k2 must not exceed a.rows()"));
+    }
+    for &p in &ipiv[(k1 as usize - 1)..(k2 as usize)] {
+        if p < 1 || (p as usize) > rows {
+            return Err(Error::InvalidArgument(
+                "ipiv entry out of range 1..=a.rows()",
+            ));
+        }
     }
     let info = unsafe {
         T::lapacke_laswp(
@@ -2293,8 +2640,17 @@ pub fn larfg<T: LapackScalar + Default>(
     if n == 0 {
         return Err(Error::InvalidArgument("n must be ≥ 1"));
     }
-    if x.len() < n.saturating_sub(1) {
-        return Err(Error::InvalidArgument("x is too short for n - 1 elements"));
+    if n > 1 {
+        let stride = incx.unsigned_abs() as usize;
+        let need = (n - 2)
+            .checked_mul(stride)
+            .and_then(|v| v.checked_add(1))
+            .ok_or(Error::InvalidArgument("n * incx is too large"))?;
+        if stride == 0 || x.len() < need {
+            return Err(Error::InvalidArgument(
+                "x is too short for n - 1 elements at stride incx (or incx is 0)",
+            ));
+        }
     }
     let n_i = dim_to_mkl_int(n)?;
     let mut tau: T = T::default();
@@ -2372,6 +2728,11 @@ pub fn larft<T: LapackScalar>(
             v.cols()
         }
     };
+    if n < k {
+        return Err(Error::InvalidArgument(
+            "larft requires the reflector order n ≥ k",
+        ));
+    }
     let layout = ensure_layout(&[v.layout(), t.layout()])?;
     let info = unsafe {
         T::lapacke_larft(
@@ -2417,6 +2778,11 @@ pub fn larfb<T: LapackScalar>(
     if vk != (order, k) {
         return Err(Error::InvalidArgument(
             "V must hold k reflectors of the order of the side C is multiplied on",
+        ));
+    }
+    if order < k {
+        return Err(Error::InvalidArgument(
+            "larfb requires the order of the side C is multiplied on ≥ k",
         ));
     }
     let layout = ensure_layout(&[v.layout(), t.layout(), c.layout()])?;
@@ -2727,9 +3093,7 @@ pub fn syconv<T: SymConvScalar>(
     if a.cols() != n {
         return Err(Error::InvalidArgument("A must be square"));
     }
-    if ipiv.len() < n {
-        return Err(Error::InvalidArgument("ipiv must have at least n entries"));
-    }
+    check_ipiv_bk(ipiv, n)?;
     if e.len() < n {
         return Err(Error::InvalidArgument("e must have at least n entries"));
     }

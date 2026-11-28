@@ -549,6 +549,9 @@ impl CgSession {
     /// Advance the iteration by one MKL step. Returns the action MKL
     /// wants the caller to perform before the next `step`.
     pub fn step<'a>(&'a mut self, b: &[f64], x: &mut [f64]) -> Result<RciAction<'a>> {
+        if b.len() < self.n_us || x.len() < self.n_us {
+            return Err(Error::InvalidArgument("b and x must each hold n entries"));
+        }
         let mut rci: MKL_INT = 0;
         unsafe {
             sys::dcg(
@@ -591,6 +594,9 @@ impl CgSession {
 
     /// Read iteration / residual diagnostics and finalize the session.
     pub fn finish(&mut self, b: &[f64], x: &[f64]) -> Result<IssResult> {
+        if b.len() < self.n_us || x.len() < self.n_us {
+            return Err(Error::InvalidArgument("b and x must each hold n entries"));
+        }
         let mut itercount: MKL_INT = 0;
         let rci: MKL_INT = 0;
         unsafe {
@@ -643,9 +649,27 @@ pub struct FgmresSession {
     tmp: Vec<f64>,
     last_rci: MKL_INT,
     max_iterations: usize,
+    /// Restart length `tmp` was sized for; `ipar[14]` must not exceed it.
+    restart: usize,
 }
 
 impl FgmresSession {
+    /// `b`/`x` must hold `n` entries and `ipar[14]` (the restart length,
+    /// caller-mutable through [`ipar`](Self::ipar)) must not exceed the
+    /// length `tmp` was sized for.
+    fn check_io(&self, b_len: usize, x_len: usize) -> Result<()> {
+        if b_len < self.n_us || x_len < self.n_us {
+            return Err(Error::InvalidArgument("b and x must each hold n entries"));
+        }
+        let r = self.ipar[14];
+        if r < 1 || (r as usize) > self.restart {
+            return Err(Error::InvalidArgument(
+                "ipar[14] must stay within 1..=the restart length the session was built with",
+            ));
+        }
+        Ok(())
+    }
+
     /// Build a new FGMRES session. `b` and `x` must have length `n`.
     pub fn new(n: usize, b: &[f64], x: &[f64], opts: IssOptions) -> Result<Self> {
         if b.len() != n || x.len() != n {
@@ -708,11 +732,13 @@ impl FgmresSession {
             tmp,
             last_rci: 0,
             max_iterations: opts.max_iterations,
+            restart,
         })
     }
 
     /// Advance the FGMRES iteration by one MKL step.
     pub fn step<'a>(&'a mut self, b: &mut [f64], x: &mut [f64]) -> Result<RciAction<'a>> {
+        self.check_io(b.len(), x.len())?;
         let mut rci: MKL_INT = 0;
         unsafe {
             sys::dfgmres(
@@ -761,6 +787,7 @@ impl FgmresSession {
 
     /// Finalize the iteration and return diagnostics.
     pub fn finish(&mut self, b: &mut [f64], x: &mut [f64]) -> Result<IssResult> {
+        self.check_io(b.len(), x.len())?;
         let mut itercount: MKL_INT = 0;
         let mut rci: MKL_INT = 0;
         unsafe {

@@ -96,6 +96,17 @@ pub enum IndexBase {
 /// Owned DSS solver handle.
 pub struct Dss<T> {
     handle: sys::_MKL_DSS_HANDLE_t,
+    // DSS may keep the pointers it is given across later phases, so the
+    // structure and values it reads are copied into buffers owned by this
+    // handle (heap addresses are stable when the `Dss` moves).
+    row_ptr: Vec<MKL_INT>,
+    col_idx: Vec<MKL_INT>,
+    vals_real: Vec<f64>,
+    vals_cplx: Vec<Complex64>,
+    n: usize,
+    nnz: usize,
+    complex: bool,
+    defined: bool,
     _marker: PhantomData<T>,
 }
 
@@ -110,6 +121,14 @@ impl<T> Dss<T> {
         check_dss(status)?;
         Ok(Self {
             handle,
+            row_ptr: Vec::new(),
+            col_idx: Vec::new(),
+            vals_real: Vec::new(),
+            vals_cplx: Vec::new(),
+            n: 0,
+            nnz: 0,
+            complex: false,
+            defined: false,
             _marker: PhantomData,
         })
     }
@@ -129,27 +148,82 @@ impl<T> Dss<T> {
         if matches!(indexing, IndexBase::Zero) {
             opt |= sys::MKL_DSS_ZERO_BASED_INDEXING as MKL_INT;
         }
-        if row_ptr.len() != rows + 1 {
-            return Err(Error::InvalidArgument("row_ptr must have length rows + 1"));
+        if rows != cols {
+            return Err(Error::InvalidArgument("DSS requires a square matrix"));
         }
-        let nnz: MKL_INT = col_idx
-            .len()
-            .try_into()
-            .map_err(|_| Error::DimensionOverflow)?;
+        let base: MKL_INT = if matches!(indexing, IndexBase::Zero) {
+            0
+        } else {
+            1
+        };
+        let nnz_us = crate::util::validate_compressed(row_ptr, col_idx, base, rows, cols)?;
+        let nnz: MKL_INT = nnz_us.try_into().map_err(|_| Error::DimensionOverflow)?;
         let nrows: MKL_INT = rows.try_into().map_err(|_| Error::DimensionOverflow)?;
         let ncols: MKL_INT = cols.try_into().map_err(|_| Error::DimensionOverflow)?;
+        self.row_ptr = row_ptr.to_vec();
+        self.col_idx = col_idx[..nnz_us].to_vec();
         let status = unsafe {
             sys::dss_define_structure_(
                 &mut self.handle,
                 &opt,
-                row_ptr.as_ptr(),
+                self.row_ptr.as_ptr(),
                 &nrows,
                 &ncols,
-                col_idx.as_ptr(),
+                self.col_idx.as_ptr(),
                 &nnz,
             )
         };
-        check_dss(status)
+        check_dss(status)?;
+        self.n = rows;
+        self.nnz = nnz_us;
+        self.complex = matches!(
+            symmetry,
+            Symmetry::NonSymmetricComplex
+                | Symmetry::SymmetricComplex
+                | Symmetry::SymmetricStructureComplex
+        );
+        self.defined = true;
+        Ok(())
+    }
+
+    /// `values` must hold the `nnz` entries of the defined structure and
+    /// the matrix kind must match the element type.
+    fn check_factor(&self, len: usize, want_complex: bool) -> Result<()> {
+        if !self.defined {
+            return Err(Error::InvalidArgument(
+                "define_structure must be called before factoring",
+            ));
+        }
+        if self.complex != want_complex {
+            return Err(Error::InvalidArgument(
+                "the Symmetry given to define_structure does not match the element type",
+            ));
+        }
+        if len < self.nnz {
+            return Err(Error::InvalidArgument(
+                "values must hold one entry per stored matrix element",
+            ));
+        }
+        Ok(())
+    }
+
+    /// `b` and `x` must hold `n * nrhs` entries (`nrhs` ≥ 0).
+    fn check_solve(&self, b_len: usize, x_len: usize, nrhs: MKL_INT) -> Result<()> {
+        if !self.defined {
+            return Err(Error::InvalidArgument(
+                "define_structure must be called before solving",
+            ));
+        }
+        let nrhs: usize = nrhs
+            .try_into()
+            .map_err(|_| Error::InvalidArgument("nrhs must be non-negative"))?;
+        let need = self.n.checked_mul(nrhs).ok_or(Error::DimensionOverflow)?;
+        if b_len < need || x_len < need {
+            return Err(Error::InvalidArgument(
+                "b and x must each hold n * nrhs entries",
+            ));
+        }
+        Ok(())
     }
 
     /// Reorder the matrix for fill-in reduction.
@@ -259,15 +333,24 @@ impl Dss<f64> {
     /// Numerical factorization of a real matrix with the supplied
     /// definiteness hint.
     pub fn factor_real(&mut self, definite: Definite, values: &[f64]) -> Result<()> {
+        self.check_factor(values.len(), false)?;
         let opt: MKL_INT = definite.as_opt();
-        let status =
-            unsafe { sys::dss_factor_real_(&mut self.handle, &opt, values.as_ptr().cast()) };
+        self.vals_real = values[..self.nnz].to_vec();
+        let status = unsafe {
+            sys::dss_factor_real_(&mut self.handle, &opt, self.vals_real.as_ptr().cast())
+        };
         check_dss(status)
     }
 
     /// Solve `A * X = B` for real `B`. `b` and `x` are interpreted as
     /// `n × nrhs` column-major matrices.
     pub fn solve_real(&mut self, b: &[f64], nrhs: MKL_INT, x: &mut [f64]) -> Result<()> {
+        self.check_solve(b.len(), x.len(), nrhs)?;
+        if self.complex {
+            return Err(Error::InvalidArgument(
+                "solve_real on a structure defined with a complex Symmetry",
+            ));
+        }
         let opt: MKL_INT = sys::MKL_DSS_DEFAULTS as MKL_INT;
         let status = unsafe {
             sys::dss_solve_real_(
@@ -285,9 +368,12 @@ impl Dss<f64> {
 impl Dss<Complex64> {
     /// Numerical factorization of a complex matrix.
     pub fn factor_complex(&mut self, definite: Definite, values: &[Complex64]) -> Result<()> {
+        self.check_factor(values.len(), true)?;
         let opt: MKL_INT = definite.as_opt();
-        let status =
-            unsafe { sys::dss_factor_complex_(&mut self.handle, &opt, values.as_ptr().cast()) };
+        self.vals_cplx = values[..self.nnz].to_vec();
+        let status = unsafe {
+            sys::dss_factor_complex_(&mut self.handle, &opt, self.vals_cplx.as_ptr().cast())
+        };
         check_dss(status)
     }
 
@@ -298,6 +384,12 @@ impl Dss<Complex64> {
         nrhs: MKL_INT,
         x: &mut [Complex64],
     ) -> Result<()> {
+        self.check_solve(b.len(), x.len(), nrhs)?;
+        if !self.complex {
+            return Err(Error::InvalidArgument(
+                "solve_complex on a structure defined with a real Symmetry",
+            ));
+        }
         let opt: MKL_INT = sys::MKL_DSS_DEFAULTS as MKL_INT;
         let status = unsafe {
             sys::dss_solve_complex_(
@@ -314,10 +406,19 @@ impl Dss<Complex64> {
 
 impl Dss<Complex32> {
     /// Numerical factorization of a complex (single-precision) matrix.
+    ///
+    /// DSS has no single-precision entry point: the values are widened to
+    /// double precision before the call.
     pub fn factor_complex(&mut self, definite: Definite, values: &[Complex32]) -> Result<()> {
+        self.check_factor(values.len(), true)?;
         let opt: MKL_INT = definite.as_opt();
-        let status =
-            unsafe { sys::dss_factor_complex_(&mut self.handle, &opt, values.as_ptr().cast()) };
+        self.vals_cplx = values[..self.nnz]
+            .iter()
+            .map(|v| Complex64::new(f64::from(v.re), f64::from(v.im)))
+            .collect();
+        let status = unsafe {
+            sys::dss_factor_complex_(&mut self.handle, &opt, self.vals_cplx.as_ptr().cast())
+        };
         check_dss(status)
     }
 
@@ -328,17 +429,33 @@ impl Dss<Complex32> {
         nrhs: MKL_INT,
         x: &mut [Complex32],
     ) -> Result<()> {
+        self.check_solve(b.len(), x.len(), nrhs)?;
+        if !self.complex {
+            return Err(Error::InvalidArgument(
+                "solve_complex on a structure defined with a real Symmetry",
+            ));
+        }
+        let need = self.n * (nrhs as usize);
+        let b64: Vec<Complex64> = b[..need]
+            .iter()
+            .map(|v| Complex64::new(f64::from(v.re), f64::from(v.im)))
+            .collect();
+        let mut x64 = vec![Complex64::new(0.0, 0.0); need];
         let opt: MKL_INT = sys::MKL_DSS_DEFAULTS as MKL_INT;
         let status = unsafe {
             sys::dss_solve_complex_(
                 &mut self.handle,
                 &opt,
-                b.as_ptr().cast(),
+                b64.as_ptr().cast(),
                 &nrhs,
-                x.as_mut_ptr().cast(),
+                x64.as_mut_ptr().cast(),
             )
         };
-        check_dss(status)
+        check_dss(status)?;
+        for (dst, src) in x[..need].iter_mut().zip(&x64) {
+            *dst = Complex32::new(src.re as f32, src.im as f32);
+        }
+        Ok(())
     }
 }
 

@@ -56,6 +56,15 @@ pub enum IndexBase {
 }
 
 impl IndexBase {
+    /// Numeric value of the first index (0 or 1).
+    #[inline]
+    fn base(self) -> MKL_INT {
+        match self {
+            Self::Zero => 0,
+            Self::One => 1,
+        }
+    }
+
     #[inline]
     fn as_sys(self) -> sparse_index_base_t::Type {
         match self {
@@ -326,6 +335,7 @@ impl<T: SparseScalar> SparseMatrix<T> {
                 "col_idx and values must have the same length",
             ));
         }
+        crate::util::validate_compressed(&row_ptr, &col_idx, indexing.base(), rows, cols)?;
         let m: MKL_INT = rows.try_into().map_err(|_| Error::DimensionOverflow)?;
         let n: MKL_INT = cols.try_into().map_err(|_| Error::DimensionOverflow)?;
 
@@ -379,6 +389,16 @@ impl<T: SparseScalar> SparseMatrix<T> {
             return Err(Error::InvalidArgument(
                 "row_indx, col_indx, and values must all have the same length",
             ));
+        }
+        let base = indexing.base() as i128;
+        for (&r, &c) in row_indx.iter().zip(col_indx.iter()) {
+            if (r as i128) < base
+                || (r as i128) >= base + rows as i128
+                || (c as i128) < base
+                || (c as i128) >= base + cols as i128
+            {
+                return Err(Error::InvalidArgument("COO index out of range"));
+            }
         }
         let m: MKL_INT = rows.try_into().map_err(|_| Error::DimensionOverflow)?;
         let n: MKL_INT = cols.try_into().map_err(|_| Error::DimensionOverflow)?;
@@ -437,6 +457,7 @@ impl<T: SparseScalar> SparseMatrix<T> {
                 "row_indx and values must have the same length",
             ));
         }
+        crate::util::validate_compressed(&col_ptr, &row_indx, indexing.base(), cols, rows)?;
         let m: MKL_INT = rows.try_into().map_err(|_| Error::DimensionOverflow)?;
         let n: MKL_INT = cols.try_into().map_err(|_| Error::DimensionOverflow)?;
 
@@ -515,6 +536,13 @@ impl<T: SparseScalar> SparseMatrix<T> {
                 "values must have length col_idx.len() * block_size * block_size",
             ));
         }
+        crate::util::validate_compressed(
+            &row_ptr,
+            &col_idx,
+            indexing.base(),
+            block_rows,
+            block_cols,
+        )?;
         // MKL takes rows/cols in block units, not element units.
         let m: MKL_INT = block_rows
             .try_into()
@@ -640,6 +668,27 @@ impl<T: SparseScalar> SparseMatrix<T> {
         y: &mut [T],
         ldy: usize,
     ) -> Result<()> {
+        let row_major = layout == DenseLayout::RowMajor;
+        let (x_rows, y_rows) = match op {
+            Operation::NoTrans => (self.cols, self.rows),
+            _ => (self.rows, self.cols),
+        };
+        crate::util::check_dense_extent(
+            row_major,
+            x_rows,
+            columns,
+            ldx,
+            x.len(),
+            "x is too small for columns and ldx",
+        )?;
+        crate::util::check_dense_extent(
+            row_major,
+            y_rows,
+            columns,
+            ldy,
+            y.len(),
+            "y is too small for columns and ldy",
+        )?;
         let descr_inner = descr.into().inner;
         let status = unsafe {
             T::sparse_mm(
@@ -668,6 +717,9 @@ impl<T: SparseScalar> SparseMatrix<T> {
         x: &[T],
         y: &mut [T],
     ) -> Result<()> {
+        if self.rows != self.cols {
+            return Err(Error::InvalidArgument("trsv requires a square matrix"));
+        }
         if x.len() < self.rows || y.len() < self.rows {
             return Err(Error::InvalidArgument(
                 "x and y must each have at least n entries",
@@ -1012,6 +1064,9 @@ impl<T: SparseScalar> SparseMatrix<T> {
         b: &[T],
         x: &mut [T],
     ) -> Result<()> {
+        if self.rows != self.cols {
+            return Err(Error::InvalidArgument("symgs requires a square matrix"));
+        }
         if b.len() < self.rows || x.len() < self.rows {
             return Err(Error::InvalidArgument(
                 "b and x must each have at least n entries",
@@ -1044,6 +1099,9 @@ impl<T: SparseScalar> SparseMatrix<T> {
         x: &mut [T],
         y: &mut [T],
     ) -> Result<()> {
+        if self.rows != self.cols {
+            return Err(Error::InvalidArgument("symgs_mv requires a square matrix"));
+        }
         if b.len() < self.rows || x.len() < self.rows || y.len() < self.rows {
             return Err(Error::InvalidArgument(
                 "b, x, and y must each have at least n entries",
@@ -1202,6 +1260,27 @@ impl<T: RealSparseScalar> SparseMatrix<T> {
         x: &mut [T],
         ldb: usize,
     ) -> Result<()> {
+        let row_major = layout == DenseLayout::RowMajor;
+        let (x_rows, b_rows) = match op {
+            Operation::NoTrans => (self.cols, self.rows),
+            _ => (self.rows, self.cols),
+        };
+        crate::util::check_dense_extent(
+            row_major,
+            x_rows,
+            columns,
+            ldx,
+            x.len(),
+            "x is too small for columns and ldx",
+        )?;
+        crate::util::check_dense_extent(
+            row_major,
+            b_rows,
+            columns,
+            ldb,
+            b.len(),
+            "b is too small for columns and ldb",
+        )?;
         let status = unsafe {
             T::sparse_qr_solve(
                 op.as_sys(),

@@ -122,7 +122,7 @@ sparse `SparseMatrix::from_csr` (row_ptr end 5, one entry); `pardiso` solve (ia 
 - The static table (all 25 versions, not run) says every probed fn is UNCHECKED in 0.1.0..0.6.11; the 23 measured versions agree with it on every probe, with no exception.
 
 **Measured affected range for the eleven probe cases: 0.3.0 .. 0.6.11 (all 23 published versions in that range, run one by one); 0.1.0 and 0.2.0 static only.**
-Latest published at the time: 0.6.11 (0.7.1, the first fixed version, is merged on main, not on crates.io at the time of writing).
+Latest published when the 23-version run was made: 0.6.11 (0.7.1, the first fixed version, was published afterwards: see the next section).
 Scope limit: these 11 cases are a sample of the 60 probed on bcf7f80, not all of them per version.
 
 ## MEASURED on the PUBLISHED 0.7.1 and 0.6.11 (positive control) — oneMKL 2026.2 on WSL (Linux x86_64) ONLY
@@ -146,7 +146,7 @@ Per family (a version column per family; "affected" = a probed case faults or is
 | lapack (25 cases) | 0.3.0 .. 0.6.11 (4 cases run on all 23; all 25 on 0.6.11 and fixed on 0.7.1) | 0.1.0, 0.2.0 | **0.7.1 (measured)** |
 | blas (16 cases: band views, strided batch, omatcopy2, packed/compact) | 0.3.0 .. 0.6.11 (2 cases on all 23; all 16 on 0.6.11) | 0.1.0, 0.2.0 | **0.7.1 (measured)** |
 | sparse / dss / pardiso / ilu / feast / iss (19 cases) | 0.3.0 .. 0.6.11 (5 cases on all 23; all 19 on 0.6.11) | 0.1.0, 0.2.0 | **0.7.1 (measured)** |
-| breaking set: `gemm_batch` / `gemv_batch` / `trsm_batch` (raw pointer arrays in safe fns) | `gemm_batch` null pointer FAULT on 0.6.11 and 0.7.1 only (earlier versions not run) | all (static) | NOT fixed in any published version; 0.8.0 (#57, merged-pending) makes them `unsafe` |
+| breaking set: `gemm_batch` / `gemv_batch` / `trsm_batch` (raw pointer arrays in safe fns) | `gemm_batch` null pointer FAULT on 0.6.11 and 0.7.1 only (earlier versions not run) | all (static) | NOT fixed in any published version; 0.8.0 (#57, open and armed, not published) makes them `unsafe` |
 | breaking set: `pardiso_64_raw`, `Pardiso::export`, `*ExArgs`, `DataFittingScalar` | NOT MEASURED as faults (`pardiso_64_raw` short-slice probe returned Err) | static only | not fixed in any published version; 0.8.0 |
 
 So "last published before the fix" is **0.6.11 for the three patched families** and **0.7.1 (still unfixed) for the breaking set**.

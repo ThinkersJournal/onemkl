@@ -155,6 +155,48 @@ jobs:
           n=$(cargo clippy -p onemkl --lib -- --force-warn clippy::too_many_arguments 2>&1 | grep -c 'too many arguments' || true)
           echo "too_many_arguments with the source allows overridden: $n (ROADMAP row W1)" | tee -a "$GITHUB_STEP_SUMMARY"
 
+  # Required (branch protection lists these two names). `-D warnings` over the
+  # whole workspace and every target: the cleanup landed in #48. macOS has NO
+  # clippy job, so it is not covered by this gate (it is `cargo check` only).
+  clippy-linux:
+    name: cargo clippy (Linux, -D warnings)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal --component clippy --no-self-update
+      - name: Install Intel oneAPI MKL headers and libclang (bindgen)
+        run: |
+          wget -qO- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB             | sudo gpg --dearmor -o /usr/share/keyrings/oneapi-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main"             | sudo tee /etc/apt/sources.list.d/oneAPI.list
+          sudo apt-get update
+          sudo apt-get install -y intel-oneapi-mkl-devel libclang-dev
+      - name: cargo clippy --workspace --all-targets -D warnings
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          cargo clippy --workspace --all-targets -- -D warnings
+      - name: Hidden too_many_arguments (source allows overridden, report only)
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          touch onemkl/src/lib.rs
+          n=$(cargo clippy -p onemkl --lib -- --force-warn clippy::too_many_arguments 2>&1 | grep -c 'too many arguments' || true)
+          echo "too_many_arguments with the source allows overridden: $n (ROADMAP row W1)" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # Windows TARGET linted from a Linux runner with the vendored bindings (as
+  # cross-check does): clippy type-checks, it does not link, so no Windows MKL
+  # is needed.
+  clippy-windows:
+    name: cargo clippy (target x86_64-pc-windows-msvc, cross from Linux, -D warnings)
+    runs-on: ubuntu-latest
+    env:
+      ONEMKL_SYS_USE_VENDORED_BINDINGS: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal --component clippy --target x86_64-pc-windows-msvc --no-self-update
+      - name: cargo clippy --workspace --all-targets -D warnings
+        run: cargo clippy --target x86_64-pc-windows-msvc --workspace --all-targets -- -D warnings
+
   # `ilp64` needs bindings generated from the ILP64 headers; the vendored
   # (LP64) bindings must be refused with a clear message, not 689 type errors.
   ilp64-vendored-guard:

@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.8.1 - 2026-11-28 (PM-allocated; CHANGELOG-only: no code change; written by pm-assist)
+
+- The 0.8.0 entry gains its "What 0.7.1 left" bullet (what 0.7.1 did and did not fix, and the affected versions 0.1.0 .. 0.7.1 for the items fixed in 0.8.0). 0.8.0 was never published; 0.8.1 is the 0.8 release.
+
 ## 0.8.0 - 2026-11-28 (PM-allocated; **Breaking**; written by pm-assist from the diff and the lane's READY)
 
 - **Breaking (safe-API memory safety):** `blas::gemm_batch`, `gemv_batch`, `trsm_batch`, `pardiso::pardiso_64_raw` and `Pardiso::export` become `unsafe fn` (they take raw pointers or sizes the wrapper cannot check). `data_fitting::DataFittingScalar` is sealed. `SearchExArgs`, `IntegrateExArgs` and `InterpolateExArgs` become `#[non_exhaustive]`. Callers: the lane's git grep over fuel and cpufish found 0 callers (control: `onemkl::` in 3 files each); other repos not searched by the lane.

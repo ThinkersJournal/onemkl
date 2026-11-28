@@ -30,7 +30,7 @@ const COL: Layout = Layout::ColMajor;
 
 #[test]
 fn banded_buffers_are_checked() {
-    let mut ipiv = [0i32; 4];
+    let mut ipiv = [Default::default(); 4];
     case!(gbsv::<f64>(COL, 4, 1, 1, 1, &mut [], 4, &mut ipiv, &mut [], 4).is_err());
     case!(gbtrf::<f64>(COL, 4, 4, 1, 1, &mut [], 4, &mut ipiv).is_err());
     case!(

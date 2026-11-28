@@ -283,6 +283,13 @@ unsafe fn run_search_callback<T: DataFittingScalar>(
         };
         match catch_unwind(AssertUnwindSafe(|| (args.callback)(req))) {
             Ok(status) => {
+                // A negative status is an error the call-back reports: pass it
+                // on without reading `cells` / `exact`, which it need not have
+                // written (they hold whatever oneMKL left there, so a stale
+                // `exact == 1` turned `-5` into a bogus `SearchCell`).
+                if status < 0 {
+                    return status;
+                }
                 let all_exact = status == DF_STATUS_EXACT_RESULT;
                 // SAFETY: the same arrays, re-read after the call-back.
                 let (sites, cells, flags) = (
@@ -2063,5 +2070,42 @@ fn check_df(status: c_int) -> Result<()> {
         Ok(())
     } else {
         Err(Error::VslStatus(status))
+    }
+}
+
+#[cfg(test)]
+mod search_callback_status_tests {
+    use super::*;
+
+    /// A negative status must be returned as is, without looking at the
+    /// `cells` / `exact` arrays the call-back never wrote: those hold whatever
+    /// oneMKL left there. Seen once in CI (`exact` happened to be 1 with a
+    /// stale cell), which turned the call-back's `-5` into `SearchCell`.
+    #[test]
+    fn negative_status_does_not_read_unwritten_cells() {
+        let x = [0.0f64, 1.0, 2.0];
+        let mut cb = |_: SearchRequest<'_, f64>| -5;
+        let mut args = SearchExArgs {
+            callback: &mut cb,
+            x: &x,
+            panic: None,
+            error: None,
+        };
+        let mut n: c_longlong = 2;
+        let mut site = [0.5f64, 1.5];
+        let mut cell: [c_longlong; 2] = [-7, 99]; // stale: outside 0..=nx
+        let mut flag: [c_int; 2] = [1, 1]; // stale: "exact"
+        // SAFETY: `n` elements in each array; `user` is the `SearchExArgs`.
+        let status = unsafe {
+            run_search_callback::<f64>(
+                &mut n,
+                site.as_mut_ptr(),
+                cell.as_mut_ptr(),
+                flag.as_mut_ptr(),
+                (&mut args as *mut SearchExArgs<'_, f64>).cast(),
+            )
+        };
+        assert_eq!(status, -5);
+        assert!(args.error.is_none());
     }
 }

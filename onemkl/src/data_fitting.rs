@@ -160,11 +160,11 @@ pub trait DataFittingScalar: Copy + PartialOrd + 'static {
         args: &mut SearchExArgs<'_, Self>,
     ) -> c_int;
 
-    /// Raw `df?InterpolateEx1D` call (function values only) with the interpolation and search call-backs of `args` (see [`InterpolateExArgs`]); a panic in a call-back is caught at the C boundary and left in `args.panic`.
+    /// Raw `df?InterpolateEx1D` call (the derivative orders flagged in `args.dorder`) with the interpolation and search call-backs of `args` (see [`InterpolateExArgs`]); a panic in a call-back is caught at the C boundary and left in `args.panic`.
     ///
     /// # Safety
     ///
-    /// `task` must be a live Data Fitting task with a constructed spline; `args.out` must be valid for writes of `args.sites.len()` elements (`ny` is 1). The call-backs run on the calling thread.
+    /// `task` must be a live Data Fitting task with a constructed spline; `args.out` must be valid for writes of `args.sites.len() * args.orders` elements (`ny` is 1), `args.orders` must be the number of non-zero entries of `args.dorder`, which must name only derivatives the spline has. The call-backs run on the calling thread.
     /// **Measured** on oneMKL 2026.2 (`tools/size-probes/df_search2.c`, `df_search3.c`, `df_interp_cb.c`): see `docs/DATA-FITTING-FACTS.md`.
     unsafe fn df_interpolate_ex_1d(
         task: DFTaskPtr,
@@ -437,7 +437,13 @@ pub struct InterpolationPieces<'a, T> {
     pub cells: &'a [i64],
     /// The sites of this region, in the order they were passed.
     pub sites: &'a [T],
-    /// Where to write one function value per site.
+    /// How many derivative orders were requested (1 for function values only).
+    pub orders: usize,
+    /// Where to write the results: `sites.len() * orders` values, site-major
+    /// (`out[i * orders + k]` is the `k`-th requested order of site `i`, the
+    /// orders ascending: the layout oneMKL itself uses, which the library does
+    /// not rearrange; measured in `tools/size-probes/df_interp_cb.c`). With
+    /// `orders == 1` that is one function value per site.
     pub out: &'a mut [T],
 }
 
@@ -452,8 +458,8 @@ pub type InterpolationCallback<'a, T> = &'a mut dyn FnMut(InterpolationPieces<'_
 /// its region (`left`: sites left of the first breakpoint, `interior`: sites
 /// from the first to the last breakpoint inclusive, `right`: sites right of the
 /// last), in the order passed, and the library puts each value at its site's
-/// position in the result, also for unsorted sites. Derivative orders are not
-/// wrapped.
+/// position in the result, also for unsorted sites. Derivative orders:
+/// [`CubicSpline1d::interpolate_derivatives_with_callbacks`].
 #[non_exhaustive]
 pub struct InterpolateCallbacks<'a, T> {
     /// For sites left of the first breakpoint.
@@ -518,7 +524,11 @@ impl<T> Default for InterpolateCallbacks<'_, T> {
 #[doc(hidden)]
 pub struct InterpolateExArgs<'a, T: DataFittingScalar> {
     pub sites: &'a [T],
-    /// Valid for writes of `sites.len()` elements.
+    /// The `dorder` flags passed to oneMKL (non-zero entry `k`: derivative `k` wanted).
+    pub dorder: Vec<MKL_INT>,
+    /// The number of non-zero entries of `dorder`.
+    pub orders: usize,
+    /// Valid for writes of `sites.len() * orders` elements.
     pub out: *mut T,
     /// The breakpoints of the task (for checking search cells).
     pub x: &'a [T],
@@ -531,6 +541,7 @@ pub struct InterpolateExArgs<'a, T: DataFittingScalar> {
 
 struct InterpSlot<'a, T> {
     f: InterpolationCallback<'a, T>,
+    orders: usize,
     panic: Option<Box<dyn Any + Send>>,
 }
 
@@ -539,8 +550,9 @@ struct InterpSlot<'a, T> {
 /// # Safety
 ///
 /// The pointers are those oneMKL passes to an interpolation call-back: `n`
-/// points to the number of sites and `cell`, `site` and `r` hold that many
-/// elements; `user` is the `InterpSlot` passed with the call-back.
+/// points to the number of sites and `cell` and `site` hold that many
+/// elements and `r` holds that many times `InterpSlot::orders`; `user` is the
+/// `InterpSlot` passed with the call-back.
 unsafe fn run_interp_callback<T>(
     n: *mut c_longlong,
     cell: *mut c_longlong,
@@ -552,10 +564,12 @@ unsafe fn run_interp_callback<T>(
     unsafe {
         let slot = &mut *user.cast::<InterpSlot<'_, T>>();
         let n = usize::try_from(*n).unwrap_or(0);
+        let orders = slot.orders;
         let pieces = InterpolationPieces {
             cells: core::slice::from_raw_parts(cell, n),
             sites: core::slice::from_raw_parts(site, n),
-            out: core::slice::from_raw_parts_mut(r, n),
+            orders,
+            out: core::slice::from_raw_parts_mut(r, n * orders),
         };
         match catch_unwind(AssertUnwindSafe(|| (slot.f)(pieces))) {
             Ok(status) => status,
@@ -864,12 +878,17 @@ macro_rules! impl_data_fitting_real {
                 }
                 fn slot<'a, T>(
                     f: Option<InterpolationCallback<'a, T>>,
+                    orders: usize,
                 ) -> Option<InterpSlot<'a, T>> {
-                    f.map(|f| InterpSlot { f, panic: None })
+                    f.map(|f| InterpSlot {
+                        f,
+                        orders,
+                        panic: None,
+                    })
                 }
-                let mut left = slot(args.callbacks.left.take());
-                let mut right = slot(args.callbacks.right.take());
-                let mut inside = slot(args.callbacks.interior.take());
+                let mut left = slot(args.callbacks.left.take(), args.orders);
+                let mut right = slot(args.callbacks.right.take(), args.orders);
+                let mut inside = slot(args.callbacks.interior.take(), args.orders);
                 let mut search = args.callbacks.search.take().map(|callback| SearchExArgs {
                     callback,
                     x: args.x,
@@ -896,7 +915,6 @@ macro_rules! impl_data_fitting_real {
                     slot_ptr(&mut right),
                     slot_ptr(&mut inside),
                 );
-                let dorder: [MKL_INT; 1] = [1];
                 let status = unsafe {
                     sys::$interp_ex(
                         task,
@@ -905,8 +923,8 @@ macro_rules! impl_data_fitting_real {
                         args.sites.len() as MKL_INT,
                         args.sites.as_ptr(),
                         sys::DF_NO_HINT as MKL_INT,
-                        1,
-                        dorder.as_ptr(),
+                        args.dorder.len() as MKL_INT,
+                        args.dorder.as_ptr(),
                         ptr::null(),
                         args.out,
                         sys::DF_NO_HINT as MKL_INT,
@@ -1224,19 +1242,7 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
     where
         T: Default + Copy,
     {
-        let max_order = sys::DF_PP_CUBIC as usize - 1;
-        let mut flags = [0 as MKL_INT; sys::DF_PP_CUBIC as usize];
-        for &o in orders {
-            if o > max_order {
-                return Err(Error::InvalidArgument(
-                    "derivative order exceeds the spline degree (3 for a cubic)",
-                ));
-            }
-            if flags[o] != 0 {
-                return Err(Error::InvalidArgument("duplicate derivative order"));
-            }
-            flags[o] = 1;
-        }
+        let flags = cubic_order_flags(orders)?;
         if orders.is_empty() {
             return Ok(Vec::new());
         }
@@ -1423,6 +1429,62 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
     ) -> Result<Vec<T>> {
         interpolate_ex_impl(self.task, &self._x, sites, callbacks)
     }
+
+    /// Like [`interpolate_derivatives`](Self::interpolate_derivatives), but
+    /// with the call-backs of [`interpolate_with_callbacks`](Self::interpolate_with_callbacks).
+    /// Each call-back's [`InterpolationPieces::out`] holds
+    /// `sites.len() * orders.len()` values, site-major with the orders in
+    /// ASCENDING order (not the order of `orders`): `out[i * orders + k]`.
+    /// Measured: oneMKL puts each call-back's block at the position of its
+    /// first site and does not rearrange it, so a call-back that writes any
+    /// other layout gives a result that mixes layouts with the library's own
+    /// sites. The result is one vector per entry of `orders`, in the order
+    /// requested. Duplicate or too-high orders and an empty `orders` are as
+    /// for `interpolate_derivatives`.
+    pub fn interpolate_derivatives_with_callbacks<'a>(
+        &'a self,
+        sites: &'a [T],
+        orders: &[usize],
+        callbacks: InterpolateCallbacks<'a, T>,
+    ) -> Result<Vec<Vec<T>>>
+    where
+        T: Default + Copy,
+    {
+        let flags = cubic_order_flags(orders)?;
+        if orders.is_empty() {
+            return Ok(Vec::new());
+        }
+        let out = interpolate_ex_orders(self.task, &self._x, sites, &flags, callbacks)?;
+        let nd = orders.len();
+        let mut ascending: Vec<usize> = orders.to_vec();
+        ascending.sort_unstable();
+        Ok(orders
+            .iter()
+            .map(|o| {
+                let col = ascending.iter().position(|a| a == o).unwrap();
+                (0..sites.len()).map(|i| out[i * nd + col]).collect()
+            })
+            .collect())
+    }
+}
+
+/// The `dorder` flags for a cubic spline: entry `k` is 1 when derivative `k`
+/// is requested. Rejects orders above 3 and duplicates.
+fn cubic_order_flags(orders: &[usize]) -> Result<[MKL_INT; sys::DF_PP_CUBIC as usize]> {
+    let max_order = sys::DF_PP_CUBIC as usize - 1;
+    let mut flags = [0 as MKL_INT; sys::DF_PP_CUBIC as usize];
+    for &o in orders {
+        if o > max_order {
+            return Err(Error::InvalidArgument(
+                "derivative order exceeds the spline degree (3 for a cubic)",
+            ));
+        }
+        if flags[o] != 0 {
+            return Err(Error::InvalidArgument("duplicate derivative order"));
+        }
+        flags[o] = 1;
+    }
+    Ok(flags)
 }
 
 impl<T: DataFittingScalar> Drop for CubicSpline1d<T> {
@@ -2038,13 +2100,28 @@ fn interpolate_ex_impl<'a, T: DataFittingScalar + Default>(
     sites: &'a [T],
     callbacks: InterpolateCallbacks<'a, T>,
 ) -> Result<Vec<T>> {
+    interpolate_ex_orders(task, x, sites, &[1], callbacks)
+}
+
+/// `df?InterpolateEx1D` for the derivative orders flagged in `dorder`; the
+/// result is site-major (`out[i * orders + k]`, orders ascending).
+fn interpolate_ex_orders<'a, T: DataFittingScalar + Default>(
+    task: DFTaskPtr,
+    x: &'a [T],
+    sites: &'a [T],
+    dorder: &[MKL_INT],
+    callbacks: InterpolateCallbacks<'a, T>,
+) -> Result<Vec<T>> {
     let _: MKL_INT = sites
         .len()
         .try_into()
         .map_err(|_| Error::DimensionOverflow)?;
-    let mut out: Vec<T> = (0..sites.len()).map(|_| T::default()).collect();
+    let orders = dorder.iter().filter(|&&f| f != 0).count();
+    let mut out: Vec<T> = (0..sites.len() * orders).map(|_| T::default()).collect();
     let mut args = InterpolateExArgs {
         sites,
+        dorder: dorder.to_vec(),
+        orders,
         out: out.as_mut_ptr(),
         x,
         callbacks,

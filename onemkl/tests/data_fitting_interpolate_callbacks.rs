@@ -105,3 +105,66 @@ fn panic_in_a_call_back_is_resumed() {
     });
     assert!(r.is_err());
 }
+
+// Derivative orders: `CubicSpline1d::interpolate_derivatives_with_callbacks`.
+// Measured with `tools/size-probes/df_interp_cb.c` (two orders): oneMKL puts
+// each call-back's block at its first site's position and does not rearrange
+// it; the library's own sites are site-major (`r[i * orders + k]`, orders
+// ascending), so a call-back must write that layout to match.
+mod derivative_orders {
+    use onemkl::data_fitting::{CubicSpline1d, InterpolateCallbacks, InterpolationPieces};
+
+    fn cubic() -> CubicSpline1d<f64> {
+        let x: Vec<f64> = (0..6).map(f64::from).collect();
+        CubicSpline1d::natural(x.clone(), x).unwrap() // y = x: value s, 1st derivative 1
+    }
+
+    #[test]
+    fn callback_blocks_are_site_major_and_mix_with_the_library() {
+        // Interior sites by the call-back (value: 300 + s, derivative: 1300 + s);
+        // the sites outside the knot range by the library.
+        let mut i = |p: InterpolationPieces<'_, f64>| {
+            assert_eq!(p.orders, 2);
+            assert_eq!(p.out.len(), 2 * p.sites.len());
+            for (k, s) in p.sites.iter().enumerate() {
+                p.out[k * 2] = 300.0 + *s;
+                p.out[k * 2 + 1] = 1300.0 + *s;
+            }
+            0
+        };
+        let sites = [-1.0, 0.5, 2.5, 7.0];
+        // Requested out of order: results follow the request order.
+        let r = cubic()
+            .interpolate_derivatives_with_callbacks(
+                &sites,
+                &[1, 0],
+                InterpolateCallbacks::new().interior(&mut i),
+            )
+            .unwrap();
+        assert_eq!(r.len(), 2);
+        assert_eq!(r[0][1..3], [1300.5, 1302.5]); // derivative (order 1) at the interior sites
+        assert_eq!(r[1][1..3], [300.5, 302.5]); // value (order 0) at the interior sites
+        // Library-served sites: y = x extrapolated.
+        for (idx, want_value) in [(0usize, -1.0f64), (3, 7.0)] {
+            assert!((r[1][idx] - want_value).abs() < 1e-9, "{r:?}");
+            assert!((r[0][idx] - 1.0).abs() < 1e-9, "{r:?}");
+        }
+    }
+
+    #[test]
+    fn invalid_orders_are_rejected_before_the_call() {
+        let c = cubic();
+        for orders in [&[4usize][..], &[1, 1][..]] {
+            let r = c.interpolate_derivatives_with_callbacks(
+                &[0.5],
+                orders,
+                InterpolateCallbacks::new(),
+            );
+            assert!(r.is_err(), "{orders:?}");
+        }
+        let empty = c
+            .interpolate_derivatives_with_callbacks(&[0.5], &[], InterpolateCallbacks::new())
+            .unwrap();
+        assert!(empty.is_empty());
+    }
+}

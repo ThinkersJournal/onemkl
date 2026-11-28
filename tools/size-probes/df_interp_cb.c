@@ -18,7 +18,7 @@ static int cbk(int tag, const char *name, long long *n, long long *cell, double 
   for (long long i = 0; i < *n; i++) printf(" %lld", cell[i]);
   printf("\n");
   for (int k = 0; k < g_nord; k++)
-    for (long long i = 0; i < *n; i++) r[k * *n + i] = 100.0 * tag + site[i] + 1000.0 * k;
+    for (long long i = 0; i < *n; i++) r[i * g_nord + k] = 100.0 * tag + site[i] + 1000.0 * k;
   return g_status;
 }
 static int le(long long *n, long long *c, double *s, double *r, void *u, dfInterpCallBackLibraryParams *l) { return cbk(1, "le", n, c, s, r, l); }
@@ -53,7 +53,11 @@ int main(void) {
   run("re only", 0, 1, 0, 1, 0);
   run("i only", 0, 0, 1, 1, 0);
   run("all three", 1, 1, 1, 1, 0);
+  run("control: no call-backs, two derivative orders", 0, 0, 0, 2, 0);
   run("all three, two derivative orders (value, 1st derivative)", 1, 1, 1, 2, 0);
+  run("le only, two derivative orders (library serves the rest)", 1, 0, 0, 2, 0);
+  run("re only, two derivative orders (library serves the rest)", 0, 1, 0, 2, 0);
+  run("i only, two derivative orders (library serves the rest)", 0, 0, 1, 2, 0);
   run("all three, negative status -5", 1, 1, 1, 1, -5);
   run("all three, positive status 3", 1, 1, 1, 1, 3);
   { double u[NS] = {2.5, -1, 7, 0.5, 5}; for (int i = 0; i < NS; i++) g_site[i] = u[i]; }

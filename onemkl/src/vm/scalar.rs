@@ -235,7 +235,10 @@ pub trait VmScalar: Scalar {
 // =====================================================================
 
 /// Real-only element-wise operations.
-#[allow(missing_docs)] // Each method is documented in the corresponding free function
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)] // Each method is documented in the corresponding free function
 pub trait RealVmScalar: VmScalar + RealScalar {
     // Arithmetic / abs / sqr / inv
     /// Raw `vm_abs_real` kernel over `n` elements.
@@ -857,7 +860,10 @@ pub trait RealVmScalar: VmScalar + RealScalar {
 
 /// Complex-only element-wise operations, including type-changing ones
 /// (real → complex and complex → real).
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait ComplexVmScalar: VmScalar + ComplexScalar {
     /// `r[i] = |a[i]|`. Output is real.
     ///

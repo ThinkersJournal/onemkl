@@ -15,7 +15,10 @@ use crate::scalar::Scalar;
 /// Implemented for [`f32`], [`f64`], [`Complex32`], and [`Complex64`].
 /// Methods are `unsafe` thunks that forward to the corresponding
 /// `mkl_sparse_*` C symbol.
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait SparseScalar: Scalar {
     /// Raw `sparse_create_csr` call.
     ///

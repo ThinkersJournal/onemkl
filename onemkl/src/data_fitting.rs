@@ -27,7 +27,10 @@ use crate::error::{Error, Result};
 // =====================================================================
 
 /// Real scalar types supported by the data-fitting interface.
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 /// Sealed: only the implementations in this crate are valid (its methods are
 /// raw `unsafe` FFI shims that rely on exact oneMKL contracts).
 pub trait DataFittingScalar: sealed::Sealed + Copy + PartialOrd + 'static {

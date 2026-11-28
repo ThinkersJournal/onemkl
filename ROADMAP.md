@@ -293,6 +293,7 @@ Every non-MPI domain at Comprehensive:
     and wrappers above), or a restructure (a parameter struct) for the rest;
     delete the allows that do nothing (trait impl methods). No mass edit
     without reading what each item is.
+- **W1c: the 21 bare `#[allow(missing_docs)]` (one also `clippy::missing_safety_doc`) on the per-precision dispatch traits now carry a `reason` (measured by a perl scan of every `#[allow(..)]` in `git ls-tree` order at origin/main 5f55390: 228 allows, 24 without a reason: these 21 plus the 3 generated-file `non_*` allows in `onemkl-sys/src/lib.rs`, which sit under the comment "Standard bindgen-output allows"). After this change 3 remain, all in the generated bindings file.**
 - **W1b: crate-level allows in `onemkl-sys/src/lib.rs`: done (measured 2026-11-28 at origin/main f1a76733).** The file has 3 crate-level allows, `non_upper_case_globals`, `non_camel_case_types` and `non_snake_case`, under the comment "Standard bindgen-output allows: the bindings are generated C names" (the reason: generated file). The fourth, `dead_code`, is gone (`git grep dead_code` over that file: 0 hits; it did nothing, `cargo check -p onemkl-sys` gave 0 warnings without it). Nothing left to do on this row.
 
 - **Adopt the coderipper portfolio job.** Call

@@ -59,7 +59,10 @@ impl PackIdentifier {
 }
 
 /// Real scalar types supported by the pack / compute GEMM API.
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait PackedGemmScalar: Copy + 'static {
     /// Raw `gemm_pack_get_size` call.
     ///

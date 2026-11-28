@@ -75,7 +75,10 @@ impl CorrMode {
 }
 
 /// Real scalar types supported by 1-D convolution / correlation tasks.
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait ConvCorrScalar: Copy + 'static {
     /// Raw `conv_new_task_1d` call.
     ///

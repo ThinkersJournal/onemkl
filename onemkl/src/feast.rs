@@ -745,7 +745,10 @@ fn finish_complex_result<T: FeastComplex>(
 // =====================================================================
 
 /// Real scalar types supported by FEAST dense drivers.
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait FeastReal: Copy + 'static {
     fn zero() -> Self;
     /// Raw `feast_dense_real` call.
@@ -1008,7 +1011,10 @@ impl_feast_real!(
 );
 
 /// Complex scalar types supported by FEAST drivers.
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait FeastComplex: Copy + 'static {
     /// The matching real scalar type (used for eigenvalues, residuals,
     /// and the search interval `[emin, emax]`).

@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.8.2 - 2026-11-28 (PM-allocated; docs only: no code change; written by pm-assist)
+
+- `SAFE-API-AUDIT-per-version.md`: the per-version table of the safe-API memory-safety audit. STATIC, NOT RUN: a read of the published `.crate` source of 25 versions (0.1.0 .. 0.6.11): every probed fn is UNCHECKED in every one (first affected 0.1.0, last affected 0.6.11); the runtime measurements are on oneMKL 2026.2 under WSL (Linux) only, at 0.6.8 = 0.6.11 (md5-identical) and 0.8.1. Yank of the affected versions is CireSnave's (board 528), decided by him, not by this change.
+
 ## 0.8.1 - 2026-11-28 (PM-allocated; CHANGELOG-only: no code change; written by pm-assist)
 
 - The 0.8.0 entry gains its "What 0.7.1 left" bullet (what 0.7.1 did and did not fix, and the affected versions 0.1.0 .. 0.7.1 for the items fixed in 0.8.0). 0.8.0 was never published; 0.8.1 is the 0.8 release.

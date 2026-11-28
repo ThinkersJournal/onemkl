@@ -293,13 +293,7 @@ Every non-MPI domain at Comprehensive:
     and wrappers above), or a restructure (a parameter struct) for the rest;
     delete the allows that do nothing (trait impl methods). No mass edit
     without reading what each item is.
-- **W1b: crate-level allows in `onemkl-sys/src/lib.rs` (4, pre-existing).**
-  `non_upper_case_globals`, `non_camel_case_types` and `non_snake_case` are
-  the standard bindgen-output allows (generated file; that is the reason).
-  `dead_code`: removing it on this tree produced 0 warnings from
-  `cargo check -p onemkl-sys` (the bindings are `pub`, which `dead_code` does
-  not flag), so it does nothing and can be deleted; this stands as a cleanup
-  row, not yet done.
+- **W1b: crate-level allows in `onemkl-sys/src/lib.rs`: done (measured 2026-11-28 at origin/main f1a76733).** The file has 3 crate-level allows, `non_upper_case_globals`, `non_camel_case_types` and `non_snake_case`, under the comment "Standard bindgen-output allows: the bindings are generated C names" (the reason: generated file). The fourth, `dead_code`, is gone (`git grep dead_code` over that file: 0 hits; it did nothing, `cargo check -p onemkl-sys` gave 0 warnings without it). Nothing left to do on this row.
 
 - **Adopt the coderipper portfolio job.** Call
   `ciresnave/coderipper/.github/workflows/portfolio.yml@467fd259d6d062cba4c5683d310f1a6f2b66e763`

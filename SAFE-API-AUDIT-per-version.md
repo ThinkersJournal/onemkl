@@ -101,16 +101,26 @@ Groups per fn (non-lapack/blas): from_csr/from_coo/define_structure/factor_real/
 
 ## MEASURED (runtime) per-version probes — oneMKL 2026.2 on WSL (Linux x86_64) ONLY
 
-Method: a probe crate depending on `onemkl = "=<version>"` from crates.io, one binary per case, each calls the
-safe fn with an undersized/empty buffer and prints whether it returned. rc 139 = SIGSEGV (FAULT, MEASURED).
-Cases: lapack `gbsv`, `pbsv`, `gttrs`, `spsv`; blas `omatcopy2`, `gemm_batch_strided`; dss `solve_real` (nrhs 1000, 3-entry b/x).
+Method: a probe crate depending on `onemkl = "=<version>"` from crates.io; one binary per case; each calls the
+safe fn with an undersized / out-of-range input. rc 139 = SIGSEGV (FAULT, MEASURED). `Ok` = the fn returned `Ok`
+for the invalid input (ACCEPTED, no fault observed by this probe; not counted as a hole). The binaries run with
+libm preloaded (the DSS/MKL objects need `log` from libm; without it the dss probe died with "undefined symbol: log",
+which was the earlier rc 127 harness problem). One version at a time.
 
-| version | lapack gbsv/pbsv/gttrs/spsv | blas omatcopy2 / gemm_batch_strided | dss solve_real |
-|---|---|---|---|
-| 0.6.11, 0.6.7, 0.6.5, 0.6.1, 0.5.2, 0.4.15, 0.4.3, 0.4.2, 0.3.8, 0.3.0 | FAULT (139) x4 | FAULT (139) x2 | NOT MEASURED (binary exited 127: harness problem, not a result) |
-| 0.1.0 | NOT MEASURED (probe did not compile against 0.1.0: API differs or build failed) | NOT MEASURED | NOT MEASURED |
+Cases: lapack `gbsv` `pbsv` `gttrs` `spsv`; blas `omatcopy2` `gemm_batch_strided`; `dss` solve_real (nrhs 1000 on 3-entry b/x);
+sparse `SparseMatrix::from_csr` (row_ptr end 5, one entry); `pardiso` solve (ia says 5 entries, a/ja hold one);
+`preconditioners::apply_ilu` (ia end 9, one entry); `feast::eigh_real_csr` (isa end 50, one entry).
 
-Versions not run at runtime: 0.2.0 0.3.4 0.3.10 0.3.11 0.4.4 0.4.5 0.4.6 0.4.8 0.4.11 0.4.16 0.5.0 0.5.1 0.6.0 0.6.8
-(their sources are covered by the static table above and by md5 identity groups; 0.6.8 == 0.6.11 byte-identical
-for the audited modules). Sparse, PARDISO, ILU and FEAST probes were NOT run per version (only on bcf7f80).
-So for the six lapack/blas probes the earliest runtime-measured fault is 0.3.0 and the latest 0.6.11; 0.1.0 and 0.2.0 are static only.
+| versions | lapack x4 | blas x2 | dss | pardiso | apply_ilu | feast csr | sparse from_csr |
+|---|---|---|---|---|---|---|---|
+| 0.3.0 0.3.4 0.3.8 0.3.10 0.3.11 0.4.2 0.4.3 0.4.4 0.4.5 0.4.6 0.4.8 0.4.11 0.4.15 0.4.16 0.5.0 0.5.1 0.5.2 0.6.0 0.6.1 0.6.5 0.6.7 0.6.8 0.6.11 (23 versions) | FAULT | FAULT | FAULT | FAULT | FAULT | FAULT | ACCEPTED (Ok) |
+| 0.2.0 | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
+| 0.1.0 | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
+
+- **0.1.0** does not build against oneMKL 2026.2 (8 compile errors in the library itself, among them the missing `mkl_dcsrtrsv`): classified by source read only (static table above: UNCHECKED).
+- **0.2.0** builds but its binaries fail to load (`symbol lookup error: libmkl_intel_lp64.so.3: undefined symbol: mkl_blas_dgemm`, a link-order problem of that release against this oneMKL): classified by source read only (static table above: UNCHECKED).
+- The static table (all 25 versions, not run) says every probed fn is UNCHECKED in 0.1.0..0.6.11; the 23 measured versions agree with it on every probe, with no exception.
+
+**Measured affected range for the eleven probe cases: 0.3.0 .. 0.6.11 (all 23 published versions in that range, run one by one); 0.1.0 and 0.2.0 static only.**
+Latest published at the time: 0.6.11 (0.7.1, the first fixed version, is merged on main, not on crates.io at the time of writing).
+Scope limit: these 11 cases are a sample of the 60 probed on bcf7f80, not all of them per version.

@@ -28,7 +28,10 @@ use onemkl_sys::{self as sys, VSLSSTaskPtr};
 use crate::error::{Error, Result};
 
 /// Real scalar types supported by the summary-statistics task family.
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait SsScalar: Copy + Default + 'static {
     /// The bit pattern oneMKL's `VSL_SS_SNAN` / `VSL_SS_DNAN` uses to mark a missing observation (a quiet NaN with the sign bit set: `0xFFC00000` for `f32`, `0xFFF8000000000000` for `f64`). oneMKL compares bit patterns, so an ordinary `NAN` is not recognised.
     const MISSING: Self;

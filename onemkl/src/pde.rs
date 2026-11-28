@@ -82,7 +82,10 @@ impl TrigTransformType {
 }
 
 /// Scalar types supported by the trig transform routines.
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait TrigTransformScalar: Copy + Default + 'static {
     /// Raw `init_trig_transform` call.
     ///
@@ -389,7 +392,11 @@ impl Boundary {
 }
 
 /// Scalar types supported by the Helmholtz solver.
-#[allow(missing_docs, clippy::missing_safety_doc)]
+#[allow(
+    missing_docs,
+    clippy::missing_safety_doc,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait HelmholtzScalar: Copy + Default + 'static {
     fn to_f64(self) -> f64;
     fn from_f64(v: f64) -> Self;

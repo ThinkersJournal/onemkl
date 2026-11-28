@@ -76,7 +76,10 @@ fn map_transpose(t: Transpose) -> sys::MKL_TRANSPOSE::Type {
 }
 
 /// Real scalar types supported by the Compact BLAS lifecycle.
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait CompactScalar: Copy + 'static {
     /// Raw `get_size_compact` call.
     ///
@@ -513,7 +516,10 @@ fn map_diag(d: Diag) -> sys::MKL_DIAG::Type {
 }
 
 /// Factorisation / solve kernels beyond GEMM (`f32` / `f64`).
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait CompactFactorScalar: CompactScalar {
     fn zero() -> Self;
     fn to_workspace_len(self) -> usize;

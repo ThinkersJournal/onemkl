@@ -67,7 +67,10 @@ impl JitStatus {
 /// Trait wiring up the four `mkl_cblas_jit_create_*gemm` /
 /// `mkl_jit_get_*gemm_ptr` variants for f32 / f64 / Complex32 /
 /// Complex64.
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait JitGemmScalar: Copy + 'static {
     /// Function-pointer type the kernel returns to.
     type Kernel: Copy;

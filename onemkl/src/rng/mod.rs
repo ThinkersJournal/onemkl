@@ -820,7 +820,10 @@ impl Drop for Stream {
 
 /// Floating-point scalar types supported by the VSL distribution
 /// generators ([`f32`] and [`f64`]).
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait RngFloat: Copy + 'static {
     /// Raw `rng_uniform` call.
     ///

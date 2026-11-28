@@ -9,7 +9,10 @@ use onemkl_sys::{self as sys, MKL_INT};
 use crate::scalar::{ComplexScalar, RealScalar, Scalar};
 
 /// LAPACK operations supported across all four scalar types.
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait LapackScalar: Scalar {
     // ---- Linear solvers ----
 
@@ -846,7 +849,10 @@ pub trait LapackScalar: Scalar {
 }
 
 /// Real-only LAPACK operations.
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait RealLapackScalar: LapackScalar + RealScalar {
     /// `LAPACKE_*sysv` — symmetric solve.
     ///
@@ -1062,7 +1068,10 @@ pub trait RealLapackScalar: LapackScalar + RealScalar {
 }
 
 /// Complex-only LAPACK operations.
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait ComplexLapackScalar: LapackScalar + ComplexScalar {
     /// `LAPACKE_*hesv` — Hermitian solve.
     ///

@@ -1150,7 +1150,10 @@ fn transposed_shape(op: Operation, rows: usize, cols: usize) -> (usize, usize) {
 // =====================================================================
 
 /// Real-only sparse routines, currently the QR family.
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait RealSparseScalar: SparseScalar {
     /// Raw `sparse_qr_factorize` call.
     ///

@@ -2813,7 +2813,10 @@ pub fn larfb<T: LapackScalar>(
 
 /// Complex scalar types with the complex-only auxiliary routines
 /// (`?lacgv`, `?lacrm`).
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait ComplexAuxScalar: Copy + 'static {
     /// The matching real scalar (`f32` for `Complex32`, `f64` for `Complex64`).
     type Real: Copy + 'static;
@@ -2947,7 +2950,10 @@ pub fn lacrm<T: ComplexAuxScalar>(
 
 /// Scalar types with the symmetric Bunch-Kaufman routines [`sytrf`] and
 /// [`syconv`] (real and complex *symmetric*, not Hermitian).
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "dispatch trait: per-precision shims over the oneMKL routine of the same name; the documented surface is the free function that calls them"
+)]
 pub trait SymConvScalar: Copy + 'static {
     /// Raw `lapacke_sytrf` call.
     ///

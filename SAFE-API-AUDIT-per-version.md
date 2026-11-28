@@ -124,3 +124,37 @@ sparse `SparseMatrix::from_csr` (row_ptr end 5, one entry); `pardiso` solve (ia 
 **Measured affected range for the eleven probe cases: 0.3.0 .. 0.6.11 (all 23 published versions in that range, run one by one); 0.1.0 and 0.2.0 static only.**
 Latest published at the time: 0.6.11 (0.7.1, the first fixed version, is merged on main, not on crates.io at the time of writing).
 Scope limit: these 11 cases are a sample of the 60 probed on bcf7f80, not all of them per version.
+
+## MEASURED on the PUBLISHED 0.7.1 and 0.6.11 (positive control) — oneMKL 2026.2 on WSL (Linux x86_64) ONLY
+
+Same run, same harness: the three probe files of the audit (`lapack_safe_api`, `blas_safe_api`, `sparse_safe_api`, 60 cases, one
+process per case) plus two probes of the breaking set, built against `onemkl = "=0.6.11"` and `onemkl = "=0.7.1"` from crates.io.
+0.7.1 is the PR #56 patch release (0d26584). rc 139/134 = FAULT, 101 = ACCEPTED (returned Ok), 0 = returned Err.
+
+| outcome (cases) | 0.6.11 (control) | 0.7.1 (published fix) |
+|---|---|---|
+| FAULT (139/134), of the 60 | 32 + 1 abort | 0 |
+| ACCEPTED (Ok), of the 60 | 22 | 0 |
+| Err, of the 60 | 6 | 60 |
+| breaking set: `gemm_batch` null pointer | FAULT | **FAULT (still)** |
+| breaking set: `pardiso_64_raw` short slices | Err (MKL rejected; not a measured fault) | Err (same) |
+
+Per family (a version column per family; "affected" = a probed case faults or is accepted):
+
+| family | affected, measured | affected, source read only | fixed |
+|---|---|---|---|
+| lapack (25 cases) | 0.3.0 .. 0.6.11 (4 cases run on all 23; all 25 on 0.6.11 and fixed on 0.7.1) | 0.1.0, 0.2.0 | **0.7.1 (measured)** |
+| blas (16 cases: band views, strided batch, omatcopy2, packed/compact) | 0.3.0 .. 0.6.11 (2 cases on all 23; all 16 on 0.6.11) | 0.1.0, 0.2.0 | **0.7.1 (measured)** |
+| sparse / dss / pardiso / ilu / feast / iss (19 cases) | 0.3.0 .. 0.6.11 (5 cases on all 23; all 19 on 0.6.11) | 0.1.0, 0.2.0 | **0.7.1 (measured)** |
+| breaking set: `gemm_batch` / `gemv_batch` / `trsm_batch` (raw pointer arrays in safe fns) | `gemm_batch` null pointer FAULT on 0.6.11 and 0.7.1 only (earlier versions not run) | all (static) | NOT fixed in any published version; 0.8.0 (#57, merged-pending) makes them `unsafe` |
+| breaking set: `pardiso_64_raw`, `Pardiso::export`, `*ExArgs`, `DataFittingScalar` | NOT MEASURED as faults (`pardiso_64_raw` short-slice probe returned Err) | static only | not fixed in any published version; 0.8.0 |
+
+So "last published before the fix" is **0.6.11 for the three patched families** and **0.7.1 (still unfixed) for the breaking set**.
+
+## NOT MEASURED: 49 of 60 cases per version (the 23 versions 0.3.0..0.6.11)
+
+Only 11 of the 60 probe cases were run on each of the 23 older versions; the other 49 ran on 0.6.11 and 0.7.1 and (on bcf7f80) only there:
+- lapack: 21 of 25 not run per version (all but `gbsv` `pbsv` `gttrs` `spsv`): gbtrf gbtrs pbtrf pbtrs gtsv gttrf ptsv pttrs_real sptrs ppsv pptrs hptrs getrs getri laswp(x2) gels geev_real gesdd larfg.
+- blas: 14 of 16 not run per version (all but `omatcopy2`, `gemm_batch_strided`): gbmv(x2) tbmv tbsv sbmv gemm3m/gemv/trsm/dgmm/axpy_batch_strided gemm_compute_packed_a/_b pack_a compact_gemm.
+- sparse family: 14 of 19 not run per version (all but dss solve, pardiso solve, apply_ilu, feast csr, from_csr): from_csr(x4 more) from_coo mm dss define_structure/factor_real/solve_real(-1) pardiso solve(short x) get_diagonal ilu0 ilut feast n=0 fgmres step.
+Also not run per version: 0.1.0 and 0.2.0 (see above), Windows, macOS.

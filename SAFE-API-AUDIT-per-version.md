@@ -98,3 +98,19 @@ Groups per fn (non-lapack/blas): from_csr/from_coo/define_structure/factor_real/
   apply_ilu in 0.1.0 using the legacy `mkl_dcsrtrsv` instead of the sparse handle API (0.2.0+); Dss/Pardiso/sparse constructors otherwise unchanged.
 - Part of a probe set can be REJECTED by an existing check (gtsv dl/du length, gbmv leading_dim, dss nrhs<0 [MKL], ilu0/ilut ia content [MKL], eigh_real_csr n=0 [MKL]); the fn is still UNCHECKED for the other probed class.
 - Caveats: static reading of bodies only; helpers called by bodies (ensure_layout, dim_to_mkl_int, check_vec_len [2 groups, rustfmt only]) were not diffed except where cited; no runtime per version.
+
+## MEASURED (runtime) per-version probes — oneMKL 2026.2 on WSL (Linux x86_64) ONLY
+
+Method: a probe crate depending on `onemkl = "=<version>"` from crates.io, one binary per case, each calls the
+safe fn with an undersized/empty buffer and prints whether it returned. rc 139 = SIGSEGV (FAULT, MEASURED).
+Cases: lapack `gbsv`, `pbsv`, `gttrs`, `spsv`; blas `omatcopy2`, `gemm_batch_strided`; dss `solve_real` (nrhs 1000, 3-entry b/x).
+
+| version | lapack gbsv/pbsv/gttrs/spsv | blas omatcopy2 / gemm_batch_strided | dss solve_real |
+|---|---|---|---|
+| 0.6.11, 0.6.7, 0.6.5, 0.6.1, 0.5.2, 0.4.15, 0.4.3, 0.4.2, 0.3.8, 0.3.0 | FAULT (139) x4 | FAULT (139) x2 | NOT MEASURED (binary exited 127: harness problem, not a result) |
+| 0.1.0 | NOT MEASURED (probe did not compile against 0.1.0: API differs or build failed) | NOT MEASURED | NOT MEASURED |
+
+Versions not run at runtime: 0.2.0 0.3.4 0.3.10 0.3.11 0.4.4 0.4.5 0.4.6 0.4.8 0.4.11 0.4.16 0.5.0 0.5.1 0.6.0 0.6.8
+(their sources are covered by the static table above and by md5 identity groups; 0.6.8 == 0.6.11 byte-identical
+for the audited modules). Sparse, PARDISO, ILU and FEAST probes were NOT run per version (only on bcf7f80).
+So for the six lapack/blas probes the earliest runtime-measured fault is 0.3.0 and the latest 0.6.11; 0.1.0 and 0.2.0 are static only.

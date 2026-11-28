@@ -158,3 +158,34 @@ Only 11 of the 60 probe cases were run on each of the 23 older versions; the oth
 - blas: 14 of 16 not run per version (all but `omatcopy2`, `gemm_batch_strided`): gbmv(x2) tbmv tbsv sbmv gemm3m/gemv/trsm/dgmm/axpy_batch_strided gemm_compute_packed_a/_b pack_a compact_gemm.
 - sparse family: 14 of 19 not run per version (all but dss solve, pardiso solve, apply_ilu, feast csr, from_csr): from_csr(x4 more) from_coo mm dss define_structure/factor_real/solve_real(-1) pardiso solve(short x) get_diagonal ilu0 ilut feast n=0 fgmres step.
 Also not run per version: 0.1.0 and 0.2.0 (see above), Windows, macOS.
+
+## MEASURED on the PUBLISHED 0.8.1 (control 0.7.1 in the SAME run) — oneMKL 2026.2 on WSL (Linux x86_64) ONLY
+
+0.8.1 (published 12:23Z on 965d6eea; five fns `unsafe`, sealed trait, non_exhaustive structs, plus the "What 0.7.1 left" paragraph).
+Harness: the 60 audit probes (one process per case) plus five breaking-set probe files, each built against
+`onemkl = "=0.7.1"` and `onemkl = "=0.8.1"` from crates.io in one run.
+
+**60 cases:** 0.7.1: 60 Err; 0.8.1: 60 Err (the patched families stay fixed). 0 FAULT, 0 ACCEPTED on both.
+
+**Breaking set.** The 0.8.1 items cannot be called safely any more, so a probe that calls them as safe code
+no longer builds: that is "MOVED BEHIND `unsafe` / refused by the type system", NOT "0 faults".
+
+| item | 0.7.1 (safe call builds and runs) | 0.8.1 (same safe-code probe) | how it is gone |
+|---|---|---|---|
+| `gemm_batch` (and `gemv_batch`, `trsm_batch`: same signature shape, not separately probed) with a null pointer entry | **FAULT (rc 139)**, MEASURED | does not compile: E0133 (call to unsafe fn requires an unsafe block) | MOVED BEHIND `unsafe`: no safe-code fault is reachable; an `unsafe` caller can still fault (that is the contract) |
+| `pardiso_64_raw` called as safe code | builds; the short-slice probe returned Err (no fault ever measured); the other probe exited rc 127 (harness: NOT MEASURED) | does not compile: E0133 | MOVED BEHIND `unsafe` |
+| `Pardiso::export` called as safe code | builds; returned (rc 0), no fault measured | does not compile: E0133 | MOVED BEHIND `unsafe` |
+| `InterpolateExArgs` struct literal outside the crate | builds | does not compile: E0639 (non_exhaustive) | refused by the type system |
+| `impl DataFittingScalar for W {}` downstream | rejected only for the missing methods (E0046): an impl that supplies them builds | rejected for the missing methods AND by the sealed supertrait (E0277): cannot be satisfied | sealed (probe does not supply the methods, so on 0.7.1 it shows E0046 only) |
+
+Per family, first affected .. last published before the family's fix (MEASURED where stated; everything earlier than
+0.3.0 and the 14 versions/49 cases listed above stay as stated there):
+
+| family | first affected | last published before the fix | fixed in |
+|---|---|---|---|
+| lapack / blas / sparse / dss / pardiso / ilu / feast / iss (patched) | 0.3.0 measured (0.1.0 by source read) | 0.6.11 | 0.7.1 (measured: 60 Err on 0.7.1 and on 0.8.1) |
+| `gemm_batch` / `gemv_batch` / `trsm_batch` | 0.1.0 by source read; fault measured on 0.6.11 and 0.7.1 only | 0.7.1 | 0.8.1 (moved behind `unsafe`) |
+| `pardiso_64_raw`, `Pardiso::export`, `*ExArgs`, `DataFittingScalar` | 0.1.0 by source read; NO fault ever measured | 0.7.1 | 0.8.1 (moved behind `unsafe` / sealed / non_exhaustive) |
+
+NOT MEASURED (unchanged): 49 of 60 cases per older version (21/25 lapack, 14/16 blas, 14/19 sparse family); 0.1.0 and 0.2.0 at runtime;
+`gemv_batch` and `trsm_batch` null-pointer faults; any `unsafe` caller's behaviour; Windows and macOS.

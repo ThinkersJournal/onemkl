@@ -12,6 +12,19 @@
 //! arrays or dense buffers that do not match the dimensions they were
 //! passed with. Each call must now return `Err` *before* the FFI call.
 
+/// Run one probe case: with `PROBE=<line>` only that case runs (one process
+/// per case, so a fault in one does not hide the others); the call must
+/// return `Err` before reaching the FFI.
+macro_rules! case {
+    ($e:expr) => {{
+        let id = line!().to_string();
+        match std::env::var("PROBE") {
+            Ok(v) if v != id => {}
+            _ => assert!($e, "probe case at line {id} returned Ok"),
+        }
+    }};
+}
+
 use onemkl::UpLo;
 use onemkl::dss::{Definite, Dss, IndexBase as DssBase, Symmetry};
 use onemkl::feast::eigh_real_csr;
@@ -23,22 +36,22 @@ use onemkl::sparse::{DenseLayout, IndexBase, MatrixDescr, Operation, SparseMatri
 #[test]
 fn csr_content_is_validated() {
     // row_ptr[1] = 5 but only one stored entry.
-    assert!(
+    case!(
         SparseMatrix::<f64>::from_csr(1, 1, IndexBase::Zero, vec![0, 5], vec![0], vec![1.0])
             .is_err()
     );
     // column index out of range.
-    assert!(
+    case!(
         SparseMatrix::<f64>::from_csr(1, 1, IndexBase::Zero, vec![0, 1], vec![7], vec![1.0])
             .is_err()
     );
     // 1-based indexing with 0-based arrays.
-    assert!(
+    case!(
         SparseMatrix::<f64>::from_csr(1, 1, IndexBase::One, vec![0, 1], vec![0], vec![1.0])
             .is_err()
     );
     // non-monotonic row_ptr.
-    assert!(
+    case!(
         SparseMatrix::<f64>::from_csr(
             2,
             2,
@@ -50,7 +63,7 @@ fn csr_content_is_validated() {
         .is_err()
     );
     // COO index out of range.
-    assert!(
+    case!(
         SparseMatrix::<f64>::from_coo(1, 1, IndexBase::Zero, vec![9], vec![0], vec![1.0]).is_err()
     );
 }
@@ -68,7 +81,7 @@ fn dense_operands_of_mm_are_checked() {
     .unwrap();
     let x = [0.0f64; 1];
     let mut y = [0.0f64; 1];
-    assert!(
+    case!(
         a.mm(
             Operation::NoTrans,
             1.0,
@@ -88,7 +101,7 @@ fn dense_operands_of_mm_are_checked() {
 #[test]
 fn dss_buffers_are_checked() {
     let mut d = Dss::<f64>::new().unwrap();
-    assert!(
+    case!(
         d.define_structure(Symmetry::NonSymmetric, 1, 1, &[1, 100], &[1], DssBase::One)
             .is_err()
     );
@@ -102,41 +115,41 @@ fn dss_buffers_are_checked() {
     )
     .unwrap();
     d.reorder().unwrap();
-    assert!(d.factor_real(Definite::Indefinite, &[1.0]).is_err());
+    case!(d.factor_real(Definite::Indefinite, &[1.0]).is_err());
     d.factor_real(Definite::Indefinite, &[1.0, 1.0, 1.0])
         .unwrap();
-    assert!(d.solve_real(&[0.0; 3], 1000, &mut [0.0; 3]).is_err());
-    assert!(d.solve_real(&[0.0; 3], -1, &mut [0.0; 3]).is_err());
+    case!(d.solve_real(&[0.0; 3], 1000, &mut [0.0; 3]).is_err());
+    case!(d.solve_real(&[0.0; 3], -1, &mut [0.0; 3]).is_err());
 }
 
 #[test]
 fn pardiso_buffers_are_checked() {
     let mut p = Pardiso::<f64>::new(PardisoMatrixType::RealStructSym).with_indexing(PBase::One);
     // ia says 5 stored entries; a / ja hold one.
-    assert!(
+    case!(
         p.solve(3, &[1.0], &[1, 2, 3, 6], &[1], &[0.0; 3], &mut [0.0; 3])
             .is_err()
     );
     // x too short for n * nrhs.
     let ia = [1, 2, 3, 4];
     let ja = [1, 2, 3];
-    assert!(
+    case!(
         p.solve(3, &[1.0; 3], &ia, &ja, &[0.0; 3], &mut [0.0; 1])
             .is_err()
     );
     // get_diagonal with an n other than the factorized order.
     let mut q = Pardiso::<f64>::new(PardisoMatrixType::RealStructSym).with_diagonal_enabled();
     q.analyze_and_factorize(3, &[1.0; 3], &ia, &ja).unwrap();
-    assert!(q.get_diagonal(1).is_err());
+    case!(q.get_diagonal(1).is_err());
 }
 
 #[test]
 fn ilu_and_feast_csr_content_is_validated() {
-    assert!(ilu0(2, &[1.0], &[1, 5, 9], &[1]).is_err());
-    assert!(ilut(2, &[1.0], &[1, 5, 9], &[1], 0.0, 1).is_err());
-    assert!(apply_ilu(2, &[2.0], &[1, 2, 9], &[1], &[1.0, 1.0]).is_err());
-    assert!(eigh_real_csr::<f64>(UpLo::Upper, 1, &[1.0], &[1, 50], &[1], 0.0, 1.0, 1).is_err());
-    assert!(eigh_real_csr::<f64>(UpLo::Upper, 0, &[], &[1], &[], 0.0, 1.0, 1).is_err());
+    case!(ilu0(2, &[1.0], &[1, 5, 9], &[1]).is_err());
+    case!(ilut(2, &[1.0], &[1, 5, 9], &[1], 0.0, 1).is_err());
+    case!(apply_ilu(2, &[2.0], &[1, 2, 9], &[1], &[1.0, 1.0]).is_err());
+    case!(eigh_real_csr::<f64>(UpLo::Upper, 1, &[1.0], &[1, 50], &[1], 0.0, 1.0, 1).is_err());
+    case!(eigh_real_csr::<f64>(UpLo::Upper, 0, &[], &[1], &[], 0.0, 1.0, 1).is_err());
 }
 
 #[test]
@@ -146,5 +159,5 @@ fn fgmres_step_buffers_are_checked() {
     let mut s = FgmresSession::new(3, &b3, &x3, IssOptions::default()).unwrap();
     let mut b1 = [1.0f64];
     let mut x1 = [0.0f64];
-    assert!(s.step(&mut b1, &mut x1).is_err());
+    case!(s.step(&mut b1, &mut x1).is_err());
 }

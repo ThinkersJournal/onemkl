@@ -5,6 +5,19 @@
 //! below used to reach MKL with a buffer shorter than the kernel reads or
 //! writes. Each must now return `Err` *before* the FFI call.
 
+/// Run one probe case: with `PROBE=<line>` only that case runs (one process
+/// per case, so a fault in one does not hide the others); the call must
+/// return `Err` before reaching the FFI.
+macro_rules! case {
+    ($e:expr) => {{
+        let id = line!().to_string();
+        match std::env::var("PROBE") {
+            Ok(v) if v != id => {}
+            _ => assert!($e, "probe case at line {id} returned Ok"),
+        }
+    }};
+}
+
 use onemkl::blas::compact::{CompactFormat, gemm as compact_gemm};
 use onemkl::blas::extensions::{
     axpy_batch_strided, dgmm_batch_strided, gemm_batch_strided, gemm3m_batch_strided,
@@ -23,7 +36,7 @@ fn banded_views_must_cover_the_band() {
     let a1 = MatrixRef::new(&one, 1, 1, COL).unwrap();
     let x = vec![0.0f64; 1000];
     let mut y = vec![0.0f64; 1000];
-    assert!(
+    case!(
         gbmv::<f64>(
             Transpose::NoTrans,
             &empty,
@@ -40,7 +53,7 @@ fn banded_views_must_cover_the_band() {
         )
         .is_err()
     );
-    assert!(
+    case!(
         gbmv::<f64>(
             Transpose::NoTrans,
             &a1,
@@ -58,7 +71,7 @@ fn banded_views_must_cover_the_band() {
         .is_err()
     );
     let mut xm = vec![1.0f64; 100];
-    assert!(
+    case!(
         tbmv::<f64>(
             UpLo::Upper,
             Transpose::NoTrans,
@@ -71,7 +84,7 @@ fn banded_views_must_cover_the_band() {
         )
         .is_err()
     );
-    assert!(
+    case!(
         tbsv::<f64>(
             UpLo::Upper,
             Transpose::NoTrans,
@@ -84,14 +97,14 @@ fn banded_views_must_cover_the_band() {
         )
         .is_err()
     );
-    assert!(sbmv::<f64>(UpLo::Upper, 1000, 0, 1.0, &a1, &x, 1, 0.0, &mut y, 1).is_err());
+    case!(sbmv::<f64>(UpLo::Upper, 1000, 0, 1.0, &a1, &x, 1, 0.0, &mut y, 1).is_err());
 }
 
 #[test]
 fn omatcopy2_buffers_are_checked() {
     let a = [1.0f64];
     let mut b = [0.0f64];
-    assert!(
+    case!(
         omatcopy2::<f64>(
             COL,
             Transpose::NoTrans,
@@ -112,7 +125,7 @@ fn omatcopy2_buffers_are_checked() {
 #[test]
 fn strided_batches_are_checked() {
     let mut c = [];
-    assert!(
+    case!(
         gemm_batch_strided::<f64>(
             COL,
             Transpose::NoTrans,
@@ -135,7 +148,7 @@ fn strided_batches_are_checked() {
         )
         .is_err()
     );
-    assert!(
+    case!(
         gemm3m_batch_strided::<num_complex::Complex64>(
             COL,
             Transpose::NoTrans,
@@ -158,7 +171,7 @@ fn strided_batches_are_checked() {
         )
         .is_err()
     );
-    assert!(
+    case!(
         gemv_batch_strided::<f64>(
             COL,
             Transpose::NoTrans,
@@ -179,7 +192,7 @@ fn strided_batches_are_checked() {
         )
         .is_err()
     );
-    assert!(
+    case!(
         trsm_batch_strided::<f64>(
             COL,
             Side::Left,
@@ -199,7 +212,7 @@ fn strided_batches_are_checked() {
         )
         .is_err()
     );
-    assert!(
+    case!(
         dgmm_batch_strided::<f64>(
             COL,
             Side::Left,
@@ -221,7 +234,7 @@ fn strided_batches_are_checked() {
     // Negative batch stride reaches before the start of the slice.
     let x = [0.0f64; 20];
     let mut y = [0.0f64; 20];
-    assert!(axpy_batch_strided::<f64>(10, 1.0, &x, 1, -10, &mut y, 1, 10, 2).is_err());
+    case!(axpy_batch_strided::<f64>(10, 1.0, &x, 1, -10, &mut y, 1, 10, 2).is_err());
 }
 
 #[test]
@@ -229,7 +242,7 @@ fn packed_compute_buffers_are_checked() {
     let src = vec![1.0f64; 64 * 64];
     let pa =
         PackedMatrix::<f64>::pack_a(COL, Transpose::NoTrans, 64, 64, 64, 1.0, &src, 64).unwrap();
-    assert!(
+    case!(
         gemm_compute_packed_a::<f64>(
             COL,
             Transpose::NoTrans,
@@ -247,7 +260,7 @@ fn packed_compute_buffers_are_checked() {
     );
     let pb =
         PackedMatrix::<f64>::pack_b(COL, Transpose::NoTrans, 64, 64, 64, 1.0, &src, 64).unwrap();
-    assert!(
+    case!(
         gemm_compute_packed_b::<f64>(
             COL,
             Transpose::NoTrans,
@@ -264,7 +277,7 @@ fn packed_compute_buffers_are_checked() {
         .is_err()
     );
     // ld smaller than the contiguous dimension.
-    assert!(
+    case!(
         PackedMatrix::<f64>::pack_a(
             Layout::RowMajor,
             Transpose::NoTrans,
@@ -281,7 +294,7 @@ fn packed_compute_buffers_are_checked() {
 
 #[test]
 fn compact_gemm_buffers_are_checked() {
-    assert!(
+    case!(
         compact_gemm::<f64>(
             COL,
             Transpose::NoTrans,

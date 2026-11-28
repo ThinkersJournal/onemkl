@@ -227,18 +227,22 @@ fn pardiso_64_raw_solves_3x3_spd() {
     let mut no_x: [f64; 0] = [];
 
     // Phase 13 = analyze + factorize + solve.
-    pardiso_64_raw::<f64>(
-        &mut pt, 1, 1, mtype, 13, 3, &a, &ia, &ja, None, 1, &mut iparm, 0, &b, &mut x,
-    )
+    unsafe {
+        pardiso_64_raw::<f64>(
+            &mut pt, 1, 1, mtype, 13, 3, &a, &ia, &ja, None, 1, &mut iparm, 0, &b, &mut x,
+        )
+    }
     .unwrap();
     assert_abs_diff_eq!(x[0], 1.0, epsilon = 1e-10);
     assert_abs_diff_eq!(x[1], 1.0, epsilon = 1e-10);
     assert_abs_diff_eq!(x[2], 1.0, epsilon = 1e-10);
 
     // Phase -1 = release all internal memory.
-    pardiso_64_raw::<f64>(
-        &mut pt, 1, 1, mtype, -1, 3, &a, &ia, &ja, None, 0, &mut iparm, 0, &no_b, &mut no_x,
-    )
+    unsafe {
+        pardiso_64_raw::<f64>(
+            &mut pt, 1, 1, mtype, -1, 3, &a, &ia, &ja, None, 0, &mut iparm, 0, &no_b, &mut no_x,
+        )
+    }
     .unwrap();
 }
 
@@ -252,9 +256,11 @@ fn pardiso_64_raw_rejects_complex_real_mismatch() {
     let mut x = vec![0.0_f64];
     let mut pt: [*mut core::ffi::c_void; 64] = [core::ptr::null_mut(); 64];
     let mut iparm: [i64; 64] = [0; 64];
-    let r = pardiso_64_raw::<f64>(
-        &mut pt, 1, 1, 13, 13, 1, &a, &ia, &ja, None, 1, &mut iparm, 0, &b, &mut x,
-    );
+    let r = unsafe {
+        pardiso_64_raw::<f64>(
+            &mut pt, 1, 1, 13, 13, 1, &a, &ia, &ja, None, 1, &mut iparm, 0, &b, &mut x,
+        )
+    };
     assert!(r.is_err());
 }
 

@@ -559,7 +559,10 @@ pub fn gemm_batch_strided<T: BlasScalar>(
 /// Each `A` pointer must point to at least `lda * (op==NoTrans ? K :
 /// M)` (or appropriate) elements; same for `B` and `C`. The lifetime
 /// of the underlying buffers must extend through the call.
-pub fn gemm_batch<T: BlasScalar>(layout: Layout, groups: &mut [GemmBatchGroup<T>]) -> Result<()> {
+pub unsafe fn gemm_batch<T: BlasScalar>(
+    layout: Layout,
+    groups: &mut [GemmBatchGroup<T>],
+) -> Result<()> {
     if groups.is_empty() {
         return Ok(());
     }
@@ -643,7 +646,10 @@ pub fn gemm_batch<T: BlasScalar>(layout: Layout, groups: &mut [GemmBatchGroup<T>
 ///
 /// Each pointer must point to a buffer of the appropriate size for
 /// the operation; lifetimes must extend through the call.
-pub fn gemv_batch<T: BlasScalar>(layout: Layout, groups: &mut [GemvBatchGroup<T>]) -> Result<()> {
+pub unsafe fn gemv_batch<T: BlasScalar>(
+    layout: Layout,
+    groups: &mut [GemvBatchGroup<T>],
+) -> Result<()> {
     if groups.is_empty() {
         return Ok(());
     }
@@ -717,7 +723,10 @@ pub fn gemv_batch<T: BlasScalar>(layout: Layout, groups: &mut [GemvBatchGroup<T>
 /// Each pointer must point to a buffer of the appropriate size for
 /// the operation; lifetimes must extend through the call. Each `B`
 /// matrix is overwritten with the solution `X`.
-pub fn trsm_batch<T: BlasScalar>(layout: Layout, groups: &mut [TrsmBatchGroup<T>]) -> Result<()> {
+pub unsafe fn trsm_batch<T: BlasScalar>(
+    layout: Layout,
+    groups: &mut [TrsmBatchGroup<T>],
+) -> Result<()> {
     if groups.is_empty() {
         return Ok(());
     }

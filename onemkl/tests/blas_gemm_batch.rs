@@ -46,7 +46,7 @@ fn three_2x2_gemms_uniform_shape() {
         c_array: &c_ptrs,
     }];
 
-    gemm_batch(Layout::RowMajor, &mut groups).unwrap();
+    unsafe { gemm_batch(Layout::RowMajor, &mut groups) }.unwrap();
 
     // GEMM 0: A0 * I = A0
     assert_abs_diff_eq!(c0[0], 1.0, epsilon = 1e-12);
@@ -121,7 +121,7 @@ fn two_groups_different_shapes() {
         },
     ];
 
-    gemm_batch(Layout::RowMajor, &mut groups).unwrap();
+    unsafe { gemm_batch(Layout::RowMajor, &mut groups) }.unwrap();
 
     // 2×2 result: A0 * B0 = [[1*5+2*7, 1*6+2*8], [3*5+4*7, 3*6+4*8]]
     //                     = [[19, 22], [43, 50]]
@@ -136,7 +136,7 @@ fn two_groups_different_shapes() {
 #[test]
 fn empty_groups_is_noop() {
     let mut groups: [GemmBatchGroup<f64>; 0] = [];
-    gemm_batch(Layout::RowMajor, &mut groups).unwrap();
+    unsafe { gemm_batch(Layout::RowMajor, &mut groups) }.unwrap();
 }
 
 #[test]
@@ -164,7 +164,7 @@ fn array_length_mismatch_rejected() {
         b_array: &b_ptrs,
         c_array: &c_ptrs,
     }];
-    let r = gemm_batch(Layout::RowMajor, &mut groups);
+    let r = unsafe { gemm_batch(Layout::RowMajor, &mut groups) };
     assert!(r.is_err());
 }
 
@@ -193,7 +193,7 @@ fn complex_z_gemm_batch() {
         b_array: &b_ptrs,
         c_array: &c_ptrs,
     }];
-    gemm_batch(Layout::RowMajor, &mut groups).unwrap();
+    unsafe { gemm_batch(Layout::RowMajor, &mut groups) }.unwrap();
     assert_abs_diff_eq!(c[0].re, 0.0, epsilon = 1e-12);
     assert_abs_diff_eq!(c[0].im, 2.0, epsilon = 1e-12);
 }

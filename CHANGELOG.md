@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.8.0 - 2026-11-28 (PM-allocated; **Breaking**; written by pm-assist from the diff and the lane's READY)
+
+- **Breaking (safe-API memory safety):** `blas::gemm_batch`, `gemv_batch`, `trsm_batch`, `pardiso::pardiso_64_raw` and `Pardiso::export` become `unsafe fn` (they take raw pointers or sizes the wrapper cannot check). `data_fitting::DataFittingScalar` is sealed. `SearchExArgs`, `IntegrateExArgs` and `InterpolateExArgs` become `#[non_exhaustive]`. Callers: the lane's git grep over fuel and cpufish found 0 callers (control: `onemkl::` in 3 files each); other repos not searched by the lane.
+- **Measured:** oneMKL 2026.2 under WSL (Linux x86_64) ONLY. `gemm_batch` with a null pointer SEGFAULTS on bcf7f80 (measured). `pardiso_64_raw` and `Pardiso::export` are NOT measured as faults: made `unsafe` on the static reading only. lp64 82 tests ok, the ilp64 CI feature set 82 ok, clippy clean. Windows and macOS UNMEASURED.
+- **Yank of ALL affected versions and a GHSA are CireSnave board 526 B / 527, decided after the audit, not by this PR.**
+
 ## 0.7.1 - 2026-11-28 (PM-allocated; safe-API memory safety: no signature change: a patch; written by pm-assist from the diff and the lane's audit)
 
 - **Fixed (safe-API memory safety):** the safe wrappers of `lapack`, `blas` (level2, extensions, packed, compact), `sparse`, `dss`, `pardiso`, `preconditioners` (ilu), `feast` and `iss` now check slice lengths, leading dimensions, strides and index ranges before the FFI call and return `Err`. Measured on oneMKL 2026.2 under WSL (Linux x86_64) ONLY, one probe process per case, against the unfixed `origin/main` bcf7f80 (= 0.7.0 development): 32 FAULT (SIGSEGV/abort), 22 ACCEPTED (the unfixed call returned `Ok` for invalid input; no fault observed, not counted as a measured hole), 6 already `Err`; after the fix all 60 probes return `Err`; 82 test binaries green. Windows and macOS are UNMEASURED. `docs/SAFE-API-AUDIT.md` has the table.

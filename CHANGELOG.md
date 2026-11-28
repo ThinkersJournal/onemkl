@@ -4,10 +4,15 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.8.1 - 2026-11-28 (PM-allocated; CHANGELOG-only: no code change; written by pm-assist)
+
+- The 0.8.0 entry gains its "What 0.7.1 left" bullet (what 0.7.1 did and did not fix, and the affected versions 0.1.0 .. 0.7.1 for the items fixed in 0.8.0). 0.8.0 was never published; 0.8.1 is the 0.8 release.
+
 ## 0.8.0 - 2026-11-28 (PM-allocated; **Breaking**; written by pm-assist from the diff and the lane's READY)
 
 - **Breaking (safe-API memory safety):** `blas::gemm_batch`, `gemv_batch`, `trsm_batch`, `pardiso::pardiso_64_raw` and `Pardiso::export` become `unsafe fn` (they take raw pointers or sizes the wrapper cannot check). `data_fitting::DataFittingScalar` is sealed. `SearchExArgs`, `IntegrateExArgs` and `InterpolateExArgs` become `#[non_exhaustive]`. Callers: the lane's git grep over fuel and cpufish found 0 callers (control: `onemkl::` in 3 files each); other repos not searched by the lane.
 - **Measured:** oneMKL 2026.2 under WSL (Linux x86_64) ONLY. `gemm_batch` with a null pointer SEGFAULTS on bcf7f80 (measured). `pardiso_64_raw` and `Pardiso::export` are NOT measured as faults: made `unsafe` on the static reading only. lp64 82 tests ok, the ilp64 CI feature set 82 ok, clippy clean. Windows and macOS UNMEASURED.
+- **What 0.7.1 left:** 0.7.1 fixed the `lapack` / `blas` / `sparse` / `dss` / `pardiso` / `ilu` / `feast` / `iss` families; it did NOT fix `gemm_batch` (and `gemv_batch` / `trsm_batch`: raw pointer arrays in safe fns; null-pointer `gemm_batch` is a measured FAULT on the published 0.6.11 AND 0.7.1, oneMKL 2026.2 under WSL (Linux) ONLY), nor `pardiso_64_raw`, `Pardiso::export`, the `*ExArgs` structs or `DataFittingScalar` (static reading only, not measured as faults). They are fixed here (breaking). Affected versions for these items: 0.1.0 .. 0.7.1 (0.1.0 and 0.2.0 by source read only; `gemm_batch` measured on 0.6.11 and 0.7.1 only). So for these items the last published version before the fix is 0.7.1, not 0.6.11. Table: `SAFE-API-AUDIT-per-version.md`.
 - **Yank of ALL affected versions and a GHSA are CireSnave board 526 B / 527, decided after the audit, not by this PR.**
 
 ## 0.7.1 - 2026-11-28 (PM-allocated; safe-API memory safety: no signature change: a patch; written by pm-assist from the diff and the lane's audit)

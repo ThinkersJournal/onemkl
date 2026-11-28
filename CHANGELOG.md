@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.6.10 - 2026-11-27 (PM-allocated; CI only, no Rust change; written by pm-assist from the diff)
+
+- **CI:** cross-TARGET clippy jobs for `x86_64-apple-darwin` and `aarch64-apple-darwin` (a Linux runner, the vendored bindings, `-D warnings`), NOT required yet. The lane read both jobs green by name on the head (all 17 runs success); a real macOS host is UNMEASURED.
+
 ## 0.6.9 - 2026-11-27 (PM-allocated; CI only, no Rust change; written by pm-assist from the diff)
 
 - **CI:** the vacuous `cargo clippy (REPORT-ONLY, not required)` job is deleted (it was never a required context; the required `cargo clippy (Linux, -D warnings)` and `(target x86_64-pc-windows-msvc, cross, -D warnings)` jobs from 0.6.8 replace it); the ROADMAP clippy row is rewritten as done.

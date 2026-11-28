@@ -226,17 +226,7 @@ Every non-MPI domain at Comprehensive:
   `cargo fmt --all --check` and
   `cargo clippy --workspace --all-targets -- -D warnings`, made required
   after the cleanup below lands.
-- **Clippy reports 303 findings: schedule the cleanup.** Reason: it gates the
-  row above. Measured on lane/f16 at df1d17c (none is located in #13's added
-  lines; `main` itself was not measured), WSL Ubuntu-24.04, rustc / clippy 1.99.1 (clippy
-  0.1.99), command `cargo clippy --workspace --all-targets -- -D warnings`:
-  303 errors, which stop the build at the `onemkl` lib, so `--all-targets`
-  test and example code is **not yet linted** and the true count is higher.
-  266 are `missing_safety_doc` (mostly `vm/scalar.rs` 90, `lapack/scalar.rs`
-  57, `blas/scalar.rs` 45); the other 37 are `too_many_arguments` 8,
-  `neg_cmp_op_on_partial_ord` 7, `manual_*` 9, `unnecessary_cast` 4, and
-  smaller groups. `cargo fmt --all --check` also reports 1008 diff hunks
-  (the same run).
+- **Clippy cleanup: done (2026-11-27).** The earlier count (303 on lane/f16 at df1d17c, mostly `missing_safety_doc`) was stale: measured at `origin/main` 02b187c with `--keep-going` over `--workspace --all-targets` it was **28 findings** on Windows (11 lints: `useless_vec` 6, `manual_ignore_case_cmp` 4, `useless_conversion` 3, `unnecessary_cast` 3, `manual_is_multiple_of` 3, `neg_cmp_op_on_partial_ord` 2, `needless_range_loop` 2, `byte_char_slices` 2, `approx_constant` 1, `manual_range_contains` 1, `neg_multiply` 1). Fixed: mechanical ones fixed in place, `neg_cmp_op_on_partial_ord` rewritten with `partial_cmp` (same NaN-rejecting meaning), the platform- and interface-dependent `unnecessary_cast` / `useless_conversion` sites (bindgen enum type differs Linux/Windows; `MKL_INT` is i32 under lp64) and one `approx_constant` test literal carry an item-level `#[allow]` with a reason. Result: `cargo clippy --workspace --all-targets -- -D warnings` exits 0 on WSL Ubuntu-24.04 (rustc / clippy 1.99.1) and on Windows (the only remaining output there is cargo's `package.homepage is redundant` manifest warning, not a lint). The CI clippy job is still REPORT-ONLY: making it required is CireSnave's call (asked via pm-kernels).
 
 - **W1: pre-existing lint allows need a reason each (counted, item-level).**
   Measured 2026-11-26 on `origin/main` at 3b18f67f (rustc / clippy 1.99.1,

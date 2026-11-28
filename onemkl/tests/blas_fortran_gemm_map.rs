@@ -35,7 +35,7 @@ fn tr(c: u8) -> Transpose {
 
 /// Stored shape of an operand whose op() is `rows x cols`.
 fn stored(t: u8, rows: usize, cols: usize) -> (usize, usize) {
-    if t.to_ascii_uppercase() == b'N' {
+    if t.eq_ignore_ascii_case(&b'N') {
         (rows, cols)
     } else {
         (cols, rows)
@@ -80,7 +80,7 @@ macro_rules! fortran_gemm_fn {
             let b_ref = MatrixRef::with_lda(b, br, bc, Layout::ColMajor, ldb).unwrap();
             let mut c_ref = MatrixMut::with_lda(c, m, n, Layout::ColMajor, ldc).unwrap();
             let ta_m = if mutant == Mutant::SwapTransA {
-                if ta.to_ascii_uppercase() == b'N' {
+                if ta.eq_ignore_ascii_case(&b'N') {
                     Transpose::Trans
                 } else {
                     Transpose::NoTrans
@@ -118,14 +118,14 @@ macro_rules! ref_gemm_fn {
             ldc: usize,
         ) {
             let ea = |i: usize, l: usize| {
-                if ta.to_ascii_uppercase() == b'N' {
+                if ta.eq_ignore_ascii_case(&b'N') {
                     a[l * lda + i]
                 } else {
                     a[i * lda + l]
                 }
             };
             let eb = |l: usize, j: usize| {
-                if tb.to_ascii_uppercase() == b'N' {
+                if tb.eq_ignore_ascii_case(&b'N') {
                     b[j * ldb + l]
                 } else {
                     b[l * ldb + j]
@@ -300,8 +300,8 @@ fn f16_bits_to_f32(h: u16) -> f32 {
 
 #[test]
 fn hgemm_fortran_mapping_nonsquare_ld() {
-    for ta in [b'N', b'T'] {
-        for tb in [b'N', b'T'] {
+    for ta in *b"NT" {
+        for tb in *b"NT" {
             let (ar, ac) = stored(ta, M, K);
             let (br, bc) = stored(tb, K, N);
             let (lda, ldb, ldc) = (ar + PAD_ROWS, br + 1, M + 3);

@@ -291,6 +291,10 @@ impl CompactScalar for f64 {
 /// Number of scalars needed to hold `num_matrices` compact-packed
 /// matrices of shape `ld × sd` (leading dimension × short dimension)
 /// in the given format. Wraps `mkl_*get_size_compact`.
+#[allow(
+    clippy::useless_conversion,
+    reason = "MKL_INT is i32 under lp64 and i64 under ilp64; the conversion narrows only under ilp64"
+)]
 pub fn get_size<T: CompactScalar>(
     ld: usize,
     sd: usize,

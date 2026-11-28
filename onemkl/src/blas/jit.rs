@@ -48,6 +48,10 @@ pub enum JitStatus {
 
 impl JitStatus {
     #[inline]
+    #[allow(
+        clippy::unnecessary_cast,
+        reason = "the bindgen enum type is u32 on Linux and i32 on Windows; the cast is needed on one of them"
+    )]
     fn from_raw(status: sys::mkl_jit_status_t::Type) -> Result<Self> {
         // Compare against the bindgen-typed constants directly so
         // this works on both Linux (where the type is u32) and

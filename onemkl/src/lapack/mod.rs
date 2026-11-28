@@ -74,6 +74,10 @@ impl Job {
 // =====================================================================
 
 #[inline]
+#[allow(
+    clippy::useless_conversion,
+    reason = "MKL_INT is i32 under lp64 and i64 under ilp64; the conversion narrows only under ilp64"
+)]
 fn check_info(info: MKL_INT) -> Result<()> {
     // `info` is `MKL_INT`; under ILP64 it is 64 bits wide while the error
     // fields stay `MKL_INT`, so a value that does not fit saturates.

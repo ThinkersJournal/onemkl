@@ -39,18 +39,18 @@ fn expected(fmt: RealPackedFormat, n: usize, s: &[(f64, f64)]) -> Vec<f64> {
             v.push(s[0].0);
             for (k, &(re, im)) in s.iter().enumerate().skip(1) {
                 v.push(re);
-                if !(n % 2 == 0 && k == n / 2) {
+                if !(n.is_multiple_of(2) && k == n / 2) {
                     v.push(im);
                 }
             }
         }
         RealPackedFormat::Perm => {
             v.push(s[0].0);
-            if n % 2 == 0 {
+            if n.is_multiple_of(2) {
                 v.push(s[n / 2].0);
             }
             for (k, &(re, im)) in s.iter().enumerate().skip(1) {
-                if n % 2 == 0 && k == n / 2 {
+                if n.is_multiple_of(2) && k == n / 2 {
                     continue;
                 }
                 v.push(re);

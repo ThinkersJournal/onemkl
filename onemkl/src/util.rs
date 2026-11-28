@@ -63,6 +63,10 @@ pub(crate) fn vector_min_len(n: usize, inc: i64) -> usize {
 /// variants. Under `lp64` this is the identity; under `ilp64` a status that
 /// does not fit saturates (statuses are small).
 #[inline]
+#[allow(
+    clippy::useless_conversion,
+    reason = "MKL_INT is i32 under lp64 and i64 under ilp64; the conversion narrows only under ilp64"
+)]
 pub(crate) fn status_i32(status: MKL_INT) -> i32 {
     i32::try_from(status).unwrap_or(if status < 0 { i32::MIN } else { i32::MAX })
 }

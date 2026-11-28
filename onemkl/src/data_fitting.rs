@@ -11,6 +11,7 @@
 //! and [`hermite`](CubicSpline1d::hermite) (which takes user-supplied
 //! first derivatives at each knot).
 
+use core::cmp::Ordering;
 use core::ffi::{c_int, c_longlong, c_void};
 use core::ptr;
 use onemkl_sys::MKL_INT;
@@ -242,10 +243,20 @@ fn check_exact_cell<T: DataFittingScalar>(
     if c > nx {
         return bad();
     }
-    if c > 0 && !(x[c - 1] <= site) {
+    if c > 0
+        && !matches!(
+            x[c - 1].partial_cmp(&site),
+            Some(Ordering::Less | Ordering::Equal)
+        )
+    {
         return bad();
     }
-    if c < nx && !(site <= x[c]) {
+    if c < nx
+        && !matches!(
+            site.partial_cmp(&x[c]),
+            Some(Ordering::Less | Ordering::Equal)
+        )
+    {
         return bad();
     }
     None

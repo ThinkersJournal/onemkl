@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.6.7 - 2026-11-27 (PM-allocated; lint-only, no behaviour change; written by pm-assist from the diff)
+
+- `cargo clippy -D warnings` clean: 28 findings fixed across 14 files (Linux and Windows measured; aarch64 and macOS clippy UNMEASURED) and 7 narrow `#[allow(..., reason = ..)]` kept for cfg-dependent conversions (`MKL_INT` i32/i64, the bindgen enum type u32/i32) and one test literal (`approx_constant`). Lane: WSL clippy exit 0 and 77 tests ok before the final merge of main; Windows clippy no lint output at 21f3110; WSL not re-run after that merge.
+
 ## 0.6.6 - 2026-11-27 (PM-allocated; additive: InterpolateEx1D wrapped, function values with search_cb and the le/re/interior callbacks)
 
 ### Added

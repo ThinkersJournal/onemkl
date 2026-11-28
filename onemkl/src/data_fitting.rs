@@ -158,6 +158,17 @@ pub trait DataFittingScalar: Copy + PartialOrd + 'static {
         cells: &mut [MKL_INT],
         args: &mut SearchExArgs<'_, Self>,
     ) -> c_int;
+
+    /// Raw `df?InterpolateEx1D` call (function values only) with the interpolation and search call-backs of `args` (see [`InterpolateExArgs`]); a panic in a call-back is caught at the C boundary and left in `args.panic`.
+    ///
+    /// # Safety
+    ///
+    /// `task` must be a live Data Fitting task with a constructed spline; `args.out` must be valid for writes of `args.sites.len()` elements (`ny` is 1). The call-backs run on the calling thread.
+    /// **Measured** on oneMKL 2026.2 (`tools/size-probes/df_search2.c`, `df_search3.c`, `df_interp_cb.c`): see `docs/DATA-FITTING-FACTS.md`.
+    unsafe fn df_interpolate_ex_1d(
+        task: DFTaskPtr,
+        args: &mut InterpolateExArgs<'_, Self>,
+    ) -> c_int;
 }
 
 /// What a user-defined search call-back receives (`df?SearchCellsCallBack`).
@@ -398,6 +409,146 @@ pub struct IntegrateExArgs<'a, T: DataFittingScalar> {
     pub search_error: Option<Error>,
 }
 
+/// What a user-defined interpolation call-back receives for the sites of one
+/// region (`df?InterpCallBack`). Cells are the 0-based ones oneMKL passes for
+/// this call-back (cell `k` is `[x[k], x[k + 1])`; 0 for sites left of the
+/// first breakpoint, `nx - 2` for sites at or right of the last).
+#[non_exhaustive]
+pub struct InterpolationPieces<'a, T> {
+    /// Cell of each site.
+    pub cells: &'a [i64],
+    /// The sites of this region, in the order they were passed.
+    pub sites: &'a [T],
+    /// Where to write one function value per site.
+    pub out: &'a mut [T],
+}
+
+/// A user-defined interpolation call-back: fill `out` and return 0, a
+/// negative error code, or a positive warning code.
+pub type InterpolationCallback<'a, T> = &'a mut dyn FnMut(InterpolationPieces<'_, T>) -> i32;
+
+/// The optional call-backs of `df?InterpolateEx1D` (function values). A
+/// `None` entry uses the library's own spline evaluation (or cell search) for
+/// that region. Measured on oneMKL 2026.2 (`tools/size-probes/df_interp_cb.c`):
+/// each present call-back is called at most once per call, with the sites of
+/// its region (`left`: sites left of the first breakpoint, `interior`: sites
+/// from the first to the last breakpoint inclusive, `right`: sites right of the
+/// last), in the order passed, and the library puts each value at its site's
+/// position in the result, also for unsorted sites. Derivative orders are not
+/// wrapped.
+#[non_exhaustive]
+pub struct InterpolateCallbacks<'a, T> {
+    /// For sites left of the first breakpoint.
+    pub left: Option<InterpolationCallback<'a, T>>,
+    /// For sites right of the last breakpoint.
+    pub right: Option<InterpolationCallback<'a, T>>,
+    /// For sites inside the breakpoint range.
+    pub interior: Option<InterpolationCallback<'a, T>>,
+    /// A user-defined cell search, as for [`IntegrateCallbacks::search`]
+    /// (called once with every site).
+    pub search: Option<SearchCallback<'a, T>>,
+}
+
+impl<'a, T> InterpolateCallbacks<'a, T> {
+    /// No call-backs: the library's own evaluation and search everywhere.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the call-back for sites left of the first breakpoint.
+    #[must_use]
+    pub fn left(mut self, f: InterpolationCallback<'a, T>) -> Self {
+        self.left = Some(f);
+        self
+    }
+
+    /// Set the call-back for sites right of the last breakpoint.
+    #[must_use]
+    pub fn right(mut self, f: InterpolationCallback<'a, T>) -> Self {
+        self.right = Some(f);
+        self
+    }
+
+    /// Set the call-back for sites inside the breakpoint range.
+    #[must_use]
+    pub fn interior(mut self, f: InterpolationCallback<'a, T>) -> Self {
+        self.interior = Some(f);
+        self
+    }
+
+    /// Set the user-defined cell search.
+    #[must_use]
+    pub fn search(mut self, f: SearchCallback<'a, T>) -> Self {
+        self.search = Some(f);
+        self
+    }
+}
+
+impl<T> Default for InterpolateCallbacks<'_, T> {
+    fn default() -> Self {
+        Self {
+            left: None,
+            right: None,
+            interior: None,
+            search: None,
+        }
+    }
+}
+
+/// Arguments of [`DataFittingScalar::df_interpolate_ex_1d`].
+#[doc(hidden)]
+pub struct InterpolateExArgs<'a, T: DataFittingScalar> {
+    pub sites: &'a [T],
+    /// Valid for writes of `sites.len()` elements.
+    pub out: *mut T,
+    /// The breakpoints of the task (for checking search cells).
+    pub x: &'a [T],
+    pub callbacks: InterpolateCallbacks<'a, T>,
+    /// Set when a call-back panicked.
+    pub panic: Option<Box<dyn Any + Send>>,
+    /// A problem found in what the search call-back returned.
+    pub search_error: Option<Error>,
+}
+
+struct InterpSlot<'a, T> {
+    f: InterpolationCallback<'a, T>,
+    panic: Option<Box<dyn Any + Send>>,
+}
+
+/// Shared body of the interpolation C trampolines.
+///
+/// # Safety
+///
+/// The pointers are those oneMKL passes to an interpolation call-back: `n`
+/// points to the number of sites and `cell`, `site` and `r` hold that many
+/// elements; `user` is the `InterpSlot` passed with the call-back.
+unsafe fn run_interp_callback<T>(
+    n: *mut c_longlong,
+    cell: *mut c_longlong,
+    site: *mut T,
+    r: *mut T,
+    user: *mut c_void,
+) -> c_int {
+    // SAFETY: per the contract above.
+    unsafe {
+        let slot = &mut *user.cast::<InterpSlot<'_, T>>();
+        let n = usize::try_from(*n).unwrap_or(0);
+        let pieces = InterpolationPieces {
+            cells: core::slice::from_raw_parts(cell, n),
+            sites: core::slice::from_raw_parts(site, n),
+            out: core::slice::from_raw_parts_mut(r, n),
+        };
+        match catch_unwind(AssertUnwindSafe(|| (slot.f)(pieces))) {
+            Ok(status) => status,
+            Err(payload) => {
+                slot.panic = Some(payload);
+                -1
+            }
+        }
+    }
+}
+
 struct CbSlot<'a, T> {
     f: IntegrationCallback<'a, T>,
     panic: Option<Box<dyn Any + Send>>,
@@ -447,6 +598,7 @@ macro_rules! impl_data_fitting_real {
         integrate=$integ:ident,
         integrate_ex=$integ_ex:ident, integr_cb=$cbty:ident,
         search_ex=$search_ex:ident, search_cb=$scbty:ident,
+        interpolate_ex=$interp_ex:ident, interp_cb=$icbty:ident,
     ) => {
         impl DataFittingScalar for $ty {
             unsafe fn df_new_task_1d(
@@ -666,6 +818,99 @@ macro_rules! impl_data_fitting_real {
                     )
                 }
             }
+            unsafe fn df_interpolate_ex_1d(
+                task: DFTaskPtr,
+                args: &mut InterpolateExArgs<'_, Self>,
+            ) -> c_int {
+                unsafe extern "C" fn tramp(
+                    n: *mut c_longlong,
+                    cell: *mut c_longlong,
+                    site: *mut $ty,
+                    r: *mut $ty,
+                    user: *mut c_void,
+                    _library_params: *mut sys::dfInterpCallBackLibraryParams,
+                ) -> c_int {
+                    // SAFETY: oneMKL passes valid arrays and the slot pointer given below.
+                    unsafe { run_interp_callback::<$ty>(n, cell, site, r, user) }
+                }
+                unsafe extern "C" fn search_tramp(
+                    n: *mut c_longlong,
+                    site: *mut $ty,
+                    cell: *mut c_longlong,
+                    flag: *mut c_int,
+                    user: *mut c_void,
+                    _library_params: *mut sys::dfSearchCallBackLibraryParams,
+                ) -> c_int {
+                    // SAFETY: oneMKL passes valid arrays and the `SearchExArgs` pointer given below.
+                    unsafe { run_search_callback::<$ty>(n, site, cell, flag, user) }
+                }
+                fn slot<'a, T>(
+                    f: Option<InterpolationCallback<'a, T>>,
+                ) -> Option<InterpSlot<'a, T>> {
+                    f.map(|f| InterpSlot { f, panic: None })
+                }
+                let mut left = slot(args.callbacks.left.take());
+                let mut right = slot(args.callbacks.right.take());
+                let mut inside = slot(args.callbacks.interior.take());
+                let mut search = args.callbacks.search.take().map(|callback| SearchExArgs {
+                    callback,
+                    x: args.x,
+                    panic: None,
+                    error: None,
+                });
+                let (scb, sp): (sys::$scbty, *const c_void) = match search.as_mut() {
+                    Some(a) => (Some(search_tramp), ptr::from_mut(a).cast_const().cast()),
+                    None => (None, ptr::null()),
+                };
+                fn slot_ptr<T>(s: &mut Option<InterpSlot<'_, T>>) -> *const c_void {
+                    s.as_mut()
+                        .map_or(ptr::null(), |s| ptr::from_mut(s).cast_const().cast())
+                }
+                let cb =
+                    |present: bool| -> sys::$icbty { if present { Some(tramp) } else { None } };
+                let (lcb, rcb, icb) = (
+                    cb(left.is_some()),
+                    cb(right.is_some()),
+                    cb(inside.is_some()),
+                );
+                let (lp, rp, ip) = (
+                    slot_ptr(&mut left),
+                    slot_ptr(&mut right),
+                    slot_ptr(&mut inside),
+                );
+                let dorder: [MKL_INT; 1] = [1];
+                let status = unsafe {
+                    sys::$interp_ex(
+                        task,
+                        sys::DF_INTERP as MKL_INT,
+                        sys::DF_METHOD_PP as MKL_INT,
+                        args.sites.len() as MKL_INT,
+                        args.sites.as_ptr(),
+                        sys::DF_NO_HINT as MKL_INT,
+                        1,
+                        dorder.as_ptr(),
+                        ptr::null(),
+                        args.out,
+                        sys::DF_NO_HINT as MKL_INT,
+                        ptr::null_mut(),
+                        lcb,
+                        lp,
+                        rcb,
+                        rp,
+                        icb,
+                        ip,
+                        scb,
+                        sp,
+                    )
+                };
+                args.panic = left
+                    .and_then(|s| s.panic)
+                    .or_else(|| right.and_then(|s| s.panic))
+                    .or_else(|| inside.and_then(|s| s.panic))
+                    .or_else(|| search.as_mut().and_then(|s| s.panic.take()));
+                args.search_error = search.as_mut().and_then(SearchExArgs::take_error);
+                status
+            }
         }
     };
 }
@@ -681,6 +926,8 @@ impl_data_fitting_real!(
     integr_cb = dfsIntegrCallBack,
     search_ex = dfsSearchCellsEx1D,
     search_cb = dfsSearchCellsCallBack,
+    interpolate_ex = dfsInterpolateEx1D,
+    interp_cb = dfsInterpCallBack,
 );
 impl_data_fitting_real!(
     f64,
@@ -693,6 +940,8 @@ impl_data_fitting_real!(
     integr_cb = dfdIntegrCallBack,
     search_ex = dfdSearchCellsEx1D,
     search_cb = dfdSearchCellsCallBack,
+    interpolate_ex = dfdInterpolateEx1D,
+    interp_cb = dfdInterpCallBack,
 );
 
 // Note: oneMKL's data-fitting routines expose only real (`?s` / `?d`)
@@ -1117,6 +1366,45 @@ impl<T: DataFittingScalar + num_traits::Zero + Default> CubicSpline1d<T> {
     ) -> Result<Vec<usize>> {
         search_cells_impl(self.task, &self._x, sites, callback)
     }
+
+    /// Evaluate like [`interpolate`](Self::interpolate), but with a
+    /// user-defined cell search (`df?InterpolateEx1D` with its `search_cb`).
+    /// oneMKL calls the search once with every site. Same contract as
+    /// [`find_cells_with_callback`](Self::find_cells_with_callback): 1-based
+    /// cells, `exact[i] = 1` or [`DF_STATUS_EXACT_RESULT`] to have cells used
+    /// as given, an exact cell that does not contain its site is
+    /// `Error::SearchCell` (checked before oneMKL uses it: unchecked it gives
+    /// silent zeros), a positive status is `Error::SearchCallbackStatus`, a
+    /// negative one an error, a panic is resumed. Measured:
+    /// `docs/DATA-FITTING-FACTS.md`.
+    pub fn interpolate_with_search_callback<'a>(
+        &'a self,
+        sites: &'a [T],
+        callback: SearchCallback<'a, T>,
+    ) -> Result<Vec<T>> {
+        interpolate_ex_impl(
+            self.task,
+            &self._x,
+            sites,
+            InterpolateCallbacks::new().search(callback),
+        )
+    }
+
+    /// Evaluate like [`interpolate`](Self::interpolate), but with user-defined
+    /// call-backs for the sites left of, inside and right of the breakpoint
+    /// range and/or a user-defined cell search (`df?InterpolateEx1D`); a
+    /// `None` entry uses the library's own evaluation. See
+    /// [`InterpolateCallbacks`] for what each call-back receives. A negative
+    /// call-back status becomes an error, a positive one is a warning and the
+    /// result is kept; a panic in a call-back is resumed here once oneMKL has
+    /// returned. See `docs/DATA-FITTING-FACTS.md` for the measured details.
+    pub fn interpolate_with_callbacks<'a>(
+        &'a self,
+        sites: &'a [T],
+        callbacks: InterpolateCallbacks<'a, T>,
+    ) -> Result<Vec<T>> {
+        interpolate_ex_impl(self.task, &self._x, sites, callbacks)
+    }
 }
 
 impl<T: DataFittingScalar> Drop for CubicSpline1d<T> {
@@ -1299,6 +1587,45 @@ impl<T: DataFittingScalar + Default> LinearSpline1d<T> {
         callback: SearchCallback<'_, T>,
     ) -> Result<Vec<usize>> {
         search_cells_impl(self.task, &self._x, sites, callback)
+    }
+
+    /// Evaluate like [`interpolate`](Self::interpolate), but with a
+    /// user-defined cell search (`df?InterpolateEx1D` with its `search_cb`).
+    /// oneMKL calls the search once with every site. Same contract as
+    /// [`find_cells_with_callback`](Self::find_cells_with_callback): 1-based
+    /// cells, `exact[i] = 1` or [`DF_STATUS_EXACT_RESULT`] to have cells used
+    /// as given, an exact cell that does not contain its site is
+    /// `Error::SearchCell` (checked before oneMKL uses it: unchecked it gives
+    /// silent zeros), a positive status is `Error::SearchCallbackStatus`, a
+    /// negative one an error, a panic is resumed. Measured:
+    /// `docs/DATA-FITTING-FACTS.md`.
+    pub fn interpolate_with_search_callback<'a>(
+        &'a self,
+        sites: &'a [T],
+        callback: SearchCallback<'a, T>,
+    ) -> Result<Vec<T>> {
+        interpolate_ex_impl(
+            self.task,
+            &self._x,
+            sites,
+            InterpolateCallbacks::new().search(callback),
+        )
+    }
+
+    /// Evaluate like [`interpolate`](Self::interpolate), but with user-defined
+    /// call-backs for the sites left of, inside and right of the breakpoint
+    /// range and/or a user-defined cell search (`df?InterpolateEx1D`); a
+    /// `None` entry uses the library's own evaluation. See
+    /// [`InterpolateCallbacks`] for what each call-back receives. A negative
+    /// call-back status becomes an error, a positive one is a warning and the
+    /// result is kept; a panic in a call-back is resumed here once oneMKL has
+    /// returned. See `docs/DATA-FITTING-FACTS.md` for the measured details.
+    pub fn interpolate_with_callbacks<'a>(
+        &'a self,
+        sites: &'a [T],
+        callbacks: InterpolateCallbacks<'a, T>,
+    ) -> Result<Vec<T>> {
+        interpolate_ex_impl(self.task, &self._x, sites, callbacks)
     }
 }
 
@@ -1561,6 +1888,45 @@ impl<T: DataFittingScalar + Default + PartialOrd> QuadraticSpline1d<T> {
     ) -> Result<Vec<usize>> {
         search_cells_impl(self.task, &self._x, sites, callback)
     }
+
+    /// Evaluate like [`interpolate`](Self::interpolate), but with a
+    /// user-defined cell search (`df?InterpolateEx1D` with its `search_cb`).
+    /// oneMKL calls the search once with every site. Same contract as
+    /// [`find_cells_with_callback`](Self::find_cells_with_callback): 1-based
+    /// cells, `exact[i] = 1` or [`DF_STATUS_EXACT_RESULT`] to have cells used
+    /// as given, an exact cell that does not contain its site is
+    /// `Error::SearchCell` (checked before oneMKL uses it: unchecked it gives
+    /// silent zeros), a positive status is `Error::SearchCallbackStatus`, a
+    /// negative one an error, a panic is resumed. Measured:
+    /// `docs/DATA-FITTING-FACTS.md`.
+    pub fn interpolate_with_search_callback<'a>(
+        &'a self,
+        sites: &'a [T],
+        callback: SearchCallback<'a, T>,
+    ) -> Result<Vec<T>> {
+        interpolate_ex_impl(
+            self.task,
+            &self._x,
+            sites,
+            InterpolateCallbacks::new().search(callback),
+        )
+    }
+
+    /// Evaluate like [`interpolate`](Self::interpolate), but with user-defined
+    /// call-backs for the sites left of, inside and right of the breakpoint
+    /// range and/or a user-defined cell search (`df?InterpolateEx1D`); a
+    /// `None` entry uses the library's own evaluation. See
+    /// [`InterpolateCallbacks`] for what each call-back receives. A negative
+    /// call-back status becomes an error, a positive one is a warning and the
+    /// result is kept; a panic in a call-back is resumed here once oneMKL has
+    /// returned. See `docs/DATA-FITTING-FACTS.md` for the measured details.
+    pub fn interpolate_with_callbacks<'a>(
+        &'a self,
+        sites: &'a [T],
+        callbacks: InterpolateCallbacks<'a, T>,
+    ) -> Result<Vec<T>> {
+        interpolate_ex_impl(self.task, &self._x, sites, callbacks)
+    }
 }
 
 impl<T: DataFittingScalar> Drop for QuadraticSpline1d<T> {
@@ -1646,6 +2012,39 @@ fn search_cells_impl<'a, T: DataFittingScalar>(
         .into_iter()
         .map(|c| usize::try_from(c).unwrap_or(0).saturating_sub(1))
         .collect())
+}
+
+fn interpolate_ex_impl<'a, T: DataFittingScalar + Default>(
+    task: DFTaskPtr,
+    x: &'a [T],
+    sites: &'a [T],
+    callbacks: InterpolateCallbacks<'a, T>,
+) -> Result<Vec<T>> {
+    let _: MKL_INT = sites
+        .len()
+        .try_into()
+        .map_err(|_| Error::DimensionOverflow)?;
+    let mut out: Vec<T> = (0..sites.len()).map(|_| T::default()).collect();
+    let mut args = InterpolateExArgs {
+        sites,
+        out: out.as_mut_ptr(),
+        x,
+        callbacks,
+        panic: None,
+        search_error: None,
+    };
+    let status = unsafe { T::df_interpolate_ex_1d(task, &mut args) };
+    if let Some(payload) = args.panic.take() {
+        resume_unwind(payload);
+    }
+    if let Some(e) = args.search_error.take() {
+        return Err(e);
+    }
+    // A positive status is a warning from a call-back; the result is kept.
+    if status < 0 {
+        return Err(Error::VslStatus(status));
+    }
+    Ok(out)
 }
 
 fn check_df(status: c_int) -> Result<()> {

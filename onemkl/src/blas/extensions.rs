@@ -1082,6 +1082,10 @@ fn check_batch_buffers(
 
 /// Check one strided batch of `rows × cols` matrices (`stride` elements
 /// apart, leading dimension `ld`) against a `buf_len`-element buffer.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "private checker mirroring the shape/stride/ld/batch/buffer arguments of the strided-batch BLAS calls it guards"
+)]
 fn check_batch_matrices(
     layout: Layout,
     rows: usize,

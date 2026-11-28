@@ -42,11 +42,11 @@ fn pack_unpack_roundtrip_2x2() {
 #[test]
 fn compact_gemm_two_2x2_matmuls() {
     // Compact GEMM: pack two pairs of 2×2 matrices, multiply, unpack.
-    let a0 = vec![1.0_f64, 2.0, 3.0, 4.0];
-    let a1 = vec![1.0_f64, 0.0, 0.0, 1.0]; // identity
+    let a0 = [1.0_f64, 2.0, 3.0, 4.0];
+    let a1 = [1.0_f64, 0.0, 0.0, 1.0]; // identity
 
-    let b0 = vec![1.0_f64, 0.0, 0.0, 1.0]; // identity
-    let b1 = vec![5.0_f64, 6.0, 7.0, 8.0];
+    let b0 = [1.0_f64, 0.0, 0.0, 1.0]; // identity
+    let b1 = [5.0_f64, 6.0, 7.0, 8.0];
 
     let format = CompactFormat::Avx;
     let nm = 2;
@@ -133,8 +133,8 @@ fn get_size_returns_positive() {
 
 #[test]
 fn compact_gemm_works_for_f32() {
-    let a0 = vec![1.0_f32, 2.0, 3.0, 4.0];
-    let b0 = vec![1.0_f32, 0.0, 0.0, 1.0];
+    let a0 = [1.0_f32, 2.0, 3.0, 4.0];
+    let b0 = [1.0_f32, 0.0, 0.0, 1.0];
     let format = CompactFormat::Avx;
     let nm = 1;
     let ld = 2;

@@ -244,13 +244,13 @@ fn syconv_roundtrip(uplo: UpLo, layout: Layout) {
         [3.0, 5.0, 6.0, 0.0],
     ];
     let mut a = vec![0.0_f64; n * n];
-    for i in 0..n {
-        for j in 0..n {
+    for (i, row) in full.iter().enumerate() {
+        for (j, &v) in row.iter().enumerate() {
             let idx = match layout {
                 Layout::RowMajor => i * n + j,
                 Layout::ColMajor => j * n + i,
             };
-            a[idx] = full[i][j];
+            a[idx] = v;
         }
     }
     let mut ipiv = vec![0; n];

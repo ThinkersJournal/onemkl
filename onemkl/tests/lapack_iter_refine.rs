@@ -51,7 +51,7 @@ fn iter_refine_posv_f64_solves_spd() {
 
     let det = 4.0 * 3.0 - 1.0 * 1.0;
     let expected_x0 = (3.0 * 5.0 - 1.0 * 7.0) / det;
-    let expected_x1 = (-1.0 * 5.0 + 4.0 * 7.0) / det;
+    let expected_x1 = (-5.0 + 4.0 * 7.0) / det;
     assert_abs_diff_eq!(x[0], expected_x0, epsilon = 1e-9);
     assert_abs_diff_eq!(x[1], expected_x1, epsilon = 1e-9);
 }

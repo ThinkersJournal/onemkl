@@ -147,7 +147,12 @@ fn gumbel_location() {
     // MKL's vsRngGumbel returns the min-Gumbel (Type I extreme value
     // for minima), with mean a − γβ. With a=0, β=1 that's −γ.
     let mean = mean_f64(&buf);
-    assert_abs_diff_eq!(mean, -0.5772, epsilon = 5e-2);
+    #[allow(
+        clippy::approx_constant,
+        reason = "-0.5772 is the Euler-Mascheroni constant, written as a plain tolerance-checked literal"
+    )]
+    let expected = -0.5772_f64;
+    assert_abs_diff_eq!(mean, expected, epsilon = 5e-2);
 }
 
 #[test]
@@ -225,7 +230,7 @@ fn dirichlet_rows_sum_to_one() {
     for row in out.chunks_exact(alpha.len()) {
         let s: f64 = row.iter().sum();
         assert_abs_diff_eq!(s, 1.0, epsilon = 1e-10);
-        assert!(row.iter().all(|&v| v >= 0.0 && v <= 1.0));
+        assert!(row.iter().all(|&v| (0.0..=1.0).contains(&v)));
     }
 }
 

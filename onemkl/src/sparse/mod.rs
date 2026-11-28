@@ -1234,6 +1234,10 @@ impl<T: SparseScalar> Drop for SparseMatrix<T> {
 // =====================================================================
 
 #[inline]
+#[allow(
+    clippy::unnecessary_cast,
+    reason = "the bindgen enum type is u32 on Linux and i32 on Windows; the cast is needed on one of them"
+)]
 fn check_sparse(status: sparse_status_t::Type) -> Result<()> {
     if status == sparse_status_t::SPARSE_STATUS_SUCCESS {
         Ok(())

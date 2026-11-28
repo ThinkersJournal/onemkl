@@ -28,7 +28,9 @@ use crate::error::{Error, Result};
 
 /// Real scalar types supported by the data-fitting interface.
 #[allow(missing_docs)]
-pub trait DataFittingScalar: Copy + PartialOrd + 'static {
+/// Sealed: only the implementations in this crate are valid (its methods are
+/// raw `unsafe` FFI shims that rely on exact oneMKL contracts).
+pub trait DataFittingScalar: sealed::Sealed + Copy + PartialOrd + 'static {
     /// Raw `df_new_task_1d` call.
     ///
     /// # Safety
@@ -204,6 +206,7 @@ pub const DF_STATUS_EXACT_RESULT: i32 = sys::DF_STATUS_EXACT_RESULT as i32;
 pub type SearchCallback<'a, T> = &'a mut dyn FnMut(SearchRequest<'_, T>) -> i32;
 
 #[doc(hidden)]
+#[non_exhaustive]
 pub struct SearchExArgs<'a, T> {
     pub callback: SearchCallback<'a, T>,
     /// The breakpoints of the task, to check exact cells against.
@@ -413,6 +416,7 @@ impl<T> Default for IntegrateCallbacks<'_, T> {
 /// Arguments of [`DataFittingScalar::df_integrate_ex_1d`], gathered in one
 /// struct so the raw call stays within clippy's argument limit.
 #[doc(hidden)]
+#[non_exhaustive]
 pub struct IntegrateExArgs<'a, T: DataFittingScalar> {
     pub nlim: MKL_INT,
     pub llim: *const T,
@@ -522,6 +526,7 @@ impl<T> Default for InterpolateCallbacks<'_, T> {
 
 /// Arguments of [`DataFittingScalar::df_interpolate_ex_1d`].
 #[doc(hidden)]
+#[non_exhaustive]
 pub struct InterpolateExArgs<'a, T: DataFittingScalar> {
     pub sites: &'a [T],
     /// The `dorder` flags passed to oneMKL (non-zero entry `k`: derivative `k` wanted).
@@ -632,6 +637,8 @@ macro_rules! impl_data_fitting_real {
         search_ex=$search_ex:ident, search_cb=$scbty:ident,
         interpolate_ex=$interp_ex:ident, interp_cb=$icbty:ident,
     ) => {
+        impl sealed::Sealed for $ty {}
+
         impl DataFittingScalar for $ty {
             unsafe fn df_new_task_1d(
                 task: *mut DFTaskPtr,
@@ -2185,4 +2192,9 @@ mod search_callback_status_tests {
         assert_eq!(status, -5);
         assert!(args.error.is_none());
     }
+}
+
+/// Sealing for [`DataFittingScalar`]: only this crate implements it.
+mod sealed {
+    pub trait Sealed {}
 }

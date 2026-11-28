@@ -439,13 +439,19 @@ impl<T: PardisoScalar> Pardiso<T> {
     /// Pass `None` for `values` and / or `ja` when only `ia` is being
     /// filled.
     ///
+    /// # Safety
+    ///
+    /// How much `export` writes into `values`, `ia` and `ja` depends on `step`
+    /// and `iparm` and on the factor data; the caller must provide buffers at
+    /// least that large, and the handle must hold a factorization.
+    ///
     /// **Note:** Schur complement extraction (`iparm[35] = 1` plus a
     /// partition `perm`) has additional MKL-version-specific
     /// requirements that we have not fully validated; calling this
     /// method in that mode may crash inside MKL. The infrastructure —
     /// [`set_perm`](Self::set_perm) and `pardiso_export` itself — is
     /// in place once the correct call sequence is determined.
-    pub fn export(
+    pub unsafe fn export(
         &mut self,
         step: MKL_INT,
         values: Option<&mut [T]>,
@@ -681,13 +687,22 @@ pub unsafe fn set_pardiso_pivot_callback(
 /// (whose 32-bit output is then sign-extended to 64-bit) or by
 /// zero-initializing and relying on PARDISO's per-phase defaults.
 ///
+/// # Safety
+///
+/// This is the raw phase machine: nothing ties `a` / `ia` / `ja` / `perm`
+/// / `b` / `x` to `n`, `nrhs` and `iparm`, and `pt` is caller-controlled.
+/// The caller must guarantee every slice holds what PARDISO reads and writes
+/// for this `phase`, `n`, `nrhs`, `mtype` and `iparm`, that `ia` / `ja` are a
+/// valid CSR for the index base in `iparm[34]`, that `pt` holds only values
+/// PARDISO produced (or null), and that `iparm[27]` matches `T`.
+///
 /// `b` may be empty for phases that do not solve (e.g. analyze,
 /// factorize, free); `x` similarly.
 #[allow(
     clippy::too_many_arguments,
     reason = "stable public surface: published since v0.1.0 with 15 arguments; changing the signature breaks consumers"
 )]
-pub fn pardiso_64_raw<T: PardisoScalar>(
+pub unsafe fn pardiso_64_raw<T: PardisoScalar>(
     pt: &mut [*mut core::ffi::c_void; 64],
     maxfct: i64,
     mnum: i64,

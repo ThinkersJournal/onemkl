@@ -39,7 +39,7 @@ fn gemv_batch_two_uniform_3x3() {
         y_array: &y_ptrs,
     }];
 
-    gemv_batch(Layout::RowMajor, &mut groups).unwrap();
+    unsafe { gemv_batch(Layout::RowMajor, &mut groups) }.unwrap();
 
     // y0 = diag(1,2,3) * [1,1,1] = [1,2,3]
     assert_abs_diff_eq!(y0[0], 1.0, epsilon = 1e-12);
@@ -80,7 +80,7 @@ fn trsm_batch_two_2x2_lower() {
         b_array: &b_ptrs,
     }];
 
-    trsm_batch(Layout::RowMajor, &mut groups).unwrap();
+    unsafe { trsm_batch(Layout::RowMajor, &mut groups) }.unwrap();
 
     // X0:
     assert_abs_diff_eq!(b0[0], 1.0, epsilon = 1e-12);
@@ -98,8 +98,8 @@ fn trsm_batch_two_2x2_lower() {
 fn empty_groups_noop() {
     let mut gv: [GemvBatchGroup<f64>; 0] = [];
     let mut ts: [TrsmBatchGroup<f64>; 0] = [];
-    gemv_batch(Layout::RowMajor, &mut gv).unwrap();
-    trsm_batch(Layout::RowMajor, &mut ts).unwrap();
+    unsafe { gemv_batch(Layout::RowMajor, &mut gv) }.unwrap();
+    unsafe { trsm_batch(Layout::RowMajor, &mut ts) }.unwrap();
 }
 
 #[test]
@@ -124,5 +124,5 @@ fn gemv_batch_length_mismatch() {
         x_array: &x_ptrs,
         y_array: &y_ptrs,
     }];
-    assert!(gemv_batch(Layout::RowMajor, &mut groups).is_err());
+    assert!(unsafe { gemv_batch(Layout::RowMajor, &mut groups) }.is_err());
 }

@@ -1,6 +1,6 @@
 # onemkl safe-API audit: per-version table (STATIC, NOT RUN)
 
-**Consumers (forge-read 2026-11-28): fuel#736 MERGED `7f0a7ec035b9` (onemkl 0.8, resolves 0.8.1); cpufish#39 MERGED `6a727687202c` (onemkl 0.8; cpufish#37 `91ba38c8` had taken 0.7 earlier). Both consumers are on onemkl ^0.8.**
+**Consumers (forge-read 2026-11-28 with `gh pr view --json mergeCommit,title`): cpufish#38 MERGED `91ba38c8c776` ("deps: take onemkl 0.7"), then cpufish#39 MERGED `6a727687202c` ("deps: take onemkl 0.8"); fuel#736 MERGED `7f0a7ec035b9` ("build(deps)!: onemkl 0.8 (0.8.1)"). cpufish#37 `57c30b7f813468357ea1bc2f729712aa9e71f79a` is an AOCL bump, not an onemkl PR. Both consumers are on onemkl ^0.8.**
 
 **Platform of the runtime measurements this refers to: oneMKL 2026.2 on WSL (Linux) ONLY** (see SAFE-API-AUDIT.md, added by #56).
 **Every verdict below is a static read of the published `.crate` source, not a run.** The runtime

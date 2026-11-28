@@ -1,5 +1,7 @@
 # onemkl safe-API audit: per-version table (STATIC, NOT RUN)
 
+**Consumers (forge-read 2026-11-28): fuel#736 MERGED `7f0a7ec035b9` (onemkl 0.8, resolves 0.8.1); cpufish#39 MERGED `6a727687202c` (onemkl 0.8; cpufish#37 `91ba38c8` had taken 0.7 earlier). Both consumers are on onemkl ^0.8.**
+
 **Platform of the runtime measurements this refers to: oneMKL 2026.2 on WSL (Linux) ONLY** (see SAFE-API-AUDIT.md, added by #56).
 **Every verdict below is a static read of the published `.crate` source, not a run.** The runtime
 probes were run only on bcf7f80, which is byte-identical (md5) to 0.6.8 and 0.6.11 for the audited modules.
@@ -189,3 +191,16 @@ Per family, first affected .. last published before the family's fix (MEASURED w
 
 NOT MEASURED (unchanged): 49 of 60 cases per older version (21/25 lapack, 14/16 blas, 14/19 sparse family); 0.1.0 and 0.2.0 at runtime;
 `gemv_batch` and `trsm_batch` null-pointer faults; any `unsafe` caller's behaviour; Windows and macOS.
+
+## MEASURED: `gemv_batch` and `trsm_batch` null-pointer probes (published 0.6.11, 0.7.1, 0.8.1) — WSL (Linux) only
+
+Same shape as the `gemm_batch` probe (one group, `group_size` 1, a null entry in each pointer array, m = n = 2).
+
+| fn | 0.6.11 | 0.7.1 | 0.8.1 |
+|---|---|---|---|
+| `gemv_batch` | **FAULT (rc 139)** | **FAULT (rc 139)** | does not compile: E0133 (moved behind `unsafe`) |
+| `trsm_batch` | **FAULT (rc 139)** | **FAULT (rc 139)** | does not compile: E0133 (moved behind `unsafe`) |
+
+So the whole pointer-array batch family (`gemm_batch`, `gemv_batch`, `trsm_batch`) is MEASURED affected on 0.6.11 and 0.7.1 and
+moved behind `unsafe` in 0.8.1. Versions before 0.6.11: still source read only (static). This closes the
+"`gemv_batch` / `trsm_batch` null-pointer faults NOT MEASURED" line of the NOT MEASURED list above.

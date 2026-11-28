@@ -168,6 +168,25 @@ jobs:
       - name: cargo clippy --workspace --all-targets -D warnings
         run: cargo clippy --target x86_64-pc-windows-msvc --workspace --all-targets -- -D warnings
 
+  # macOS TARGETS linted from a Linux runner with the vendored bindings (as
+  # clippy-windows does): cfg(target_os = "macos") code is compiled, nothing is
+  # linked, and a real macOS host is UNMEASURED. NOT a required context yet.
+  clippy-macos:
+    name: cargo clippy (target ${{ matrix.target }}, cross from Linux, -D warnings)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64-apple-darwin, aarch64-apple-darwin]
+    env:
+      ONEMKL_SYS_USE_VENDORED_BINDINGS: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal --component clippy --target ${{ matrix.target }} --no-self-update
+      - name: cargo clippy --workspace --all-targets -D warnings
+        run: cargo clippy --target ${{ matrix.target }} --workspace --all-targets -- -D warnings
+
   # `ilp64` needs bindings generated from the ILP64 headers; the vendored
   # (LP64) bindings must be refused with a clear message, not 689 type errors.
   ilp64-vendored-guard:

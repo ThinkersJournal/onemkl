@@ -1494,6 +1494,77 @@ fn cubic_order_flags(orders: &[usize]) -> Result<[MKL_INT; sys::DF_PP_CUBIC as u
     Ok(flags)
 }
 
+/// The `dorder` flags for a spline with `n_orders` derivative slots (2 for a
+/// linear spline, 3 for a quadratic, 4 for a cubic): entry `k` is 1 when
+/// derivative `k` is requested. Rejects orders at or above `n_orders` and
+/// duplicates.
+fn order_flags(orders: &[usize], n_orders: usize) -> Result<Vec<MKL_INT>> {
+    let mut flags = vec![0 as MKL_INT; n_orders];
+    for &o in orders {
+        if o >= n_orders {
+            return Err(Error::InvalidArgument(
+                "derivative order exceeds the spline degree",
+            ));
+        }
+        if flags[o] != 0 {
+            return Err(Error::InvalidArgument("duplicate derivative order"));
+        }
+        flags[o] = 1;
+    }
+    Ok(flags)
+}
+
+/// Map oneMKL's ascending, site-major result (`out[i * nd + k]`) back to one
+/// vector per entry of `orders`, in the order requested.
+fn orders_to_columns<T: Copy>(out: &[T], n_sites: usize, orders: &[usize]) -> Vec<Vec<T>> {
+    let nd = orders.len();
+    let mut ascending: Vec<usize> = orders.to_vec();
+    ascending.sort_unstable();
+    orders
+        .iter()
+        .map(|o| {
+            let col = ascending.iter().position(|a| a == o).unwrap();
+            (0..n_sites).map(|i| out[i * nd + col]).collect()
+        })
+        .collect()
+}
+
+/// Library-only derivative evaluation shared by the linear and quadratic
+/// splines (`df?Interpolate1D` with several `dorder` flags).
+fn interpolate_derivatives_plain<T: DataFittingScalar + Default + Copy>(
+    task: DFTaskPtr,
+    sites: &[T],
+    orders: &[usize],
+    n_orders: usize,
+) -> Result<Vec<Vec<T>>> {
+    let flags = order_flags(orders, n_orders)?;
+    if orders.is_empty() {
+        return Ok(Vec::new());
+    }
+    let nsite: MKL_INT = sites
+        .len()
+        .try_into()
+        .map_err(|_| Error::DimensionOverflow)?;
+    let mut out: Vec<T> = vec![T::default(); sites.len() * orders.len()];
+    check_df(unsafe {
+        T::df_interpolate_1d(
+            task,
+            sys::DF_INTERP as MKL_INT,
+            sys::DF_METHOD_PP as MKL_INT,
+            nsite,
+            sites.as_ptr(),
+            sys::DF_NO_HINT as MKL_INT,
+            flags.len() as MKL_INT,
+            flags.as_ptr(),
+            ptr::null(),
+            out.as_mut_ptr(),
+            sys::DF_NO_HINT as MKL_INT,
+            ptr::null_mut(),
+        )
+    })?;
+    Ok(orders_to_columns(&out, sites.len(), orders))
+}
+
 impl<T: DataFittingScalar> Drop for CubicSpline1d<T> {
     fn drop(&mut self) {
         if !self.task.is_null() {
@@ -1713,6 +1784,43 @@ impl<T: DataFittingScalar + Default> LinearSpline1d<T> {
         callbacks: InterpolateCallbacks<'a, T>,
     ) -> Result<Vec<T>> {
         interpolate_ex_impl(self.task, &self._x, sites, callbacks)
+    }
+
+    /// Evaluate derivatives of the linear spline at `sites`. `orders` lists
+    /// the derivative orders wanted (`0` is the function value, up to `1`
+    /// for a linear spline); the result holds one vector per entry of
+    /// `orders`, in the order requested, each with one value per site.
+    /// Duplicate orders and orders above `1` are rejected.
+    pub fn interpolate_derivatives(&self, sites: &[T], orders: &[usize]) -> Result<Vec<Vec<T>>>
+    where
+        T: Copy,
+    {
+        interpolate_derivatives_plain(self.task, sites, orders, 2)
+    }
+
+    /// Like [`interpolate_derivatives`](Self::interpolate_derivatives), but
+    /// with the call-backs of [`interpolate_with_callbacks`](Self::interpolate_with_callbacks).
+    /// Each call-back's [`InterpolationPieces::out`] holds
+    /// `sites.len() * orders.len()` values, site-major with the orders in
+    /// ASCENDING order (not the order of `orders`): `out[i * orders + k]`
+    /// (the layout measured for the cubic spline in
+    /// `tools/size-probes/df_interp_cb.c`, whose probe runs on a linear
+    /// task; for the quadratic spline see the test of this method).
+    pub fn interpolate_derivatives_with_callbacks<'a>(
+        &'a self,
+        sites: &'a [T],
+        orders: &[usize],
+        callbacks: InterpolateCallbacks<'a, T>,
+    ) -> Result<Vec<Vec<T>>>
+    where
+        T: Copy,
+    {
+        let flags = order_flags(orders, 2)?;
+        if orders.is_empty() {
+            return Ok(Vec::new());
+        }
+        let out = interpolate_ex_orders(self.task, &self._x, sites, &flags, callbacks)?;
+        Ok(orders_to_columns(&out, sites.len(), orders))
     }
 }
 
@@ -2013,6 +2121,43 @@ impl<T: DataFittingScalar + Default + PartialOrd> QuadraticSpline1d<T> {
         callbacks: InterpolateCallbacks<'a, T>,
     ) -> Result<Vec<T>> {
         interpolate_ex_impl(self.task, &self._x, sites, callbacks)
+    }
+
+    /// Evaluate derivatives of the quadratic spline at `sites`. `orders` lists
+    /// the derivative orders wanted (`0` is the function value, up to `2`
+    /// for a quadratic spline); the result holds one vector per entry of
+    /// `orders`, in the order requested, each with one value per site.
+    /// Duplicate orders and orders above `2` are rejected.
+    pub fn interpolate_derivatives(&self, sites: &[T], orders: &[usize]) -> Result<Vec<Vec<T>>>
+    where
+        T: Copy,
+    {
+        interpolate_derivatives_plain(self.task, sites, orders, 3)
+    }
+
+    /// Like [`interpolate_derivatives`](Self::interpolate_derivatives), but
+    /// with the call-backs of [`interpolate_with_callbacks`](Self::interpolate_with_callbacks).
+    /// Each call-back's [`InterpolationPieces::out`] holds
+    /// `sites.len() * orders.len()` values, site-major with the orders in
+    /// ASCENDING order (not the order of `orders`): `out[i * orders + k]`
+    /// (the layout measured for the cubic spline in
+    /// `tools/size-probes/df_interp_cb.c`, whose probe runs on a linear
+    /// task; for the quadratic spline see the test of this method).
+    pub fn interpolate_derivatives_with_callbacks<'a>(
+        &'a self,
+        sites: &'a [T],
+        orders: &[usize],
+        callbacks: InterpolateCallbacks<'a, T>,
+    ) -> Result<Vec<Vec<T>>>
+    where
+        T: Copy,
+    {
+        let flags = order_flags(orders, 3)?;
+        if orders.is_empty() {
+            return Ok(Vec::new());
+        }
+        let out = interpolate_ex_orders(self.task, &self._x, sites, &flags, callbacks)?;
+        Ok(orders_to_columns(&out, sites.len(), orders))
     }
 }
 

@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.6.11 - 2026-11-27 (PM-allocated; docs only (ROADMAP), no Rust change; written by pm-assist from the diff)
+
+- **ROADMAP:** the W1b row (macOS cross clippy) marked done with measured facts at f1a76733 (3 allows, 0 `dead_code`); the PR body states f1a76733 was not validated by a push run (a dropped event, per pm-kernels), so the first main run after this merge is where the macOS cross clippy jobs are read by name.
+
 ## 0.6.10 - 2026-11-27 (PM-allocated; CI only, no Rust change; written by pm-assist from the diff)
 
 - **CI:** cross-TARGET clippy jobs for `x86_64-apple-darwin` and `aarch64-apple-darwin` (a Linux runner, the vendored bindings, `-D warnings`), NOT required yet. The lane read both jobs green by name on the head (all 17 runs success); a real macOS host is UNMEASURED.

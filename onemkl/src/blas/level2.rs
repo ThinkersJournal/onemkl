@@ -98,6 +98,14 @@ pub fn gbmv<T: BlasScalar>(
             "banded matrix leading dimension must be at least kl + ku + 1",
         ));
     }
+    check_band_view(
+        a,
+        kl + ku + 1,
+        match a.layout() {
+            crate::enums::Layout::ColMajor => n,
+            crate::enums::Layout::RowMajor => m,
+        },
+    )?;
     let (x_required, y_required) = match trans {
         Transpose::NoTrans => (n, m),
         Transpose::Trans | Transpose::ConjTrans => (m, n),
@@ -305,6 +313,7 @@ pub fn tbmv<T: BlasScalar>(
             "banded triangular leading dimension must be at least k + 1",
         ));
     }
+    check_band_view(a, k + 1, n)?;
     check_vec_len(x, incx, n, "x")?;
     unsafe {
         T::cblas_tbmv(
@@ -343,6 +352,7 @@ pub fn tbsv<T: BlasScalar>(
             "banded triangular leading dimension must be at least k + 1",
         ));
     }
+    check_band_view(a, k + 1, n)?;
     check_vec_len(x, incx, n, "x")?;
     unsafe {
         T::cblas_tbsv(
@@ -556,6 +566,7 @@ pub fn sbmv<T: RealBlasScalar>(
             "symmetric banded leading dimension must be at least k + 1",
         ));
     }
+    check_band_view(a, k + 1, n)?;
     check_vec_len(x, incx, n, "x")?;
     check_vec_len(y, incy, n, "y")?;
     unsafe {
@@ -797,6 +808,7 @@ pub fn hbmv<T: ComplexBlasScalar>(
             "hermitian banded leading dimension must be at least k + 1",
         ));
     }
+    check_band_view(a, k + 1, n)?;
     check_vec_len(x, incx, n, "x")?;
     check_vec_len(y, incy, n, "y")?;
     unsafe {
@@ -956,6 +968,22 @@ fn check_packed_len<T>(ap: &[T], n: usize) -> Result<()> {
     if ap.len() < needed {
         return Err(Error::InvalidArgument(
             "packed buffer is too short: need n*(n+1)/2 elements",
+        ));
+    }
+    Ok(())
+}
+
+/// A band-storage view must hold `n_stored` stored columns (col-major) or
+/// rows (row-major) of at least `band` entries each; otherwise the BLAS
+/// kernel reads past the view's buffer.
+fn check_band_view<T>(a: &MatrixRef<'_, T>, band: usize, n_stored: usize) -> Result<()> {
+    let (contig, count) = match a.layout() {
+        crate::enums::Layout::ColMajor => (a.rows(), a.cols()),
+        crate::enums::Layout::RowMajor => (a.cols(), a.rows()),
+    };
+    if n_stored > 0 && (contig < band || count < n_stored) {
+        return Err(Error::InvalidArgument(
+            "banded matrix view is smaller than the band storage the call needs",
         ));
     }
     Ok(())

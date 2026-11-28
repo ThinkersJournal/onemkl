@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.6.9 - 2026-11-27 (PM-allocated; CI only, no Rust change; written by pm-assist from the diff)
+
+- **CI:** the vacuous `cargo clippy (REPORT-ONLY, not required)` job is deleted (it was never a required context; the required `cargo clippy (Linux, -D warnings)` and `(target x86_64-pc-windows-msvc, cross, -D warnings)` jobs from 0.6.8 replace it); the ROADMAP clippy row is rewritten as done.
+
 ## 0.6.8 - 2026-11-27 (PM-allocated; CI and one fix in `InterpolateEx1D` search call-backs; written by pm-assist from the diff)
 
 - **Fixed:** `run_search_callback` (data fitting, `InterpolateEx1D` search call-backs) read `cells` / `exact` after a NEGATIVE status that the call-back never wrote, so a stale `exact == 1` turned the call-back's `-5` into a bogus `SearchCell`; a negative status is now returned as it came, without reading them (test `negative_status_is_the_error_positive_status_is_a_typed_error` plus a deterministic unit test that fails before and passes after). **First affected version: 0.6.6 (never published; the same code is in the published 0.6.7).** Found by the new required Intel oneAPI CI job; a wrong error value, not a memory-safety defect (no yank asked).
